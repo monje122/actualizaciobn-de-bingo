@@ -1958,39 +1958,51 @@ async function cargarCartones() {
   actualizarMonto();
 }
 
-function toggleCarton(num, elem) {
+async function toggleCarton(num, elem) {
   const index = usuario.cartones.indexOf(num);
 
+  // Deseleccionar
   if (index >= 0) {
     usuario.cartones.splice(index, 1);
     elem.classList.remove('seleccionado');
 
-    document.querySelectorAll('.carton.bloqueado').forEach(c => {
+    actualizarContadorCartones(totalCartones, cartonesOcupados.length, usuario.cartones.length);
+    actualizarMonto();
+    return;
+  }
+
+  // No permitir más de la cantidad elegida
+  if (usuario.cartones.length >= cantidadPermitida) return;
+
+  // Reservar en Supabase de forma segura
+  const { data, error } = await supabase.rpc('rpc_reservar_carton', {
+    _numero: num,
+    _cedula: usuario.cedula,
+    _partida_id: null
+  });
+
+  if (error || data !== true) {
+    alert('Ese cartón ya fue tomado por otra persona. Elige otro.');
+    await cargarCartones();
+    return;
+  }
+
+  usuario.cartones.push(num);
+  elem.classList.add('seleccionado');
+
+  if (usuario.cartones.length === cantidadPermitida) {
+    document.querySelectorAll('.carton').forEach(c => {
       const n = parseInt(c.textContent);
-      if (!cartonesOcupados.includes(n) && !usuario.cartones.includes(n)) {
-        c.classList.remove('bloqueado');
-        c.onclick = () => abrirModalCarton(n, c);
+      const yaSeleccionado = usuario.cartones.includes(n);
+      const yaOcupado = cartonesOcupados.includes(n);
+
+      if (!yaSeleccionado && !yaOcupado) {
+        c.classList.add('bloqueado');
+        c.onclick = null;
       }
     });
-  } else {
-    if (usuario.cartones.length >= cantidadPermitida) return;
-
-    usuario.cartones.push(num);
-    elem.classList.add('seleccionado');
-
-    if (usuario.cartones.length === cantidadPermitida) {
-      document.querySelectorAll('.carton').forEach(c => {
-        const n = parseInt(c.textContent);
-        const yaSeleccionado = usuario.cartones.includes(n);
-        const yaOcupado = cartonesOcupados.includes(n);
-
-        if (!yaSeleccionado && !yaOcupado) {
-          c.classList.add('bloqueado');
-          c.onclick = null;
-        }
-      });
-    }
   }
+
   actualizarContadorCartones(totalCartones, cartonesOcupados.length, usuario.cartones.length);
   actualizarMonto();
 }
@@ -2038,11 +2050,6 @@ async function enviarComprobante() {
 
     const urlPublica = `${supabaseUrl}/storage/v1/object/public/comprobantes/${nombreArchivo}`;
 
-    const rows = usuario.cartones.map(n => ({ numero: n }));
-    const { error: errInsertaCartones } = await supabase
-      .from('cartones')
-      .insert(rows);
-
     if (errInsertaCartones) {
       alert('Uno o más cartones ya fueron tomados por otra persona. Elige otros, por favor.');
       usuario.cartones = [];
@@ -2070,7 +2077,10 @@ async function enviarComprobante() {
     }]);
 
     if (errorInsert) {
-      await supabase.from('cartones').delete().in('numero', usuario.cartones);
+      await supabase.rpc('rpc_liberar_reserva', {
+  _cedula: usuario.cedula,
+  _partida_id: null
+});
       throw new Error('Error guardando la inscripción');
     }
 
@@ -2388,10 +2398,10 @@ function abrirModalCarton(numero, elemento) {
   document.getElementById('modal-carton').classList.remove('oculto');
 
   const btn = document.getElementById('btnSeleccionarCarton');
-  btn.onclick = () => {
-    toggleCarton(cartonSeleccionadoTemporal, cartonElementoTemporal);
-    cerrarModalCarton();
-  };
+  btn.onclick = async () => {
+  await toggleCarton(cartonSeleccionadoTemporal, cartonElementoTemporal);
+  cerrarModalCarton();
+};
 }
 
 function cerrarModalCarton() {
@@ -3352,6 +3362,7 @@ function agregarBotonesAdicionalesAdmin() {
     loginSection.insertAdjacentHTML('beforeend', botonesHTML);
   }
 }
+
 // ─── NAVEGACIÓN POR PESTAÑAS DEL ADMIN ───
 function cambiarTab(tabId) {
   // Ocultar todos los contenidos
