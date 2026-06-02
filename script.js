@@ -1063,6 +1063,7 @@ async function mostrarPanelAdminSeguro(sessionToken) {
 
   // Cargar datos del panel
   await cargarPanelAdmin();
+  activarRefrescoAutomaticoAdmin();
 }
 // Función para verificar OTP
 
@@ -1162,6 +1163,7 @@ async function mostrarPanelAdminOTP(sessionToken) {
   
   // Cargar datos del panel
   await cargarPanelAdmin();
+  activarRefrescoAutomaticoAdmin();
 }
 
 
@@ -1256,6 +1258,7 @@ async function verificarSesionInicial() {
       document.getElementById('admin-login').classList.add('oculto');
       document.getElementById('admin-panel').classList.remove('oculto');
       await cargarPanelAdmin();
+      activarRefrescoAutomaticoAdmin();
      
     } else {
       console.log('⚠️ Sesión inválida, limpiando...');
@@ -3362,7 +3365,30 @@ function agregarBotonesAdicionalesAdmin() {
     loginSection.insertAdjacentHTML('beforeend', botonesHTML);
   }
 }
+let canalInscripciones = null;
 
+function activarRefrescoAutomaticoAdmin() {
+  if (canalInscripciones) return;
+
+  canalInscripciones = supabase
+    .channel('admin-inscripciones-realtime')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'inscripciones'
+      },
+      async (payload) => {
+        console.log('🔄 Cambio detectado en inscripciones:', payload);
+
+        if (sesionActiva && !document.getElementById('admin-panel').classList.contains('oculto')) {
+          await cargarPanelAdmin();
+        }
+      }
+    )
+    .subscribe();
+}
 // ─── NAVEGACIÓN POR PESTAÑAS DEL ADMIN ───
 function cambiarTab(tabId) {
   // Ocultar todos los contenidos
