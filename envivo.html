@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Transmisión en Vivo</title>
+  <style>
+    body {
+      margin: 0;
+      background-image: url('https://i.postimg.cc/13mW4DZt/photo-2026-05-07-jpg.jpg');
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #video-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 90vw;
+      max-width: 1000px;
+    }
+
+    #youtube-frame {
+      width: 100%;
+      height: 40vw;
+      max-height: 560px;
+      border: none;
+    }
+
+    #youtube-chat {
+      width: 100%;
+      height: 380px;
+      border: none;
+      margin-top: 10px;
+      margin-bottom: 20px;
+    }
+
+    #cohetesGif {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: url('https://i.gifer.com/4M57.gif') center center no-repeat;
+      background-size: cover;
+      z-index: 9999;
+      pointer-events: none;
+    }
+
+    #chat-external {
+      display: none;
+      color: white;
+      margin: 12px 0;
+      background: rgba(0,0,0,0.7);
+      padding: 10px 24px;
+      border-radius: 14px;
+      font-size: 1.1em;
+      text-decoration: none;
+      font-weight: bold;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.16);
+      transition: background 0.2s;
+    }
+    #chat-external:hover {
+      background: rgba(0,0,0,0.9);
+    }
+
+    /* --------- MEDIA QUERY PARA MÓVILES ---------- */
+    @media (max-width: 600px) {
+      #video-container {
+        width: 100vw;
+        max-width: none;
+        padding: 0;
+      }
+      #youtube-frame {
+        height: 55vw;
+        max-height: 230px;
+        min-height: 180px;
+      }
+      #youtube-chat {
+        height: 360px;
+        min-height: 180px;
+        margin-bottom: 12px;
+      }
+      #chat-external {
+        display: block;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="video-container">
+    <iframe id="youtube-frame" allowfullscreen allow="autoplay"></iframe>
+    <iframe id="youtube-chat"></iframe>
+    <a id="chat-external" target="_blank">Abrir chat en YouTube</a>
+  </div>
+
+  <div id="cohetesGif"></div>
+
+  <audio id="sonidoCohetes" src="https://monje122.github.io/cohetesmarga/piro.mp3" preload="auto"></audio>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      const supabaseClient = supabase.createClient(
+        'https://vldafijhyypzftboxzfh.supabase.co',
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsZGFmaWpoeXlwemZ0Ym94emZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5MDU4MTMsImV4cCI6MjA5NTQ4MTgxM30.5qr3eQgYaHmCHda9qLHiKLkD4DyNXqsMn_Hw3qkJ6V4'
+      );
+
+      function extraerIDYoutube(link) {
+        try {
+          const url = new URL(link);
+          return url.hostname === "youtu.be" ? url.pathname.slice(1) : url.searchParams.get("v");
+        } catch {
+          return null;
+        }
+      }
+
+      async function cargarVideo() {
+        const { data, error } = await supabaseClient
+          .from('configuracion')
+          .select('valore')
+          .eq('clave', 'youtube_live')
+          .single();
+
+        if (error || !data) {
+          document.body.innerHTML = "<h2 style='color: white;'>Error al cargar el video</h2>";
+          return;
+        }
+
+        const id = extraerIDYoutube(data.valore);
+        const dominio = location.hostname;
+
+        if (id) {
+          document.getElementById("youtube-frame").src = `https://www.youtube.com/embed/${id}?autoplay=1`;
+          document.getElementById("youtube-chat").src = `https://www.youtube.com/live_chat?v=${id}&embed_domain=${dominio}`;
+          document.getElementById("chat-external").href = `https://www.youtube.com/live_chat?v=${id}`;
+        } else {
+          document.body.innerHTML = "<h2 style='color: white;'>Enlace de YouTube inválido</h2>";
+        }
+      }
+
+      await cargarVideo();
+
+      // Si está en móvil, oculta el iframe del chat y muestra el botón externo
+      function ajustarChatMobile() {
+        if (window.innerWidth < 600) {
+          document.getElementById("youtube-chat").style.display = "none";
+          document.getElementById("chat-external").style.display = "block";
+        } else {
+          document.getElementById("youtube-chat").style.display = "block";
+          document.getElementById("chat-external").style.display = "none";
+        }
+      }
+      ajustarChatMobile();
+      window.addEventListener('resize', ajustarChatMobile);
+
+      // Cohetes: efecto y sonido desde Supabase
+      supabaseClient
+        .channel('cohetes')
+        .on('postgres_changes', {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'configuracion',
+          filter: 'clave=eq.cohetes_activados'
+        }, async (payload) => {
+          const valor = payload.new.valore;
+          if (valor === true || valor === "true") {
+            const gif = document.getElementById('cohetesGif');
+            const sonido = document.getElementById('sonidoCohetes');
+
+            gif.style.display = 'block';
+            try {
+              sonido.currentTime = 0;
+              await sonido.play();
+            } catch (e) {
+              console.warn("⚠️ Sonido bloqueado por navegador (autoplay)", e);
+            }
+
+            setTimeout(() => {
+              gif.style.display = 'none';
+              sonido.pause();
+              sonido.currentTime = 0;
+
+              supabaseClient
+                .from('configuracion')
+                .update({ valore: false })
+                .eq('clave', 'cohetes_activados');
+            }, 12000);
+          }
+        })
+        .subscribe();
+    });
+  </script>
+</body>
+</html>
