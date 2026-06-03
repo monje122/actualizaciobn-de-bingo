@@ -674,6 +674,7 @@ async function verificarOTP() {
       
       // Cargar panel
       cargarPanelAdmin();
+      activarRefrescoAutomaticoAdmin();
       
     }, 1000);
     
