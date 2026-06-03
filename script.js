@@ -1488,7 +1488,7 @@ async function verHuerfanos() {
   
   try {
     const { data, error } = await supabase.rpc('rpc_listar_cartones_huerfanos', {
-      _min_age: '0 minutes'
+      _min_age: '5 minutes'
     });
     
     if (error) throw error;
@@ -1568,7 +1568,7 @@ async function liberarHuerfanos() {
   
   try {
     const { data, error } = await supabase.rpc('rpc_liberar_cartones_huerfanos', {
-      _min_age: '0 minutes'
+      _min_age: '5 minutes'
     });
     
     if (error) throw error;
@@ -1861,6 +1861,7 @@ async function mostrarVentana(id) {
     if (usuario.cartones.length !== requerido) {
       alert(`Debes elegir exactamente ${requerido} cartones antes de continuar.`);
       return;
+      
     }
   }
 
@@ -1879,6 +1880,7 @@ async function mostrarVentana(id) {
     const promo = getPromocionSeleccionada();
     const monto = promo ? promo.precio : (usuario.cartones.length * (precioPorCarton || 0));
     document.getElementById('monto-pago').textContent = monto.toFixed(2);
+     iniciarContadorReserva(5);
   }
   
   if (id === 'cartones') {
@@ -2053,14 +2055,6 @@ async function enviarComprobante() {
 
     const urlPublica = `${supabaseUrl}/storage/v1/object/public/comprobantes/${nombreArchivo}`;
 
-    if (errInsertaCartones) {
-      alert('Uno o más cartones ya fueron tomados por otra persona. Elige otros, por favor.');
-      usuario.cartones = [];
-      mostrarVentana('cartones');
-      await cargarCartones();
-      return;
-    }
-
     const promo = getPromocionSeleccionada();
     const monto = promo ? promo.precio : (usuario.cartones.length * (precioPorCarton || 0));
     
@@ -2086,7 +2080,7 @@ async function enviarComprobante() {
 });
       throw new Error('Error guardando la inscripción');
     }
-
+clearInterval(timerReserva);
     alert('Inscripción y comprobante enviados con éxito');
     location.reload();
   } catch (err) {
@@ -3388,6 +3382,64 @@ function activarRefrescoAutomaticoAdmin() {
       }
     )
     .subscribe();
+}
+let timerReserva = null;
+
+function iniciarContadorReserva(minutos = 5) {
+  const div = document.getElementById('contadorReserva');
+
+  let restante = minutos * 60;
+
+  clearInterval(timerReserva);
+
+  timerReserva = setInterval(() => {
+
+    const min = Math.floor(restante / 60);
+    const seg = restante % 60;
+
+    div.innerHTML =
+      `⏳ Reserva activa: ${min}:${seg.toString().padStart(2,'0')}`;
+
+    if (restante <= 60) {
+      div.style.background = 'rgba(239,71,111,.2)';
+      div.style.borderColor = '#ef476f';
+    }
+
+    if (restante <= 0) {
+      clearInterval(timerReserva);
+
+      div.innerHTML =
+        '⛔ Tiempo agotado. Los cartones fueron liberados.';
+
+      liberarReservaPorTiempo();
+    }
+
+    restante--;
+
+  }, 1000);
+}
+async function liberarReservaPorTiempo() {
+
+  try {
+
+    await supabase.rpc('rpc_liberar_reserva', {
+      _cedula: usuario.cedula,
+      _partida_id: null
+    });
+
+    usuario.cartones = [];
+
+    alert(
+      'Tu tiempo para enviar el comprobante expiró. Debes seleccionar nuevamente tus cartones.'
+    );
+
+    mostrarSeccion('cartones');
+
+    await cargarCartones();
+
+  } catch (err) {
+    console.error(err);
+  }
 }
 // ─── NAVEGACIÓN POR PESTAÑAS DEL ADMIN ───
 function cambiarTab(tabId) {
