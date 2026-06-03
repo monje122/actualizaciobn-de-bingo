@@ -2301,3 +2301,14 @@ input:checked + .toggle-slider:before {
     flex-direction: column !important;
   }
 }
+.contador-reserva {
+  text-align: center;
+  margin: 15px 0;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(255,165,0,0.15);
+  border: 2px solid #FFA500;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+}
