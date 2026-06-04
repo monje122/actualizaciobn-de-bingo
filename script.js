@@ -1984,9 +1984,25 @@ async function toggleCarton(num, elem) {
 
   // Deseleccionar
   if (index >= 0) {
-    usuario.cartones.splice(index, 1);
-    elem.classList.remove('seleccionado');
+  usuario.cartones.splice(index, 1);
+  elem.classList.remove('seleccionado');
 
+  const { error: errorLiberar } = await supabase.rpc('rpc_liberar_reserva', {
+    _numero: num,
+    _cedula: usuario.cedula,
+    _partida_id: null
+  });
+ if (errorLiberar) {
+    console.error('Error liberando reserva:', errorLiberar);
+  }
+    
+    document.querySelectorAll('.carton.bloqueado').forEach(c => {
+    const n = parseInt(c.textContent);
+    if (!cartonesOcupados.includes(n) && !usuario.cartones.includes(n)) {
+      c.classList.remove('bloqueado');
+      c.onclick = () => abrirModalCarton(n, c);
+    }
+  });
     actualizarContadorCartones(totalCartones, cartonesOcupados.length, usuario.cartones.length);
     actualizarMonto();
     return;
