@@ -1669,118 +1669,124 @@ input:checked + .toggle-slider:before {
 /* ════════════════════════════════════════════════════════
    FIX: CONTENEDOR CON FONDO CLARO PARA HISTORIAL DE GANADORES
    ════════════════════════════════════════════════════════ */
-
-/* Sección de ganadores */
 #ganadores {
-  padding: 20px !important;
+  padding: 20px 12px !important;
+  max-width: 1000px !important;
+  margin: 0 auto !important;
 }
 
-/* Título de la sección */
 #ganadores h2 {
-  color: #ffffff !important;
+  color: #fff !important;
   text-align: center !important;
-  font-size: 28px !important;
-  margin-bottom: 25px !important;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5) !important;
+  font-size: 30px !important;
+  margin: 25px 0 !important;
+  text-shadow: 0 3px 10px rgba(0,0,0,.6) !important;
 }
 
-/* Contenedor de la lista con fondo claro */
-#ganadores #listaGanadores,
 #listaGanadores {
-  background: #ffffff !important;
-  border-radius: 16px !important;
-  padding: 25px 300px !important;
+  background: #fff !important;
   border: 3px solid #FFA500 !important;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3) !important;
+  border-radius: 18px !important;
+  padding: 22px !important;
+  margin: 20px auto !important;
   max-width: 900px !important;
-  margin: 30px auto !important;
+  box-shadow: 0 12px 35px rgba(0,0,0,.35) !important;
+  overflow-x: auto !important;
 }
 
-/* Tabla de ganadores */
 #listaGanadores table {
   width: 100% !important;
-  border-collapse: separate !important;
-  border-spacing: 0 4px !important;
-  background: #ffffff !important;
+  min-width: 720px !important;
+  border-collapse: collapse !important;
+  background: #fff !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
 }
 
-/* Encabezados */
-#listaGanadores table thead th {
+#listaGanadores th {
   background: linear-gradient(135deg, #FFA500, #ffb347) !important;
   color: #1a1a2e !important;
-  padding: 14px 16px !important;
+  padding: 14px 12px !important;
   text-align: center !important;
-  font-weight: 700 !important;
   font-size: 13px !important;
+  font-weight: 800 !important;
   text-transform: uppercase !important;
-  letter-spacing: 0.5px !important;
 }
 
-#listaGanadores table thead th:first-child {
-  border-radius: 8px 0 0 0 !important;
-}
-
-#listaGanadores table thead th:last-child {
-  border-radius: 0 8px 0 0 !important;
-}
-
-/* Celdas del cuerpo */
-#listaGanadores table tbody td {
+#listaGanadores td {
   color: #2c3e50 !important;
-  background: #f8f9fa !important;
-  padding: 12px 16px !important;
+  padding: 14px 12px !important;
   text-align: center !important;
   font-size: 15px !important;
-  font-weight: 500 !important;
-  border-bottom: 1px solid #e0e0e0 !important;
+  font-weight: 600 !important;
+  border-bottom: 1px solid #e6e6e6 !important;
+  white-space: nowrap !important;
 }
 
-/* Alternar colores de fila */
-#listaGanadores table tbody tr:nth-child(even) td {
-  background: #ffffff !important;
-}
-
-#listaGanadores table tbody tr:nth-child(odd) td {
+#listaGanadores tbody tr:nth-child(odd) td {
   background: #f5f7fa !important;
 }
 
-/* Hover en filas */
-#listaGanadores table tbody tr:hover td {
+#listaGanadores tbody tr:nth-child(even) td {
+  background: #ffffff !important;
+}
+
+#listaGanadores tbody tr:hover td {
   background: #fff3e0 !important;
-  color: #1a1a2e !important;
-  transition: all 0.2s ease !important;
 }
 
-/* Mensaje cuando no hay ganadores */
 #listaGanadores p {
-  color: #666 !important;
+  color: #555 !important;
   text-align: center !important;
-  padding: 40px 20px !important;
   font-size: 16px !important;
-  background: #f8f9fa !important;
-  border-radius: 12px !important;
+  padding: 25px !important;
 }
 
-/* Botón de inicio */
 #ganadores button {
   display: block !important;
-  max-width: 300px !important;
-  margin: 25px auto 0 !important;
+  width: 100% !important;
+  max-width: 320px !important;
+  margin: 25px auto !important;
   background: linear-gradient(135deg, #FFA500, #ffb347) !important;
   color: #1a1a2e !important;
-  font-weight: 700 !important;
+  font-weight: 800 !important;
   font-size: 16px !important;
-  padding: 14px 30px !important;
+  padding: 15px 30px !important;
   border-radius: 50px !important;
   border: none !important;
-  cursor: pointer !important;
-  box-shadow: 0 4px 15px rgba(255, 165, 0, 0.4) !important;
-  transition: all 0.3s ease !important;
+  box-shadow: 0 8px 22px rgba(255,165,0,.35) !important;
 }
+@media (max-width: 600px) {
+  #ganadores {
+    padding: 15px 10px !important;
+  }
 
-#ganadores button:hover {
-  transform: translateY(-3px) scale(1.02) !important;
-  box-shadow: 0 8px 25px rgba(255, 165, 0, 0.6) !important;
+  #ganadores h2 {
+    font-size: 26px !important;
+    margin-top: 20px !important;
+  }
+
+  #listaGanadores {
+    width: 95vw !important;
+    max-width: 95vw !important;
+    padding: 10px !important;
+    overflow-x: auto !important;
+  }
+
+  #listaGanadores table {
+    min-width: 650px !important;
+  }
+
+  #listaGanadores th,
+  #listaGanadores td {
+    padding: 10px 8px !important;
+    font-size: 12px !important;
+  }
+
+  #ganadores button {
+    max-width: 90vw !important;
+    font-size: 15px !important;
+  }
 }
 /* ════════════════════════════════════════════════════════
    SECCIÓN DE PAGO MÓVIL - DISEÑO MODERNO
