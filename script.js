@@ -1936,6 +1936,14 @@ function confirmarCantidad() {
 
 // ==================== FUNCIONES DE CARTONES ====================
 async function cargarCartones() {
+  const { error: errorHuerfanos } = await supabase.rpc('rpc_liberar_cartones_huerfanos', {
+    _min_age: '5 minutes'
+  });
+
+  if (errorHuerfanos) {
+    console.error('Error liberando huérfanos:', errorHuerfanos);
+  }
+
   cartonesOcupados = await fetchTodosLosOcupados();
   const ocupadosSet = new Set(cartonesOcupados);
 
@@ -1952,15 +1960,18 @@ async function cargarCartones() {
     } else {
       carton.onclick = () => abrirModalCarton(i, carton);
     }
+
     contenedor.appendChild(carton);
   }
 
   await contarCartonesVendidos();
+
   actualizarContadorCartones(
     totalCartones,
     Number(document.getElementById('total-vendidos').textContent) || cartonesOcupados.length,
     usuario.cartones.length
   );
+
   actualizarMonto();
 }
 
