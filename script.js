@@ -1702,7 +1702,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   
   // Crear tabla de sesiones si no existe
    document.getElementById('modal-terminos').classList.remove('oculto');
-  
+  await cargarImagenPremiosInicio();
   await obtenerTotalCartones();
   await cargarPrecioPorCarton();
   await cargarConfiguracionModoCartones();
@@ -1834,6 +1834,10 @@ function isTrue(v) {
 }
 
 async function mostrarVentana(id) {
+  if (id === 'top-compradores') {
+  await cargarTopCompradores();
+     activarTopCompradoresRealtime()
+}
   if (id === 'admin') {
     await entrarAdmin();
     return;
@@ -3453,6 +3457,183 @@ async function liberarReservaPorTiempo() {
     console.error(err);
   }
 }
+async function cargarTopCompradores() {
+  const { data, error } = await supabase
+    .from('inscripciones')
+    .select('nombre, cedula, telefono, cartones, estado')
+    .in('estado', ['pendiente', 'aprobado']);
+
+  const cont = document.getElementById('listaTopCompradores');
+  cont.innerHTML = '';
+
+  if (error) {
+    console.error(error);
+    cont.innerHTML = '<p>Error cargando top compradores.</p>';
+    return;
+  }
+
+  const ranking = {};
+
+  (data || []).forEach(item => {
+    const cedula = item.cedula || 'sin-cedula';
+    const cantidad = Array.isArray(item.cartones) ? item.cartones.length : 0;
+
+    if (!ranking[cedula]) {
+      ranking[cedula] = {
+        nombre: item.nombre || 'Sin nombre',
+        cedula,
+        telefono: item.telefono || '',
+        total: 0
+      };
+    }
+
+    ranking[cedula].total += cantidad;
+  });
+
+  const top = Object.values(ranking)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5);
+
+  if (!top.length) {
+    cont.innerHTML = '<p>No hay compradores todavía.</p>';
+    return;
+  }
+
+  cont.innerHTML = `
+    <ol class="top-compradores-lista">
+      ${top.map((p, i) => `
+        <li>
+          <strong>#${i + 1} ${p.nombre}</strong><br>
+          Cédula: ${p.cedula}<br>
+          Cartones comprados: <strong>${p.total}</strong>
+        </li>
+      `).join('')}
+    </ol>
+  `;
+}
+
+let canalTopCompradores = null;
+
+function activarTopCompradoresRealtime() {
+  if (canalTopCompradores) return;
+
+  canalTopCompradores = supabase
+    .channel('top-compradores-realtime')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'inscripciones'
+      },
+      async () => {
+        const seccion = document.getElementById('top-compradores');
+
+        if (seccion && !seccion.classList.contains('oculto')) {
+          await cargarTopCompradores();
+        }
+      }
+    )
+    .subscribe();
+}
+async function subirImagenPremiosInicio() {
+  const input = document.getElementById('inputPremiosInicio');
+  const estado = document.getElementById('estadoPremiosInicio');
+  const archivo = input.files[0];
+
+  if (!archivo) return alert('Selecciona una imagen');
+
+  const ext = archivo.name.split('.').pop();
+  const nombreArchivo = `premios-inicio-${Date.now()}.${ext}`;
+
+  estado.textContent = 'Subiendo...';
+
+  const { error: uploadError } = await supabase.storage
+    .from('imagenes')
+    .upload(nombreArchivo, archivo, { upsert: true });
+
+  if (uploadError) {
+    estado.textContent = 'Error subiendo imagen';
+    console.error(uploadError);
+    return;
+  }
+
+  const url = `${supabaseUrl}/storage/v1/object/public/imagenes/${nombreArchivo}`;
+
+  const { error } = await supabase
+    .from('configuracion')
+    .upsert([{ clave: 'imagen_premios_inicio', valore: url }], { onConflict: 'clave' });
+
+  if (error) {
+    estado.textContent = 'Error guardando imagen';
+    console.error(error);
+    return;
+  }
+
+  estado.textContent = '✅ Imagen guardada';
+  await cargarImagenPremiosInicio();
+}
+
+async function cargarImagenPremiosInicio() {
+  const img = document.getElementById('imagenPremiosInicio');
+  if (!img) return;
+
+  const { data, error } = await supabase
+    .from('configuracion')
+    .select('valore')
+    .eq('clave', 'imagen_premios_inicio')
+    .single();
+
+  if (error || !data?.valore) {
+    img.classList.add('oculto');
+    return;
+  }
+
+  img.src = data.valore;
+  img.classList.remove('oculto');
+}
+
+window.subirImagenPremiosInicio = subirImagenPremiosInicio;
+
+async function eliminarImagenPremiosInicio() {
+  if (!confirm('¿Eliminar la imagen de premios?')) return;
+
+  try {
+    const { data } = await supabase
+      .from('configuracion')
+      .select('valore')
+      .eq('clave', 'imagen_premios_inicio')
+      .single();
+
+    if (data?.valore) {
+      const nombreArchivo = data.valore.split('/').pop();
+
+      await supabase.storage
+        .from('imagenes')
+        .remove([nombreArchivo]);
+    }
+
+    await supabase
+      .from('configuracion')
+      .update({ valore: null })
+      .eq('clave', 'imagen_premios_inicio');
+
+    const img = document.getElementById('imagenPremiosInicio');
+
+    if (img) {
+      img.src = '';
+      img.classList.add('oculto');
+    }
+
+    alert('Imagen eliminada correctamente');
+
+  } catch (err) {
+    console.error(err);
+    alert('Error eliminando imagen');
+  }
+}
+
+window.eliminarImagenPremiosInicio = eliminarImagenPremiosInicio;
 // ─── NAVEGACIÓN POR PESTAÑAS DEL ADMIN ───
 function cambiarTab(tabId) {
   // Ocultar todos los contenidos
