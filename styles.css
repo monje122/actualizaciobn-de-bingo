@@ -2342,3 +2342,25 @@ input:checked + .toggle-slider:before {
   border: 3px solid #FFA500;
   box-shadow: 0 8px 25px rgba(0,0,0,0.35);
 }
+#cartones-usuario {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 12px;
+  margin: 20px auto;
+}
+
+.carton-consulta-img {
+  width: 280px;
+  max-width: 45vw;
+  border-radius: 8px;
+  border: 2px solid #FFA500;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.35);
+}
+
+@media (max-width: 600px) {
+  .carton-consulta-img {
+    width: 145px;
+    max-width: 46vw;
+  }
+}
