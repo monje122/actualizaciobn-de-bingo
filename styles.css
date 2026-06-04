@@ -2360,7 +2360,7 @@ input:checked + .toggle-slider:before {
 
 @media (max-width: 600px) {
   .carton-consulta-img {
-    width: 145px;
+    width: 200px;
     max-width: 46vw;
   }
 }
