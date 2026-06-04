@@ -2606,6 +2606,9 @@ function mostrarSeccion(id) {
   top: 0,
   behavior: 'smooth'
 });
+    if (id === 'ganadores') {
+    await cargarGanadores();
+  }
   
   const redes = document.getElementById('redes-sociales');
   if (redes) {
