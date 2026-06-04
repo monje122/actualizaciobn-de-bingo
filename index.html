@@ -28,7 +28,7 @@
 </footer>
 
   <img src="https://i.postimg.cc/13mW4DZt/photo-2026-05-07-jpg.jpg" alt="Logo" class="logo">
-    
+    <img id="imagenPremiosInicio" class="imagen-premios-inicio oculto" alt="Premios">
 <div id="hora-venezuela" style="
   margin-top: 15px;
   font-weight: bold;
@@ -69,6 +69,7 @@
     <button onclick="mostrarVentana('usuario')">verificar tu compra</button>
     <button onclick="mostrarVentana('lista-aprobados')">📋 Lista de Aprobados</button>
     <button onclick="window.open('envivo.html', '_blank')">🔴 Ver En Vivo</button>
+    <button onclick="mostrarVentana('top-compradores')">🏆 Top compradores</button>
     <button onclick="mostrarSeccion('ganadores')">Historial de ganadores</button>
     <button id="boton-admin-oculto" style="display: none;" onclick="mostrarVentana('admin')">Admin</button>
   </section>
@@ -78,7 +79,11 @@
   <div id="listaGanadores"></div>
   <button onclick="mostrarSeccion('bienvenida')">inicio</button>
 </section>
-
+<section id="top-compradores" class="oculto">
+  <h2>🏆 Top 5 compradores</h2>
+  <div id="listaTopCompradores"></div>
+  <button onclick="mostrarVentana('bienvenida')">Inicio</button>
+</section>
   <!-- Ventana de inscripción -->
   <section id="inscripcion" class="oculto">
     <h2>Inscripción</h2>
@@ -357,16 +362,7 @@
       <div id="duplicadosResultado" class="result-box"></div>
     </div>
 
-    <div class="panel-section">
-      <div class="section-header">
-        <h3>🧹 Cartones Huérfanos</h3>
-      </div>
-      <div class="btn-group">
-        <button id="btnVerHuerfanos" class="btn-admin">🔎 Ver Huérfanos</button>
-        <button id="btnLiberarHuerfanos" class="btn-admin btn-warning">🧹 Liberar Todos</button>
-      </div>
-      <div id="huerfanosResultado" class="result-box"></div>
-    </div>
+   
 
     <div class="panel-section">
       <h3>✅ Lista de Aprobados</h3>
@@ -524,7 +520,15 @@
       <div class="section-header">
         <h3>🔗 Enlaces y Redes</h3>
       </div>
-      
+      <div class="panel-section">
+  <h3>🏆 Imagen de premios del inicio</h3>
+  <input type="file" id="inputPremiosInicio" accept="image/*">
+  <button onclick="subirImagenPremiosInicio()" class="btn-primary">💾 Guardar imagen</button>
+        <button onclick="eliminarImagenPremiosInicio()">
+🗑 Eliminar Imagen
+</button>
+  <div id="estadoPremiosInicio"></div>
+</div>
       <div class="config-group">
         <label for="inputWhatsapp">Enlace Grupo WhatsApp:</label>
         <div class="input-row">
