@@ -2134,7 +2134,7 @@ async function consultarCartones() {
     item.cartones.forEach(num => {
       const img = document.createElement('img');
       img.src = `${supabaseUrl}/storage/v1/object/public/cartones/SERIAL_GOLDENGP_CARTON_${String(num).padStart(5, '0')}.jpg`;
-      img.style.width = '100px';
+      img.classList.add('carton-consulta-img');
       img.style.margin = '5px';
       cont.appendChild(img);
     });
