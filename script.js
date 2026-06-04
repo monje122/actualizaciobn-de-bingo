@@ -1874,6 +1874,10 @@ async function mostrarVentana(id) {
   document.querySelectorAll('section').forEach(s => s.classList.add('oculto'));
   const target = document.getElementById(id);
   if (target) target.classList.remove('oculto');
+  window.scrollTo({
+  top: 0,
+  behavior: 'smooth'
+});
 
   if (id === 'cantidad') {
     promocionSeleccionada = null;
@@ -2598,6 +2602,10 @@ function mostrarSeccion(id) {
   secciones.forEach(sec => sec.classList.add('oculto'));
   const target = document.getElementById(id);
   if (target) target.classList.remove('oculto');
+  window.scrollTo({
+  top: 0,
+  behavior: 'smooth'
+});
   
   const redes = document.getElementById('redes-sociales');
   if (redes) {
