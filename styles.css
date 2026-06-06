@@ -2370,3 +2370,47 @@ input:checked + .toggle-slider:before {
     max-width: 46vw;
   }
 }
+.barra-progreso-inicio {
+  width: 90%;
+  max-width: 520px;
+  margin: 18px auto;
+  background: rgba(255,255,255,0.12);
+  border: 2px solid #ffa500;
+  border-radius: 18px;
+  padding: 14px;
+  text-align: center;
+  color: white;
+}
+
+#textoProgresoCartones {
+  margin: 0 0 8px;
+  font-weight: 800;
+  font-size: 16px;
+}
+
+.barra-progreso-contenedor {
+  width: 100%;
+  height: 22px;
+  background: rgba(255,255,255,0.25);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.barra-progreso-relleno {
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #00c853, #aeea00);
+  border-radius: 999px;
+  transition: width .4s ease;
+}
+
+@media (max-width: 600px) {
+  .barra-progreso-inicio {
+    width: 92%;
+    padding: 12px;
+  }
+
+  #textoProgresoCartones {
+    font-size: 14px;
+  }
+}
