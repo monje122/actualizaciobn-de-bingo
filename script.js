@@ -276,7 +276,10 @@ document.addEventListener('DOMContentLoaded', function() {
 // ==================== NUEVA: VERIFICACIÓN SESIÓN ÚNICA POR USUARIO ====================
 // Función para verificar si el usuario YA tiene sesión activa (en cualquier navegador)
 async function verificarSesionAdmin() {
-  const sessionToken = sessionStorage.getItem('admin_session_token');
+  const sessionToken =
+    sessionStorage.getItem('admin_session_token') ||
+    localStorage.getItem('admin_session_token');
+
   const deviceId =
     sessionStorage.getItem('device_id') ||
     localStorage.getItem('admin_device_id');
@@ -290,7 +293,8 @@ async function verificarSesionAdmin() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsZGFmaWpoeXlwemZ0Ym94emZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5MDU4MTMsImV4cCI6MjA5NTQ4MTgxM30.5qr3eQgYaHmCHda9qLHiKLkD4DyNXqsMn_Hw3qkJ6V4'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsZGFmaWpoeXlwemZ0Ym94emZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5MDU4MTMsImV4cCI6MjA5NTQ4MTgxM30.5qr3eQgYaHmCHda9qLHiKLkD4DyNXqsMn_Hw3qkJ6V4',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsZGFmaWpoeXlwemZ0Ym94emZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5MDU4MTMsImV4cCI6MjA5NTQ4MTgxM30.5qr3eQgYaHmCHda9qLHiKLkD4DyNXqsMn_Hw3qkJ6V4'
         },
         body: JSON.stringify({ sessionToken, deviceId })
       }
@@ -299,11 +303,16 @@ async function verificarSesionAdmin() {
     if (!response.ok) return false;
 
     const result = await response.json();
+    console.log('VERIFY SESSION:', result);
 
-    if (result.expiresAt) sessionStorage.setItem('session_expires', result.expiresAt);
+    if (result.expiresAt) {
+      sessionStorage.setItem('session_expires', result.expiresAt);
+      localStorage.setItem('session_expires', result.expiresAt);
+    }
 
     return result.valid === true && result.sameDevice === true;
-  } catch {
+  } catch (err) {
+    console.error('Error verificando sesión:', err);
     return false;
   }
 }
@@ -1034,11 +1043,18 @@ function proceedWithSession(sessionToken, email, expiresAt) {
 // Nueva función para mostrar panel seguro
 async function mostrarPanelAdminSeguro(sessionToken) {
   console.log('🎉 Mostrando panel admin seguro');
-  
+
+  // Ocultar todas las secciones visibles
+  document.querySelectorAll('section').forEach(sec => sec.classList.add('oculto'));
+
+  // Ocultar login si estaba abierto
   document.getElementById('admin-login').classList.add('oculto');
-  document.getElementById('admin-panel').classList.remove('oculto');
-  
-  // Mostrar info de sesión segura
+
+  // Mostrar panel admin
+  const panel = document.getElementById('admin-panel');
+  panel.classList.remove('oculto');
+
+  // Insertar info de sesión
   const sessionInfo = document.createElement('div');
   sessionInfo.id = 'session-info';
   sessionInfo.style.cssText = `
@@ -1055,16 +1071,15 @@ async function mostrarPanelAdminSeguro(sessionToken) {
     <small>Autenticación vía Edge Function</small><br>
     <small>Token: ${sessionToken?.substring(0, 25)}...</small>
   `;
-  
-  const panel = document.getElementById('admin-panel');
   const firstElement = panel.querySelector('h2').nextElementSibling;
-  if (firstElement) {
-    panel.insertBefore(sessionInfo, firstElement.nextSibling);
-  }
+  if (firstElement) panel.insertBefore(sessionInfo, firstElement.nextSibling);
 
-  // Cargar datos del panel
+  // Cargar datos del panel y refresco automático
   await cargarPanelAdmin();
   activarRefrescoAutomaticoAdmin();
+
+  // Llevar la ventana al top
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 // Función para verificar OTP
 
