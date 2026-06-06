@@ -1717,6 +1717,9 @@ window.addEventListener('DOMContentLoaded', async () => {
   
   // Crear tabla de sesiones si no existe
    document.getElementById('modal-terminos').classList.remove('oculto');
+  await cargarBarraProgresoInicio();
+await cargarConfigBarraProgresoAdmin();
+  activarProgresoCartonesRealtime();
   await cargarImagenPremiosInicio();
   await obtenerTotalCartones();
   await cargarPrecioPorCarton();
@@ -3676,6 +3679,94 @@ async function eliminarImagenPremiosInicio() {
 }
 
 window.eliminarImagenPremiosInicio = eliminarImagenPremiosInicio;
+
+async function cargarBarraProgresoInicio() {
+  const contenedor = document.getElementById('barraProgresoInicio');
+  const texto = document.getElementById('textoProgresoCartones');
+  const relleno = document.getElementById('rellenoProgresoCartones');
+
+  if (!contenedor || !texto || !relleno) return;
+
+  const mostrar = await getConfigValue('mostrar_barra_progreso', 'false');
+
+  if (mostrar !== 'true') {
+    contenedor.classList.add('oculto');
+    return;
+  }
+
+  await obtenerTotalCartones();
+
+  const vendidos = await contarCartonesVendidos();
+  const disponibles = Math.max(totalCartones - vendidos, 0);
+  const porcentaje = totalCartones > 0
+    ? Math.round((disponibles / totalCartones) * 100)
+    : 0;
+
+  texto.textContent = `${porcentaje}% disponibles · ${disponibles} de ${totalCartones} cartones`;
+
+  relleno.style.width = `${porcentaje}%`;
+  contenedor.classList.remove('oculto');
+}
+
+async function guardarConfigBarraProgreso() {
+  const check = document.getElementById('toggleBarraProgreso');
+  if (!check) return;
+
+  const valor = check.checked ? 'true' : 'false';
+
+  const ok = await setConfigValue('mostrar_barra_progreso', valor);
+
+  if (ok) {
+    alert('Configuración guardada');
+    await cargarBarraProgresoInicio();
+  } else {
+    alert('Error guardando configuración');
+  }
+}
+
+async function cargarConfigBarraProgresoAdmin() {
+  const check = document.getElementById('toggleBarraProgreso');
+  if (!check) return;
+
+  const valor = await getConfigValue('mostrar_barra_progreso', 'false');
+  check.checked = valor === 'true';
+}
+let canalProgresoCartones = null;
+
+function activarProgresoCartonesRealtime() {
+  if (canalProgresoCartones) return;
+
+  canalProgresoCartones = supabase
+    .channel('progreso-cartones-inicio')
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'cartones'
+      },
+      async () => {
+        await cargarBarraProgresoInicio();
+      }
+    )
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'configuracion'
+      },
+      async (payload) => {
+        if (
+          payload.new?.clave === 'mostrar_barra_progreso' ||
+          payload.new?.clave === 'total_cartones'
+        ) {
+          await cargarBarraProgresoInicio();
+        }
+      }
+    )
+    .subscribe();
+}
 // ─── NAVEGACIÓN POR PESTAÑAS DEL ADMIN ───
 function cambiarTab(tabId) {
   // Ocultar todos los contenidos
