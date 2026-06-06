@@ -1719,6 +1719,7 @@ window.addEventListener('DOMContentLoaded', async () => {
    document.getElementById('modal-terminos').classList.remove('oculto');
   await cargarBarraProgresoInicio();
 await cargarConfigBarraProgresoAdmin();
+  cargarDatosClienteLocal();
   activarProgresoCartonesRealtime();
   await cargarImagenPremiosInicio();
   await obtenerTotalCartones();
@@ -1928,6 +1929,7 @@ function guardarDatosInscripcion() {
   usuario.cartones = [];
   mostrarVentana('cantidad')
   actualizarPreseleccion(); 
+  guardarDatosClienteLocal();
 }
 
 function confirmarCantidad() {
@@ -3766,6 +3768,77 @@ function activarProgresoCartonesRealtime() {
       }
     )
     .subscribe();
+}
+// Función para seleccionar cartones aleatorios
+async function seleccionarAleatorioSeguro() {
+  const faltan = cantidadPermitida - usuario.cartones.length;
+
+  if (faltan <= 0) {
+    alert('Ya seleccionaste todos los cartones permitidos.');
+    return;
+  }
+
+  const { data, error } = await supabase.rpc('rpc_reservar_cartones_aleatorios', {
+    _cantidad: faltan,
+    _cedula: usuario.cedula,
+    _partida_id: null
+  });
+
+  if (error) {
+    console.error(error);
+    alert('Error eligiendo cartones aleatorios.');
+    return;
+  }
+
+  const resultado = Array.isArray(data) ? data[0] : data;
+
+  if (!resultado?.exito) {
+    alert(resultado?.mensaje || 'No se pudieron reservar cartones.');
+    await cargarCartones();
+    return;
+  }
+
+  usuario.cartones.push(...resultado.cartones);
+
+  await cargarCartones();
+
+  usuario.cartones.forEach(num => {
+    const carton = [...document.querySelectorAll('.carton')]
+      .find(c => parseInt(c.textContent) === num);
+
+    if (carton) {
+      carton.classList.remove('ocupado');
+      carton.classList.add('seleccionado');
+      carton.onclick = () => toggleCarton(num, carton);
+    }
+  });
+
+  actualizarContadorCartones(totalCartones, cartonesOcupados.length, usuario.cartones.length);
+  actualizarMonto();
+
+  alert(`Cartones seleccionados: ${resultado.cartones.join(', ')}`);
+}
+
+window.seleccionarAleatorioSeguro = seleccionarAleatorioSeguro;
+
+
+function guardarDatosClienteLocal() {
+  localStorage.setItem('cliente_nombre', usuario.nombre || '');
+  localStorage.setItem('cliente_telefono', usuario.telefono || '');
+  localStorage.setItem('cliente_cedula', usuario.cedula || '');
+  localStorage.setItem('cliente_referido', usuario.referido || '');
+}
+
+function cargarDatosClienteLocal() {
+  const nombre = localStorage.getItem('cliente_nombre') || '';
+  const telefono = localStorage.getItem('cliente_telefono') || '';
+  const cedula = localStorage.getItem('cliente_cedula') || '';
+  const referido = localStorage.getItem('cliente_referido') || '';
+
+  if (document.getElementById('nombre')) document.getElementById('nombre').value = nombre;
+  if (document.getElementById('telefono')) document.getElementById('telefono').value = telefono;
+  if (document.getElementById('cedula')) document.getElementById('cedula').value = cedula;
+  if (document.getElementById('referido')) document.getElementById('referido').value = referido;
 }
 // ─── NAVEGACIÓN POR PESTAÑAS DEL ADMIN ───
 function cambiarTab(tabId) {
