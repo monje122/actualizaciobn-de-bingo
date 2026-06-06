@@ -57,21 +57,21 @@ let totalCartones = 0;
 // ==================== VERSIÓN MÁS SIMPLE ====================
 let contador = 0;
 
-// Configurar después de cargar
+// Registrar listener en el logo después de cargar
 setTimeout(() => {
   const logo = document.querySelector('#bienvenida img, .logo, h1');
-  
+
   if (logo) {
     logo.addEventListener('click', () => {
       contador++;
-      
-      // Reset en 3 segundos
+
+      // Reset del contador en 3 segundos
       setTimeout(() => { contador = 0; }, 3000);
-      
+
       // Si son 7 clicks
       if (contador === 7) {
         contador = 0;
-        // Mostrar botón oculto
+
         const botonAdmin = document.getElementById('boton-admin-oculto');
         if (botonAdmin) {
           botonAdmin.style.display = 'inline-block';
@@ -82,6 +82,17 @@ setTimeout(() => {
   }
 }, 1000);
 
+// Registrar listener del botón Admin **solo una vez**
+const botonAdmin = document.getElementById('boton-admin-oculto');
+if (botonAdmin) {
+  botonAdmin.addEventListener('click', async () => {
+    if (sesionActiva) {
+      await entrarAdmin(); // Abre panel admin si ya hay sesión activa
+    } else {
+      mostrarVentana('admin-login'); // Solo muestra el login
+    }
+  });
+}
 // ==================== FUNCIONES DE CONFIGURACIÓN ====================
 async function getConfigValue(clave, fallback = null) {
   const { data, error } = await supabase
@@ -796,7 +807,7 @@ async function reenviarOTP() {
 }
 
 function cancelarOTP() {
-  // Limpiar timer
+  // Limpir timer
   clearInterval(window.otpTimerInterval);
   
   // Limpiar datos temporales
@@ -940,7 +951,7 @@ async function forzarCerrarSesionRemota() {
     errorDiv.textContent = '🔄 Forzando cierre de sesión remota...';
     errorDiv.className = 'info';
     
-    // Aquí necesitarías crear otra Edge Function o modificar la existente
+    // Aquí necesitarías crear otra   Edge Function o modificar la existente
     // para forzar el cierre de todas las sesiones
     
     // Por ahora, usamos un enfoque simple: limpiar la tabla
@@ -961,7 +972,7 @@ async function forzarCerrarSesionRemota() {
       errorDiv.innerHTML = '✅ Sesiones remotas cerradas.<br>Ahora puedes iniciar sesión.';
       errorDiv.className = 'success';
       
-      // Recargar la página después de 2 segundos
+      // recargar la página después de 2 segundos
       setTimeout(() => {
         location.reload();
       }, 2000);
@@ -1251,6 +1262,11 @@ function limpiarStorageTemporal() {
 async function verificarSesionInicial() {
   console.log('🔍 Verificando sesión inicial al cargar...');
 
+  // Ocultar panel y login mientras se verifica
+  document.getElementById('admin-panel')?.classList.add('oculto');
+  document.getElementById('admin-login')?.classList.add('oculto');
+  document.getElementById('bienvenida')?.classList.remove('oculto');
+
   const sessionToken =
     sessionStorage.getItem('admin_session_token') ||
     localStorage.getItem('admin_session_token');
@@ -1276,26 +1292,54 @@ async function verificarSesionInicial() {
       if (document.getElementById('admin-email-display')) {
         document.getElementById('admin-email-display').textContent = email;
       }
+
       await cargarPanelAdmin();
       activarRefrescoAutomaticoAdmin();
       iniciarDetectorActividad();
       resetInactivityTimer();
 
-      // IMPORTANTE:
-      // No abrir el panel aquí.
-      // Solo dejar la sesión preparada.
-      document.getElementById('admin-panel')?.classList.add('oculto');
-      document.getElementById('admin-login')?.classList.add('oculto');
-      document.getElementById('bienvenida')?.classList.remove('oculto');
+      // **IMPORTANTE:** No abrir el panel automáticamente
+      // Solo deja la sesión activa lista para cuando el usuario haga clic en Admin
+      return;
 
     } else {
-      console.log('⚠️ Sesión inválida, limpiando...');
-      await cerrarSesionAdmin();
-    }
-  } catch (error) {
-    console.error('❌ Error verificando sesión inicial:', error);
-    await cerrarSesionAdmin();
-  }
+  console.log('⚠️ Sesión inválida, limpiando...');
+
+  sessionStorage.removeItem('admin_session_token');
+  sessionStorage.removeItem('admin_email');
+  sessionStorage.removeItem('session_expires');
+  sessionStorage.removeItem('device_id');
+
+  localStorage.removeItem('admin_session_token');
+  localStorage.removeItem('admin_email');
+  localStorage.removeItem('session_expires');
+
+  sesionActiva = false;
+  adminSession = null;
+
+  document.getElementById('admin-login')?.classList.add('oculto');
+  document.getElementById('admin-panel')?.classList.add('oculto');
+  document.getElementById('bienvenida')?.classList.remove('oculto');
+}
+ } catch (error) {
+  console.error('❌ Error verificando sesión inicial:', error);
+
+  sessionStorage.removeItem('admin_session_token');
+  sessionStorage.removeItem('admin_email');
+  sessionStorage.removeItem('session_expires');
+  sessionStorage.removeItem('device_id');
+
+  localStorage.removeItem('admin_session_token');
+  localStorage.removeItem('admin_email');
+  localStorage.removeItem('session_expires');
+
+  sesionActiva = false;
+  adminSession = null;
+
+  document.getElementById('admin-login')?.classList.add('oculto');
+  document.getElementById('admin-panel')?.classList.add('oculto');
+  document.getElementById('bienvenida')?.classList.remove('oculto');
+}
 }
 // ==================== FUNCIONES FALTANTES QUE NECESITA EL HTML ====================
 
