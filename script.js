@@ -1276,7 +1276,8 @@ async function verificarSesionInicial() {
       if (document.getElementById('admin-email-display')) {
         document.getElementById('admin-email-display').textContent = email;
       }
-
+      await cargarPanelAdmin();
+      activarRefrescoAutomaticoAdmin();
       iniciarDetectorActividad();
       resetInactivityTimer();
 
@@ -2267,6 +2268,8 @@ async function cargarPanelAdmin() {
   document.getElementById('contador-clientes').textContent = data.length;
   document.getElementById('contadorCartones').innerText = 
     `Cartones disponibles: ${totalCartones - cartonesOcupados.length} de ${totalCartones}`;
+  const pendientes = data.filter(item => item.estado === 'pendiente').length;
+document.getElementById('pendientes-count').textContent = pendientes;
 }
 document.getElementById('btn-recargar-panel').addEventListener('click', () => {
   cargarPanelAdmin();  // Llama directamente a la función que refresca el contenido
