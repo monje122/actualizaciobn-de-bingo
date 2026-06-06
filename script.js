@@ -1250,32 +1250,43 @@ function limpiarStorageTemporal() {
 // ==================== VERIFICACIÓN INICIAL ====================
 async function verificarSesionInicial() {
   console.log('🔍 Verificando sesión inicial al cargar...');
-  
-  const sessionToken = sessionStorage.getItem('admin_session_token');
-  
+
+  const sessionToken =
+    sessionStorage.getItem('admin_session_token') ||
+    localStorage.getItem('admin_session_token');
+
   if (!sessionToken) {
-    console.log('ℹ️ No hay token en sessionStorage');
+    console.log('ℹ️ No hay token guardado');
     return;
   }
-  
+
   try {
-    // Verificar con Edge Function
     const esValida = await verificarSesionAdmin();
-    
+
     if (esValida) {
-      const email = sessionStorage.getItem('admin_email');
-      console.log('✅ Sesión válida encontrada para:', email);
-      
+      const email =
+        sessionStorage.getItem('admin_email') ||
+        localStorage.getItem('admin_email');
+
+      console.log('✅ Sesión válida guardada para:', email);
+
       adminSession = { email, token: sessionToken };
       sesionActiva = true;
-      document.getElementById('admin-email-display').textContent = email;
+
+      if (document.getElementById('admin-email-display')) {
+        document.getElementById('admin-email-display').textContent = email;
+      }
+
       iniciarDetectorActividad();
       resetInactivityTimer();
-      document.getElementById('admin-login').classList.add('oculto');
-      document.getElementById('admin-panel').classList.remove('oculto');
-      await cargarPanelAdmin();
-      activarRefrescoAutomaticoAdmin();
-     
+
+      // IMPORTANTE:
+      // No abrir el panel aquí.
+      // Solo dejar la sesión preparada.
+      document.getElementById('admin-panel')?.classList.add('oculto');
+      document.getElementById('admin-login')?.classList.add('oculto');
+      document.getElementById('bienvenida')?.classList.remove('oculto');
+
     } else {
       console.log('⚠️ Sesión inválida, limpiando...');
       await cerrarSesionAdmin();
@@ -1285,7 +1296,6 @@ async function verificarSesionInicial() {
     await cerrarSesionAdmin();
   }
 }
-
 // ==================== FUNCIONES FALTANTES QUE NECESITA EL HTML ====================
 
 // Función para ver lista de aprobados
