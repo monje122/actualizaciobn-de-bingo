@@ -65,6 +65,12 @@
 </a>
 
 </div>
+    <div id="barraProgresoInicio" class="barra-progreso-inicio oculto">
+  <p id="textoProgresoCartones">Cartones disponibles</p>
+  <div class="barra-progreso-contenedor">
+    <div id="rellenoProgresoCartones" class="barra-progreso-relleno"></div>
+  </div>
+</div>
     <button onclick="mostrarVentana('inscripcion')">Comprar</button>
     <button onclick="mostrarVentana('usuario')">verificar tu compra</button>
     <button onclick="mostrarVentana('lista-aprobados')">📋 Lista de Aprobados</button>
@@ -520,6 +526,15 @@
       <div class="section-header">
         <h3>🔗 Enlaces y Redes</h3>
       </div>
+      <label style="display:block; margin:15px 0;">
+  <input type="checkbox" id="toggleBarraProgreso">
+  Mostrar barra de progreso en inicio
+</label>
+
+<button onclick="guardarConfigBarraProgreso()">
+  Guardar barra de progreso
+</button>
+      
       <div class="panel-section">
   <h3>🏆 Imagen de premios del inicio</h3>
   <input type="file" id="inputPremiosInicio" accept="image/*">
@@ -612,7 +627,7 @@
 </div>
 
  <footer style="text-align: center; padding: 20px; font-size: 13px; color: black; background-color: rgba(0,0,0,0.0);">
-  © 2025 Bingo BingoGP. Todos los derechos reservados. <br>
+  © 2025 Bingo La Margariteña. Todos los derechos reservados. <br>
   <a href="privacidad.html" style="color: #f9d949; text-decoration: underline;">Política de Privacidad</a>
 
   <br><br>
