@@ -74,7 +74,7 @@ section:not(.oculto) {
 .logo {
   display: block;
   margin: 30px auto 30px;
-  width: 280px;
+  width: 150px;
   max-width: 90%;
   filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
   transition: var(--transition);
