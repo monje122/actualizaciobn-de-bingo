@@ -3837,7 +3837,7 @@ async function seleccionarAleatorioSeguro() {
 
   const { data, error } = await supabase.rpc('rpc_reservar_cartones_aleatorios', {
     _cantidad: faltan,
-    _cedula: usuario.cedula,
+    _cedula: String(usuario.cedula || '').trim(),
     _partida_id: null
   });
 
@@ -3866,21 +3866,27 @@ async function seleccionarAleatorioSeguro() {
     if (carton) {
       carton.classList.remove('ocupado');
       carton.classList.add('seleccionado');
-      carton.onclick = () => toggleCarton(num, carton);
-    }
-  });
-  if (usuario.cartones.length >= cantidadPermitida) {
-  document.querySelectorAll('.carton').forEach(c => {
-    const n = parseInt(c.textContent);
-    const yaSeleccionado = usuario.cartones.includes(n);
-    const yaOcupado = cartonesOcupados.includes(n);
 
-    if (!yaSeleccionado && !yaOcupado) {
-      c.classList.add('bloqueado');
-      c.onclick = null;
+      // Cambiamos el onclick para permitir liberar al instante
+      carton.onclick = async () => {
+        await toggleCarton(num, carton); // llama toggleCarton que ahora libera RPC
+      };
     }
   });
-}
+
+  // Bloquear cartones si ya se alcanzó la cantidad permitida
+  if (usuario.cartones.length >= cantidadPermitida) {
+    document.querySelectorAll('.carton').forEach(c => {
+      const n = parseInt(c.textContent);
+      const yaSeleccionado = usuario.cartones.includes(n);
+      const yaOcupado = cartonesOcupados.includes(n);
+
+      if (!yaSeleccionado && !yaOcupado) {
+        c.classList.add('bloqueado');
+        c.onclick = null;
+      }
+    });
+  }
 
   actualizarContadorCartones(totalCartones, cartonesOcupados.length, usuario.cartones.length);
   actualizarMonto();
