@@ -3878,8 +3878,6 @@ async function seleccionarAleatorioSeguro() {
     if (!yaSeleccionado && !yaOcupado) {
       c.classList.add('bloqueado');
 
-      // Mantener el evento de deselección para los seleccionados
-      c.onclick = () => {}; // o no hacer nada, el seleccionado seguirá con toggleCarton
     } else if (yaSeleccionado) {
       // Si está seleccionado, asegurarse que el onclick siga llamando toggleCarton
       c.onclick = () => toggleCarton(n, c);
