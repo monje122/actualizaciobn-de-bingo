@@ -3869,6 +3869,18 @@ async function seleccionarAleatorioSeguro() {
       carton.onclick = () => toggleCarton(num, carton);
     }
   });
+  if (usuario.cartones.length >= cantidadPermitida) {
+  document.querySelectorAll('.carton').forEach(c => {
+    const n = parseInt(c.textContent);
+    const yaSeleccionado = usuario.cartones.includes(n);
+    const yaOcupado = cartonesOcupados.includes(n);
+
+    if (!yaSeleccionado && !yaOcupado) {
+      c.classList.add('bloqueado');
+      c.onclick = null;
+    }
+  });
+}
 
   actualizarContadorCartones(totalCartones, cartonesOcupados.length, usuario.cartones.length);
   actualizarMonto();
