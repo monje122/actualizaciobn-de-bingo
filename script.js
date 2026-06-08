@@ -3837,7 +3837,7 @@ async function seleccionarAleatorioSeguro() {
 
   const { data, error } = await supabase.rpc('rpc_reservar_cartones_aleatorios', {
     _cantidad: faltan,
-    _cedula: String(usuario.cedula || '').trim(),
+    _cedula: usuario.cedula,
     _partida_id: null
   });
 
@@ -3855,8 +3855,7 @@ async function seleccionarAleatorioSeguro() {
     return;
   }
 
-  // Agregar cartones automáticamente, evitando duplicados
-  usuario.cartones = [...new Set([...usuario.cartones, ...resultado.cartones])];
+  usuario.cartones.push(...resultado.cartones);
 
   await cargarCartones();
 
@@ -3867,43 +3866,26 @@ async function seleccionarAleatorioSeguro() {
     if (carton) {
       carton.classList.remove('ocupado');
       carton.classList.add('seleccionado');
-
-      // Forzar liberación inmediata al tocar
-      carton.onclick = async () => {
-        // Deseleccionar localmente
-        usuario.cartones = usuario.cartones.filter(n => n !== num);
-        carton.classList.remove('seleccionado');
-
-        // Liberar en Supabase
-        const { data: liberado, error: errorLiberar } = await supabase.rpc('rpc_liberar_reserva', {
-          _numero: Number(num),
-          _cedula: String(usuario.cedula || '').trim(),
-          _partida_id: null
-        });
-
-        if (errorLiberar) console.error('Error liberando reserva:', errorLiberar);
-
-        // Actualizar UI
-        await cargarCartones();
-        actualizarContadorCartones(totalCartones, cartonesOcupados.length, usuario.cartones.length);
-        actualizarMonto();
-      };
+      carton.onclick = () => toggleCarton(num, carton);
     }
   });
-
-  // Bloquear cartones si ya se alcanzó la cantidad permitida
   if (usuario.cartones.length >= cantidadPermitida) {
-    document.querySelectorAll('.carton').forEach(c => {
-      const n = parseInt(c.textContent);
-      const yaSeleccionado = usuario.cartones.includes(n);
-      const yaOcupado = cartonesOcupados.includes(n);
+  document.querySelectorAll('.carton').forEach(c => {
+    const n = parseInt(c.textContent);
+    const yaSeleccionado = usuario.cartones.includes(n);
+    const yaOcupado = cartonesOcupados.includes(n);
 
-      if (!yaSeleccionado && !yaOcupado) {
-        c.classList.add('bloqueado');
-        c.onclick = null;
-      }
-    });
-  }
+    if (!yaSeleccionado && !yaOcupado) {
+      c.classList.add('bloqueado');
+
+      // Mantener el evento de deselección para los seleccionados
+      c.onclick = () => {}; // o no hacer nada, el seleccionado seguirá con toggleCarton
+    } else if (yaSeleccionado) {
+      // Si está seleccionado, asegurarse que el onclick siga llamando toggleCarton
+      c.onclick = () => toggleCarton(n, c);
+    }
+  });
+}
 
   actualizarContadorCartones(totalCartones, cartonesOcupados.length, usuario.cartones.length);
   actualizarMonto();
