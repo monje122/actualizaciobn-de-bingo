@@ -3855,7 +3855,8 @@ async function seleccionarAleatorioSeguro() {
     return;
   }
 
-  usuario.cartones.push(...resultado.cartones);
+  // Agregar cartones automáticamente, evitando duplicados
+  usuario.cartones = [...new Set([...usuario.cartones, ...resultado.cartones])];
 
   await cargarCartones();
 
@@ -3867,9 +3868,25 @@ async function seleccionarAleatorioSeguro() {
       carton.classList.remove('ocupado');
       carton.classList.add('seleccionado');
 
-      // Cambiamos el onclick para permitir liberar al instante
+      // Forzar liberación inmediata al tocar
       carton.onclick = async () => {
-        await toggleCarton(num, carton); // llama toggleCarton que ahora libera RPC
+        // Deseleccionar localmente
+        usuario.cartones = usuario.cartones.filter(n => n !== num);
+        carton.classList.remove('seleccionado');
+
+        // Liberar en Supabase
+        const { data: liberado, error: errorLiberar } = await supabase.rpc('rpc_liberar_reserva', {
+          _numero: Number(num),
+          _cedula: String(usuario.cedula || '').trim(),
+          _partida_id: null
+        });
+
+        if (errorLiberar) console.error('Error liberando reserva:', errorLiberar);
+
+        // Actualizar UI
+        await cargarCartones();
+        actualizarContadorCartones(totalCartones, cartonesOcupados.length, usuario.cartones.length);
+        actualizarMonto();
       };
     }
   });
