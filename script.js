@@ -3837,7 +3837,7 @@ async function seleccionarAleatorioSeguro() {
 
   const { data, error } = await supabase.rpc('rpc_reservar_cartones_aleatorios', {
     _cantidad: faltan,
-    _cedula: usuario.cedula,
+    _cedula: String(usuario.cedula || '').trim(),
     _partida_id: null
   });
 
@@ -3855,7 +3855,8 @@ async function seleccionarAleatorioSeguro() {
     return;
   }
 
-  usuario.cartones.push(...resultado.cartones);
+  // Agregar cartones automáticamente, evitando duplicados
+  usuario.cartones = [...new Set([...usuario.cartones, ...resultado.cartones])];
 
   await cargarCartones();
 
@@ -3866,9 +3867,43 @@ async function seleccionarAleatorioSeguro() {
     if (carton) {
       carton.classList.remove('ocupado');
       carton.classList.add('seleccionado');
-      carton.onclick = () => toggleCarton(num, carton);
+
+      // Forzar liberación inmediata al tocar
+      carton.onclick = async () => {
+        // Deseleccionar localmente
+        usuario.cartones = usuario.cartones.filter(n => n !== num);
+        carton.classList.remove('seleccionado');
+
+        // Liberar en Supabase
+        const { data: liberado, error: errorLiberar } = await supabase.rpc('rpc_liberar_reserva', {
+          _numero: Number(num),
+          _cedula: String(usuario.cedula || '').trim(),
+          _partida_id: null
+        });
+
+        if (errorLiberar) console.error('Error liberando reserva:', errorLiberar);
+
+        // Actualizar UI
+        await cargarCartones();
+        actualizarContadorCartones(totalCartones, cartonesOcupados.length, usuario.cartones.length);
+        actualizarMonto();
+      };
     }
   });
+
+  // Bloquear cartones si ya se alcanzó la cantidad permitida
+  if (usuario.cartones.length >= cantidadPermitida) {
+    document.querySelectorAll('.carton').forEach(c => {
+      const n = parseInt(c.textContent);
+      const yaSeleccionado = usuario.cartones.includes(n);
+      const yaOcupado = cartonesOcupados.includes(n);
+
+      if (!yaSeleccionado && !yaOcupado) {
+        c.classList.add('bloqueado');
+        c.onclick = null;
+      }
+    });
+  }
 
   actualizarContadorCartones(totalCartones, cartonesOcupados.length, usuario.cartones.length);
   actualizarMonto();
