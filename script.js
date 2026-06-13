@@ -1,6 +1,6 @@
 var supabase = window.supabase;
 // Configuración del admin
-
+let sistemaListo = false;
 // Variables globales
 let cartonesOcupados = [];
 let precioPorCarton = 0;
@@ -132,11 +132,11 @@ async function logoutAdminSilencioso() {
 
   try {
     if (email && deviceId) {
-      await fetch('https://vldafijhyypzftboxzfh.supabase.co/functions/v1/admin-auth', {
+      await fetch('https://moizrhkexrocanhkggyb.supabase.co/functions/v1/admin-auth', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsZGFmaWpoeXlwemZ0Ym94emZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5MDU4MTMsImV4cCI6MjA5NTQ4MTgxM30.5qr3eQgYaHmCHda9qLHiKLkD4DyNXqsMn_Hw3qkJ6V4'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
         },
         body: JSON.stringify({ action: 'logout', email, deviceId, sessionToken })
       });
@@ -174,12 +174,12 @@ async function logoutAdmin() {
     console.log('🔄 Enviando logout al servidor...');
     
     const response = await fetch(
-      'https://vldafijhyypzftboxzfh.supabase.co/functions/v1/admin-auth',
+      'https://moizrhkexrocanhkggyb.supabase.co/functions/v1/admin-auth',
       {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsZGFmaWpoeXlwemZ0Ym94emZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5MDU4MTMsImV4cCI6MjA5NTQ4MTgxM30.5qr3eQgYaHmCHda9qLHiKLkD4DyNXqsMn_Hw3qkJ6V4'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
         },
         body: JSON.stringify({
           action: 'logout',
@@ -299,13 +299,13 @@ async function verificarSesionAdmin() {
 
   try {
     const response = await fetch(
-      'https://vldafijhyypzftboxzfh.supabase.co/functions/v1/verify-session',
+      'https://moizrhkexrocanhkggyb.supabase.co/functions/v1/verify-session',
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsZGFmaWpoeXlwemZ0Ym94emZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5MDU4MTMsImV4cCI6MjA5NTQ4MTgxM30.5qr3eQgYaHmCHda9qLHiKLkD4DyNXqsMn_Hw3qkJ6V4',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsZGFmaWpoeXlwemZ0Ym94emZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5MDU4MTMsImV4cCI6MjA5NTQ4MTgxM30.5qr3eQgYaHmCHda9qLHiKLkD4DyNXqsMn_Hw3qkJ6V4'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8',
+          'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
         },
         body: JSON.stringify({ sessionToken, deviceId })
       }
@@ -401,12 +401,12 @@ async function loginAdmin() {
     errorDiv.textContent = '🔐 Verificando email y contraseña...';
     
     const response = await fetch(
-      'https://vldafijhyypzftboxzfh.supabase.co/functions/v1/admin-auth',
+      'https://moizrhkexrocanhkggyb.supabase.co/functions/v1/admin-auth',
       {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsZGFmaWpoeXlwemZ0Ym94emZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5MDU4MTMsImV4cCI6MjA5NTQ4MTgxM30.5qr3eQgYaHmCHda9qLHiKLkD4DyNXqsMn_Hw3qkJ6V4'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
         },
         body: JSON.stringify({ 
           email: email.toLowerCase().trim(), 
@@ -628,12 +628,12 @@ async function verificarOTP() {
     console.log('🔄 Creando sesión única después de OTP...');
     
     const response = await fetch(
-      'https://vldafijhyypzftboxzfh.supabase.co/functions/v1/admin-auth',
+      'https://moizrhkexrocanhkggyb.supabase.co/functions/v1/admin-auth',
       {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsZGFmaWpoeXlwemZ0Ym94emZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5MDU4MTMsImV4cCI6MjA5NTQ4MTgxM30.5qr3eQgYaHmCHda9qLHiKLkD4DyNXqsMn_Hw3qkJ6V4'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
         },
         body: JSON.stringify({ 
           email: email.toLowerCase().trim(), 
@@ -707,12 +707,12 @@ async function verificarOTP() {
 async function crearSesionUnicaOTP(email, deviceId) {
   try {
     const response = await fetch(
-      'https://vldafijhyypzftboxzfh.supabase.co/functions/v1/admin-auth',
+      'https://moizrhkexrocanhkggyb.supabase.co/functions/v1/admin-auth',
       {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsZGFmaWpoeXlwemZ0Ym94emZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5MDU4MTMsImV4cCI6MjA5NTQ4MTgxM30.5qr3eQgYaHmCHda9qLHiKLkD4DyNXqsMn_Hw3qkJ6V4'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
         },
         body: JSON.stringify({ 
           email: email.toLowerCase().trim(), 
@@ -889,12 +889,12 @@ function mostrarErrorOTP(mensaje) {
 async function crearSesionDirecta(email, deviceId) {
   try {
     const response = await fetch(
-      'https://vldafijhyypzftboxzfh.supabase.co/functions/v1/admin-auth',
+      'https://moizrhkexrocanhkggyb.supabase.co/functions/v1/admin-auth',
       {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsZGFmaWpoeXlwemZ0Ym94emZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5MDU4MTMsImV4cCI6MjA5NTQ4MTgxM30.5qr3eQgYaHmCHda9qLHiKLkD4DyNXqsMn_Hw3qkJ6V4'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
         },
         body: JSON.stringify({ 
           email: email.toLowerCase().trim(), 
@@ -956,12 +956,12 @@ async function forzarCerrarSesionRemota() {
     
     // Por ahora, usamos un enfoque simple: limpiar la tabla
     const response = await fetch(
-      'https://vldafijhyypzftboxzfh.supabase.co/functions/v1/update-session',
+      'https://moizrhkexrocanhkggyb.supabase.co/functions/v1/update-session',
       {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZsZGFmaWpoeXlwemZ0Ym94emZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk5MDU4MTMsImV4cCI6MjA5NTQ4MTgxM30.5qr3eQgYaHmCHda9qLHiKLkD4DyNXqsMn_Hw3qkJ6V4'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
         },
         body: JSON.stringify({ 
           action: "force_logout_all"
@@ -1012,7 +1012,7 @@ function generateDeviceId() {
 }
 
 
-// Función para obtener IP del cliente (simplificada)
+// Función pa obtener IP del cliente (simplificada)
 async function getClientIP() {
   try {
     const response = await fetch('https://api.ipify.org?format=json');
@@ -1090,7 +1090,7 @@ async function mostrarPanelAdminSeguro(sessionToken) {
   activarRefrescoAutomaticoAdmin();
 
   // Llevar la ventana al top
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  
 }
 // Función para verificar OTP
 
@@ -1355,7 +1355,7 @@ async function verListaAprobados() {
     console.error('Elemento listaAprobados no encontrado');
     return;
   }
-  
+
   listaDiv.innerHTML = '';
 
   if (error) {
@@ -1372,14 +1372,14 @@ async function verListaAprobados() {
   const tabla = document.createElement('table');
   tabla.style.width = '100%';
   tabla.style.borderCollapse = 'collapse';
+
   tabla.innerHTML = `
     <thead>
       <tr>
         <th style="border: 1px solid #ccc; padding: 8px;">Nombre</th>
         <th style="border: 1px solid #ccc; padding: 8px;">Cédula</th>
-        <th style="border: 1px solid #ccc; padding: 8px;">Referido</th>
-        <th style="border: 1px solid #ccc; padding: 8px;">Teléfono</th>
         <th style="border: 1px solid #ccc; padding: 8px;">Cartones</th>
+        <th style="border: 1px solid #ccc; padding: 8px;">Pago Móvil</th>
       </tr>
     </thead>
     <tbody></tbody>
@@ -1389,18 +1389,20 @@ async function verListaAprobados() {
 
   data.forEach(item => {
     const tr = document.createElement('tr');
+
     tr.innerHTML = `
       <td style="border: 1px solid #ccc; padding: 8px;">${item.nombre || ''}</td>
       <td style="border: 1px solid #ccc; padding: 8px;">${item.cedula || ''}</td>
-      <td style="border: 1px solid #ccc; padding: 8px;">${item.referido || ''}</td>
       <td style="border: 1px solid #ccc; padding: 8px;">
-        <a href="${buildWhatsAppLink(item.telefono, `Hola ${item.nombre}, tu inscripción fue aprobada.`)}"
-           target="_blank" rel="noopener">
-          ${item.telefono || ''}
-        </a>
+        ${Array.isArray(item.cartones) ? item.cartones.join(', ') : ''}
       </td>
-      <td style="border: 1px solid #ccc; padding: 8px;">${Array.isArray(item.cartones) ? item.cartones.join(', ') : ''}</td>
+      <td style="border: 1px solid #ccc; padding: 8px;">
+  ${item.pago_banco || ''}<br>
+  ${item.pago_telefono || ''}<br>
+  ${item.pago_cedula || ''}
+</td>
     `;
+
     tbody.appendChild(tr);
   });
 
@@ -1548,7 +1550,7 @@ function resaltarCeldasDuplicadas(duplicadosSet) {
   });
 }
 
-// Función para ver huérfanos
+// Función para r huérfanos
 async function verHuerfanos() {
   const btn = document.getElementById('btnVerHuerfanos');
   if (!btn) return;
@@ -1766,27 +1768,34 @@ function renderizarBotonesPromociones() {
   promoBox.classList.toggle('oculto', !algunaActiva);
 }
 
-// ==================== FUNCIONES PRINCIPALES ====================
+// ==================== FUNC PINCILES ====================
 window.addEventListener('DOMContentLoaded', async () => {
   console.log('🚀 Inicializando sistema...');
-  
-  // Crear tabla de sesiones si no existe
+    sistemaListo = false;
+  // Crear ta¿'bl ses nxiste
    document.getElementById('modal-terminos').classList.remove('oculto');
-  await cargarBarraProgresoInicio();
-await cargarConfigBarraProgresoAdmin();
-  cargarDatosClienteLocal();
-  activarProgresoCartonesRealtime();
-  await cargarImagenPremiosInicio();
-  await obtenerTotalCartones();
-  await cargarPrecioPorCarton();
-  await cargarConfiguracionModoCartones();
-  generarCartones();
-  await cargarPromocionesConfig();
-  
-  // Verificar sesión al cargar
+   obtenerTotalCartones();
+  await cargarLinkWhatsapp();
+  document.getElementById('overlay-carga').style.display = 'none';
+
+  await Promise.all([
+    cargarDatosClienteLocal(),
+  activarProgresoCartonesRealtime(),
+  generarCartones(),
+    cargarBarraProgresoInicio(),
+    cargarConfigBarraProgresoAdmin(),
+    cargarImagenPremiosInicio(),
+    cargarPrecioPorCarton(),
+    cargarConfiguracionModoCartones(),
+    cargarPromocionesConfig()
+  ]);
+
   await verificarSesionInicial();
+
+
   
-  // Event listeners específicos
+ 
+  // Event listes pefos
   document.getElementById('guardarPromocionesBtn')?.addEventListener('click', guardarPromociones);
   document.getElementById('btnDupNombreAprobados')?.addEventListener('click', detectarDuplicadosAprobadosPorNombre);
   document.getElementById('btnDupReferenciaAprobados')?.addEventListener('click', detectarDuplicadosAprobadosPorReferencia);
@@ -1801,12 +1810,11 @@ await cargarConfigBarraProgresoAdmin();
   document.getElementById('guardarModoCartonesBtn')?.addEventListener('click', guardarModoCartones);
   document.getElementById('modoCartonesSelect')?.addEventListener('change', cambiarModoCartones);
   
-  // Cargar link de WhatsApp
-  await cargarLinkWhatsapp();
-  
+  // Cargar likde WhatsApp
+    sistemaListo = true;
   // Mostrar términos
- 
-  
+
+  document.getElementById('overlay-carga').style.display = 'none';
   console.log('✅ Sistema inicializado correctamente');
 });
 
@@ -1908,6 +1916,7 @@ function isTrue(v) {
 }
 
 async function mostrarVentana(id) {
+  if (!sistemaListo) return;
   if (id === 'top-compradores') {
   await cargarTopCompradores();
      activarTopCompradoresRealtime()
@@ -1948,9 +1957,9 @@ async function mostrarVentana(id) {
   document.querySelectorAll('section').forEach(s => s.classList.add('oculto'));
   const target = document.getElementById(id);
   if (target) target.classList.remove('oculto');
-  window.scrollTo({
-  top: 0,
-  behavior: 'smooth'
+requestAnimationFrame(() => {
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
 });
 
   if (id === 'cantidad') {
@@ -2059,29 +2068,51 @@ async function cargarCartones() {
 }
 
 async function toggleCarton(num, elem) {
-  const index = usuario.cartones.indexOf(num);
+  num = Number(num);
+  const cedulaLimpia = String(usuario.cedula || '').trim();
+
+  const index = usuario.cartones.map(Number).indexOf(num);
 
   // Deseleccionar
   if (index >= 0) {
-  usuario.cartones.splice(index, 1);
-  elem.classList.remove('seleccionado');
+    usuario.cartones.splice(index, 1);
+    elem.classList.remove('seleccionado');
 
-  const { error: errorLiberar } = await supabase.rpc('rpc_liberar_reserva', {
-    _numero: num,
-    _cedula: usuario.cedula,
-    _partida_id: null
-  });
- if (errorLiberar) {
-    console.error('Error liberando reserva:', errorLiberar);
-  }
+  
+
+const { data: liberado, error: errorLiberar } = await supabase.rpc('rpc_liberar_reserva', {
+  _numero: num,
+  _cedula: cedulaLimpia,
+  _partida_id: null
+});
     
-    document.querySelectorAll('.carton.bloqueado').forEach(c => {
-    const n = parseInt(c.textContent);
-    if (!cartonesOcupados.includes(n) && !usuario.cartones.includes(n)) {
-      c.classList.remove('bloqueado');
-      c.onclick = () => abrirModalCarton(n, c);
+    console.log('Liberar cartón:', {
+      numero: num,
+      cedula: cedulaLimpia,
+      liberado,
+      errorLiberar
+    });
+
+    if (errorLiberar) {
+      console.error('Error liberando reserva:', errorLiberar);
+      alert('No se pudo liberar el cartón. Intenta otra vez.');
+      return;
     }
-  });
+
+    if (liberado !== true) {
+      console.warn('El cartón no se liberó. Puede que no coincidía la cédula o ya estaba en inscripción.');
+    }
+
+    cartonesOcupados = cartonesOcupados.filter(n => Number(n) !== num);
+
+    document.querySelectorAll('.carton.bloqueado').forEach(c => {
+      const n = Number(c.textContent);
+      if (!cartonesOcupados.map(Number).includes(n) && !usuario.cartones.map(Number).includes(n)) {
+        c.classList.remove('bloqueado');
+        c.onclick = () => abrirModalCarton(n, c);
+      }
+    });
+
     actualizarContadorCartones(totalCartones, cartonesOcupados.length, usuario.cartones.length);
     actualizarMonto();
     return;
@@ -2090,10 +2121,9 @@ async function toggleCarton(num, elem) {
   // No permitir más de la cantidad elegida
   if (usuario.cartones.length >= cantidadPermitida) return;
 
-  // Reservar en Supabase de forma segura
   const { data, error } = await supabase.rpc('rpc_reservar_carton', {
     _numero: num,
-    _cedula: usuario.cedula,
+    _cedula: cedulaLimpia,
     _partida_id: null
   });
 
@@ -2108,9 +2138,9 @@ async function toggleCarton(num, elem) {
 
   if (usuario.cartones.length === cantidadPermitida) {
     document.querySelectorAll('.carton').forEach(c => {
-      const n = parseInt(c.textContent);
-      const yaSeleccionado = usuario.cartones.includes(n);
-      const yaOcupado = cartonesOcupados.includes(n);
+      const n = Number(c.textContent);
+      const yaSeleccionado = usuario.cartones.map(Number).includes(n);
+      const yaOcupado = cartonesOcupados.map(Number).includes(n);
 
       if (!yaSeleccionado && !yaOcupado) {
         c.classList.add('bloqueado');
@@ -2122,7 +2152,6 @@ async function toggleCarton(num, elem) {
   actualizarContadorCartones(totalCartones, cartonesOcupados.length, usuario.cartones.length);
   actualizarMonto();
 }
-
 function actualizarMonto() {
   let total;
   const promo = getPromocionSeleccionada();
@@ -2153,7 +2182,15 @@ async function enviarComprobante() {
     if (!/^\d{4}$/.test(referencia4dig)) {
       throw new Error('Debes ingresar los últimos 4 dígitos de la referencia bancaria.');
     }
+const PagoBanco = document.getElementById('pago_banco').value.trim();
+const PagoTelefono = document.getElementById('pago_telefono').value.trim();
+const PagoCedula = document.getElementById('pago_cedula').value.trim();
 
+if (!PagoBanco || !PagoTelefono || !PagoCedula) {
+  throw new Error('Debes registrar tu Pago Móvil para el pago ganador.');
+}
+
+guardarDatosPagoClienteAutomatico();
     const archivo = document.getElementById('comprobante').files[0];
     if (!archivo) throw new Error('Debes subir un comprobante');
 
@@ -2168,17 +2205,98 @@ async function enviarComprobante() {
 
     const promo = getPromocionSeleccionada();
     const monto = promo ? promo.precio : (usuario.cartones.length * (precioPorCarton || 0));
-    
+    const cartonesEnviar = (usuario.cartones || []).map(n => Number(n));
+
+if (cartonesEnviar.length === 0) {
+  throw new Error('Debes seleccionar al menos un cartón.');
+}
+
+if (cartonesEnviar.length !== cantidadPermitida) {
+  throw new Error('La cantidad de cartones seleccionados no coincide con la cantidad elegida.');
+}
+
+// 1. Validar que esos cartones estén reservados por esta misma cédula
+const { data: reservas, error: errorReservas } = await supabase
+  .from('cartones')
+  .select('numero, cedula')
+  .in('numero', cartonesEnviar);
+
+if (errorReservas) {
+  throw new Error('No se pudieron validar tus cartones.');
+}
+
+const cedulaLimpia = String(usuario.cedula || '').trim();
+
+const reservasValidas = (reservas || [])
+  .filter(r => String(r.cedula || '').trim() === cedulaLimpia)
+  .map(r => Number(r.numero));
+
+const faltantes = cartonesEnviar.filter(n => !reservasValidas.includes(n));
+
+if (faltantes.length > 0) {
+  await supabase.rpc('rpc_liberar_reserva', {
+    _cedula: cedulaLimpia,
+    _partida_id: null
+  });
+
+  alert('⚠️ Estos cartones ya no están reservados para ti: ' + faltantes.join(', ') + '\n\nElige otros cartones.');
+  await cargarCartones();
+  mostrarVentana('cartones');
+  return;
+}
+
+// 2. Validar que no existan en otra inscripción pendiente/aprobada
+const { data: inscripcionesActivas, error: errorInscripciones } = await supabase
+  .from('inscripciones')
+  .select('id, nombre, cedula, cartones')
+  .in('estado', ['pendiente', 'aprobado']);
+
+if (errorInscripciones) {
+  throw new Error('No se pudieron verificar cartones duplicados.');
+}
+
+const duplicados = [];
+
+(inscripcionesActivas || []).forEach(ins => {
+  const otrosCartones = (ins.cartones || []).map(n => Number(n));
+
+  cartonesEnviar.forEach(n => {
+    if (otrosCartones.includes(n)) {
+      duplicados.push({
+        carton: n,
+        nombre: ins.nombre,
+        cedula: ins.cedula
+      });
+    }
+  });
+});
+
+if (duplicados.length > 0) {
+  const numeros = [...new Set(duplicados.map(d => d.carton))];
+
+  await supabase.rpc('rpc_liberar_reserva', {
+    _cedula: cedulaLimpia,
+    _partida_id: null
+  });
+
+  alert('⚠️ Estos cartones ya fueron tomados: ' + numeros.join(', ') + '\n\nElige otros cartones.');
+  await cargarCartones();
+  mostrarVentana('cartones');
+  return;
+}
     const { error: errorInsert } = await supabase.from('inscripciones').insert([{
       nombre: usuario.nombre,
       telefono: usuario.telefono,
-      cedula: usuario.cedula,
+      cedula: cedulaLimpia,
       referido: usuario.referido,
-      cartones: usuario.cartones,
+      cartones: cartonesEnviar.map(String),
       referencia4dig: referencia4dig,
       comprobante: urlPublica,
       estado: 'pendiente',
       monto_bs: monto,
+      pago_banco: PagoBanco,
+      pago_telefono: PagoTelefono,
+      pago_cedula: PagoCedula,
       usa_promo: !!promo,
       promo_desc: promo ? promo.descripcion : null,
       precio_unitario_bs: promo ? null : (precioPorCarton || 0) 
@@ -2186,7 +2304,7 @@ async function enviarComprobante() {
 
     if (errorInsert) {
       await supabase.rpc('rpc_liberar_reserva', {
-  _cedula: usuario.cedula,
+  _cedula: cedulaLimpia,
   _partida_id: null
 });
       throw new Error('Error guardando la inscripción');
@@ -2203,16 +2321,73 @@ clearInterval(timerReserva);
   }
 }
 
-// ==================== FUNCIONES DE USUARIO ====================
+// ==================== fUNCIONES DE USUARIO ====================
 async function consultarCartones() {
-  const cedula = document.getElementById('consulta-cedula').value;
-  const { data } = await supabase.from('inscripciones').select('*').eq('cedula', cedula);
+  const cedula = document.getElementById('consulta-cedula').value.trim();
+
   const cont = document.getElementById('cartones-usuario');
   cont.innerHTML = '';
-  data.forEach(item => {
-    item.cartones.forEach(num => {
+
+  const { data: todas } = await supabase
+    .from('inscripciones')
+    .select('*')
+    .eq('cedula', cedula);
+
+  if (!todas || todas.length === 0) {
+    cont.innerHTML = `
+      <p style="text-align:center;color:#ff4444;">
+        No se encontró ninguna compra registrada con esta cédula.
+      </p>
+    `;
+    return;
+  }
+
+  const tieneAprobada = todas.some(i => i.estado === 'aprobado');
+  const tienePendiente = todas.some(i => i.estado === 'pendiente');
+  const tieneRechazada = todas.some(i => i.estado === 'rechazado');
+  
+  const mensaje = document.createElement('div');
+  mensaje.style.textAlign = 'center';
+  mensaje.style.marginBottom = '15px';
+  mensaje.style.fontWeight = 'bold';
+
+  if (tieneAprobada && tienePendiente && tieneRechazada) {
+  mensaje.innerHTML =
+    '✅ Tienes compras aprobadas.<br>⏳ También tienes compras pendientes de aprobación.<br>❌ También tienes compras rechazadas(consulta con soporte).';
+}
+ else if (tieneAprobada && tieneRechazada) {
+  mensaje.innerHTML =
+    '✅ Tienes compras aprobadas.<br>❌ También tienes compras rechazadas, consulta a soporte.';
+}
+else if (tieneAprobada && tienePendiente) {
+  mensaje.innerHTML =
+    '✅ Tienes compras aprobadas.<br>⏳ También tienes compras pendientes de aprobación.';
+}
+else if (tieneRechazada && tienePendiente) {
+  mensaje.innerHTML =
+    '❌ Tienes compras rechazadas.<br>⏳ También tienes compras pendientes de aprobación.';
+}
+else if (tieneAprobada) {
+  mensaje.innerHTML =
+    '✅ Tu compra ha sido aprobada.';
+}
+else if (tieneRechazada) {
+  mensaje.innerHTML =
+    '❌ Tu compra fue rechazada.';
+}
+else {
+  mensaje.innerHTML =
+    '⏳ Tu compra está pendiente de aprobación.';
+}
+
+  cont.appendChild(mensaje);
+  mensaje.classList.add('estado-consulta');
+
+  // Mostrar cartones aunque esté pendiente
+  todas.forEach(item => {
+    (item.cartones || []).forEach(num => {
       const img = document.createElement('img');
-      img.src = `${supabaseUrl}/storage/v1/object/public/cartones/SERIAL_GOLDENGP_CARTON_${String(num).padStart(5, '0')}.jpg`;
+      img.src = `${supabaseUrl}/storage/v1/object/public/cartones/SERIAL_BINGOANDINO75_CARTON_${String(num).padStart(5, '0')}.jpg`;
       img.classList.add('carton-consulta-img');
       img.style.margin = '5px';
       cont.appendChild(img);
@@ -2239,17 +2414,33 @@ async function elegirMasCartones() {
   actualizarPreseleccion();
 }
 
-// ==================== FUNCIONES DEL PANEL ADMIN ====================
+// ==================== FUNCIOS DEL PANEL ADMIN ====================
 async function cargarPanelAdmin() {
-  await obtenerMontoTotalRecaudado();
-  await contarCartonesVendidos();
-  await cargarModoCartonesAdmin();
-  await cargarCartones();
-  await cargarPromocionesAdmin();
+ await Promise.all([
+  obtenerMontoTotalRecaudado(),
+  contarCartonesVendidos(),
+  cargarModoCartonesAdmin(),
+  cargarCartones(),
+  cargarPromocionesAdmin()
+]);
   
+ 
   const { data, error } = await supabase
     .from('inscripciones')
-    .select('*')
+    .select(`
+      id,
+      nombre,
+      telefono,
+      cedula,
+      referido,
+      cartones,
+      referencia4dig,
+      comprobante,
+      pago_banco,
+      pago_telefono,
+      pago_cedula,
+      estado
+    `)
     .order('id', { ascending: false });
 
   if (error) {
@@ -2272,16 +2463,36 @@ async function cargarPanelAdmin() {
       </td>
       <td>${item.cedula}</td>
       <td>${item.referido}</td>
-      <td>${item.cartones.join(', ')}</td>
+      <td>${Array.isArray(item.cartones) ? item.cartones.join(', ') : ''}</td>
       <td class="celda-ref" data-id="${item.id}">
         <span class="ref-text">${item.referencia4dig || ''}</span>
         <button class="btn-accion btn-edit-ref" title="Editar">&#9998;</button>
       </td>
       <td><a href="${item.comprobante}" target="_blank">
-            <img src="${item.comprobante}" alt="Comp.">
+            <img src="${item.comprobante}" alt="Comp." loading="lazy">
           </a></td>
+          <td class="pago-ganador-admin">
+  <strong>${item.pago_banco || 'Sin banco'}</strong><br>
+  📱 ${item.pago_telefono || 'Sin número'}<br>
+  🪪 ${item.pago_cedula || 'Sin cédula'}
+   <button
+    class="btn-copiar-pago"
+    onclick="copiarPagoMovil(
+      '${item.pago_banco || ''}',
+      '${item.pago_telefono || ''}',
+      '${item.pago_cedula || ''}'
+    )">
+    📋 Copiar
+  </button>
+</td>
       <td>
-        <span class="estado-circulo ${item.estado === 'aprobado' ? 'verde' : 'rojo'}"></span>
+        <span class="estado-circulo ${
+  item.estado === 'aprobado'
+    ? 'verde'
+    : item.estado === 'rechazado'
+      ? 'naranja'
+      : 'rojo'
+}"></span>
         <button class="btn-accion btn-aprobar" title="Aprobar">&#x2705;</button>
         <button class="btn-accion btn-rechazar" title="Rechazar">&#x274C;</button>
         <button class="btn-accion btn-eliminar" title="Eliminar">&#x1F5D1;</button>
@@ -2298,13 +2509,7 @@ async function cargarPanelAdmin() {
     btnEliminar.onclick = () => eliminarInscripcion(item, tr);
     btnEditRef.onclick = () => editarReferencia(tr.querySelector('.celda-ref'));
     
-    if (item.estado === 'aprobado') {
-      btnAprobar.disabled = true;
-      btnRechazar.disabled = true;
-    } else if (item.estado === 'rechazado') {
-      btnAprobar.disabled = true;
-      btnRechazar.disabled = true;
-    }
+  
 
     tbody.appendChild(tr);
   });
@@ -2320,6 +2525,64 @@ document.getElementById('btn-recargar-panel').addEventListener('click', () => {
 });
 
 async function aprobarInscripcion(id, fila) {
+const puedeCambiar = await confirmarCambioEstado(id, 'aprobado');
+  if (!puedeCambiar) return;
+  // Buscar inscripción actual
+  const { data: actual, error: errorActual } = await supabase
+    .from('inscripciones')
+    .select('cartones,nombre')
+    .eq('id', id)
+    .single();
+
+  if (errorActual || !actual) {
+    alert('No se pudo verificar la inscripción');
+    return;
+  }
+
+  const misCartones = (actual.cartones || []).map(String);
+
+  // Buscar aprobados
+  const { data: aprobados, error: errorAprobados } = await supabase
+    .from('inscripciones')
+    .select('id,nombre,cartones')
+    .eq('estado', 'aprobado')
+    .neq('id', id);
+
+  if (errorAprobados) {
+    alert('No se pudieron verificar duplicados');
+    return;
+  }
+
+  const duplicados = [];
+
+  (aprobados || []).forEach(ins => {
+    const otros = (ins.cartones || []).map(String);
+
+    misCartones.forEach(c => {
+      if (otros.includes(c)) {
+        duplicados.push({
+          carton: c,
+          nombre: ins.nombre
+        });
+      }
+    });
+  });
+
+  if (duplicados.length > 0) {
+
+    const mensaje = duplicados
+      .map(d => `Cartón ${d.carton} ya aprobado para ${d.nombre}`)
+      .join('\n');
+
+    alert(
+      '⚠️ No se puede aprobar.\n\n' +
+      mensaje
+    );
+
+    return;
+  }
+
+  // Aprobar
   const { error } = await supabase
     .from('inscripciones')
     .update({ estado: 'aprobado' })
@@ -2330,39 +2593,56 @@ async function aprobarInscripcion(id, fila) {
     return alert('No se pudo aprobar');
   }
 
-  fila.querySelectorAll('button').forEach(b => (b.disabled = true));
+  
+
   const circulo = fila.querySelector('.estado-circulo');
-  if (circulo) circulo.classList.replace('rojo', 'verde');
+  if (circulo) {
+    circulo.classList.remove('rojo', 'naranja');
+circulo.classList.add('verde');
+  }
+
   alert('¡Inscripción aprobada!');
 }
+async function confirmarCambioEstado(id, nuevoEstado) {
+  const { data } = await supabase
+    .from('inscripciones')
+    .select('estado')
+    .eq('id', id)
+    .single();
 
+  if (!data) return false;
+
+  if (data.estado !== 'pendiente' && data.estado !== nuevoEstado) {
+    return confirm(`Esta inscripción está ${data.estado}. ¿Seguro quieres cambiarla a ${nuevoEstado}?`);
+  }
+
+  return true;
+}
 async function rechazarInscripcion(item, fila) {
-  const confirma = confirm('¿Seguro que deseas rechazar y liberar cartones?');
+  const puedeCambiar = await confirmarCambioEstado(item.id, 'rechazado');
+  if (!puedeCambiar) return;
+  const confirma = confirm('¿Seguro que deseas rechazar,  seguira estando ocupado hasta aque lo elimine?');
   if (!confirma) return;
 
-  if (item.cartones.length) {
-    const { error: errCart } = await supabase
-      .from('cartones')
-      .delete()
-      .in('numero', item.cartones);
-    if (errCart) {
-      console.error(errCart);
-      return alert('Error liberando cartones');
-    }
-  }
+  
 
   const { error: errUpd } = await supabase
     .from('inscripciones')
     .update({ estado: 'rechazado' })
     .eq('id', item.id);
 
+ 
   if (errUpd) {
     console.error(errUpd);
     return alert('Error actualizando inscripción');
   }
-
-  fila.querySelectorAll('button').forEach(b => (b.disabled = true));
-  alert('Inscripción rechazada y cartones liberados');
+ const circulo = fila.querySelector('.estado-circulo');
+if (circulo) {
+  circulo.classList.remove('rojo', 'verde');
+  circulo.classList.add('naranja');
+}
+  
+  alert('Inscripción rechazada ');
 }
 
 async function eliminarInscripcion(item, fila) {
@@ -2503,7 +2783,7 @@ function abrirModalCarton(numero, elemento) {
   cartonSeleccionadoTemporal = numero;
   cartonElementoTemporal = elemento;
   const img = document.getElementById('imagen-carton-modal');
-  img.src = `${supabaseUrl}/storage/v1/object/public/cartones/SERIAL_GOLDENGP_CARTON_${String(numero).padStart(5, '0')}.jpg`;
+  img.src = `${supabaseUrl}/storage/v1/object/public/cartones/SERIAL_BINGOANDINO75_CARTON_${String(numero).padStart(5, '0')}.jpg`;
 
   document.getElementById('modal-carton').classList.remove('oculto');
 
@@ -2679,10 +2959,7 @@ function mostrarSeccion(id) {
   secciones.forEach(sec => sec.classList.add('oculto'));
   const target = document.getElementById(id);
   if (target) target.classList.remove('oculto');
-  window.scrollTo({
-  top: 0,
-  behavior: 'smooth'
-});
+  
     if (id === 'ganadores') {
     cargarGanadores();
   }
@@ -2741,7 +3018,7 @@ async function cargarListaAprobadosSeccion() {
     tr.innerHTML = `
       <td>${item.carton}</td>
       <td>${item.nombre}</td>
-      <td>${item.cedula}</td>
+      <td>${'*'.repeat(Math.max(0, String(item.cedula || '').length - 4))}${String(item.cedula || '').slice(-4)}</td>
     `;
     tbody.appendChild(tr);
   });
@@ -3207,44 +3484,59 @@ async function fetchAprobadosBasico() {
 function renderDuplicadosAprobados(lista, tipoClave) {
   const cont = document.getElementById('duplicadosAprobadosResultado');
   if (!cont) return;
+
   cont.innerHTML = '';
 
   if (!lista.length) {
-    cont.innerHTML = `<p style="color:#4caf50;font-weight:600;">No se encontraron duplicados por ${tipoClave} entre los aprobados.</p>`;
+    cont.innerHTML = `<p style="color:#4caf50;font-weight:600;">
+      No se encontraron duplicados por ${tipoClave} entre los aprobados.
+    </p>`;
     return;
   }
 
-  const tbl = document.createElement('table');
-  tbl.className = 'dup-table';
-  tbl.innerHTML = `
-    <thead>
-      <tr>
-        <th>${tipoClave === 'nombre' ? 'Nombre (normalizado)' : 'Referencia (4 dígitos)'}</th>
-        <th>Veces</th>
-        <th>Personas</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  `;
-  const tbody = tbl.querySelector('tbody');
+  lista.forEach((g, index) => {
+    const card = document.createElement('div');
+    card.className = 'duplicado-card';
 
-  lista.forEach(g => {
-    const tr = document.createElement('tr');
-    const personasTxt = g.items.map(x => {
-      const carts = Array.isArray(x.cartones) ? x.cartones.join(', ') : '';
-      return `${x.nombre} (CI: ${x.cedula})${x.telefono ? ' – ' + x.telefono : ''}${carts ? ' – Cartones: ' + carts : ''}`;
-    }).join(' | ');
-    tr.innerHTML = `
-      <td>${g.clave}</td>
-      <td>${g.items.length}</td>
-      <td>${personasTxt}</td>
+    const titulo = tipoClave === 'nombre'
+      ? `👤 Nombre: ${g.clave}`
+      : `#️⃣ Referencia: ${g.clave}`;
+
+    const detalleId = `dup-detalle-${tipoClave}-${index}`;
+
+    card.innerHTML = `
+      <div class="duplicado-header" onclick="toggleDuplicado('${detalleId}')">
+        <span>${titulo}</span>
+        <span>${g.items.length} veces ▼</span>
+      </div>
+
+      <div id="${detalleId}" class="duplicado-detalle">
+        ${g.items.map(x => {
+          const carts = Array.isArray(x.cartones) ? x.cartones.join(', ') : '';
+
+          return `
+            <div class="persona-item">
+              <strong>${x.nombre || 'Sin nombre'}</strong><br>
+              CI: ${x.cedula || 'N/A'}
+              ${x.telefono ? `<br>Tel: ${x.telefono}` : ''}
+              ${carts ? `<br>Cartones: ${carts}` : ''}
+            </div>
+          `;
+        }).join('')}
+      </div>
     `;
-    tbody.appendChild(tr);
-  });
 
-  cont.appendChild(tbl);
+    cont.appendChild(card);
+  });
 }
 
+function toggleDuplicado(id) {
+  const detalle = document.getElementById(id);
+  if (!detalle) return;
+
+  detalle.style.display =
+    detalle.style.display === 'block' ? 'none' : 'block';
+}
 async function detectarDuplicadosAprobadosPorNombre() {
   const rows = await fetchAprobadosBasico();
   const mapa = new Map();
@@ -3289,12 +3581,77 @@ async function detectarDuplicadosAprobadosPorReferencia() {
 
 function imprimirLista() {
   const lista = document.getElementById('listaAprobados');
-  if (!lista.innerHTML.trim()) {
+
+  if (!lista || !lista.innerHTML.trim()) {
     alert('Primero debes generar la lista de aprobados.');
     return;
   }
-  window.print();
+
+  const ventana = window.open('', '_blank');
+
+  ventana.document.write(`
+    <html>
+      <head>
+        <title>Lista de Aprobados</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            color: #000;
+            padding: 00px;
+          }
+
+          h1 {
+            text-align: center;
+            font-size: 16px;
+            margin: 0 0 4px 0;
+          }
+
+          .fecha {
+            text-align: center;
+            font-size: 9px;
+            margin-bottom: 8px;
+          }
+
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 18px;
+          }
+
+          th, td {
+            border: 1px solid #999;
+            padding: 2px 3px;
+            text-align: center;
+            vertical-align: middle;
+          }
+
+          th {
+            background: #eee;
+            font-weight: bold;
+          }
+
+          @page {
+            size: letter portrait;
+            margin: 6mm;
+          }
+        </style>
+      </head>
+      <body>
+        <h1>Lista de Aprobados</h1>
+        <div class="fecha">${new Date().toLocaleString()}</div>
+        ${lista.innerHTML}
+      </body>
+    </html>
+  `);
+
+  ventana.document.close();
+
+  ventana.onload = function () {
+    ventana.focus();
+    ventana.print();
+  };
 }
+
 
 // ==================== FUNCIONES FALTANTES ====================
 async function subirCartones() {
@@ -3565,7 +3922,7 @@ async function cargarTopCompradores() {
   const { data, error } = await supabase
     .from('inscripciones')
     .select('nombre, cedula, telefono, cartones, estado')
-    .in('estado', ['pendiente', 'aprobado']);
+    .in('estado', ['aprobado']);
 
   const cont = document.getElementById('listaTopCompradores');
   cont.innerHTML = '';
@@ -3608,7 +3965,7 @@ async function cargarTopCompradores() {
       ${top.map((p, i) => `
         <li>
           <strong>#${i + 1} ${p.nombre}</strong><br>
-          Cédula: ${p.cedula}<br>
+          Cédula: ****${String(p.cedula || '').slice(-4)}<br>
           Cartones comprados: <strong>${p.total}</strong>
         </li>
       `).join('')}
@@ -3827,7 +4184,14 @@ function activarProgresoCartonesRealtime() {
     .subscribe();
 }
 // Función para seleccionar cartones aleatorios
+let seleccionAleatoriaEnProceso = false;
 async function seleccionarAleatorioSeguro() {
+if (seleccionAleatoriaEnProceso) return;
+
+  seleccionAleatoriaEnProceso = true;
+
+  try {
+
   const faltan = cantidadPermitida - usuario.cartones.length;
 
   if (faltan <= 0) {
@@ -3837,7 +4201,7 @@ async function seleccionarAleatorioSeguro() {
 
   const { data, error } = await supabase.rpc('rpc_reservar_cartones_aleatorios', {
     _cantidad: faltan,
-    _cedula: usuario.cedula,
+    _cedula: String(usuario.cedula || '').trim(),
     _partida_id: null
   });
 
@@ -3855,7 +4219,7 @@ async function seleccionarAleatorioSeguro() {
     return;
   }
 
-  usuario.cartones.push(...resultado.cartones);
+  usuario.cartones = [...new Set([...usuario.cartones.map(Number), ...resultado.cartones.map(Number)])];
 
   await cargarCartones();
 
@@ -3889,9 +4253,14 @@ async function seleccionarAleatorioSeguro() {
   actualizarMonto();
 
   alert(`Cartones seleccionados: ${resultado.cartones.join(', ')}`);
+
+ } finally {
+    seleccionAleatoriaEnProceso = false;
+  }
 }
 
 window.seleccionarAleatorioSeguro = seleccionarAleatorioSeguro;
+
 
 
 function guardarDatosClienteLocal() {
@@ -3912,7 +4281,110 @@ function cargarDatosClienteLocal() {
   if (document.getElementById('cedula')) document.getElementById('cedula').value = cedula;
   if (document.getElementById('referido')) document.getElementById('referido').value = referido;
 }
-// ─── NAVEGACIÓN POR PESTAÑAS DEL ADMIN ───
+
+function copiarDatoPago(id) {
+  const texto = document.getElementById(id).textContent.trim();
+
+  navigator.clipboard.writeText(texto)
+    .then(() => mostrarToastPago('✅ Copiado'))
+    .catch(() => alert('No se pudo copiar'));
+}
+
+function mostrarToastPago(mensaje) {
+  const toast = document.createElement('div');
+  toast.className = 'toast-pago';
+  toast.textContent = mensaje;
+  document.body.appendChild(toast);
+
+  setTimeout(() => toast.remove(), 1800);
+}
+
+function cargarDatosPagoCliente() {
+  const datos = JSON.parse(localStorage.getItem('pago_movil_cliente') || '{}');
+
+  const banco = document.getElementById('pago_banco');
+  const telefono = document.getElementById('pago_telefono');
+  const cedula = document.getElementById('pago_cedula');
+
+  if (!banco || !telefono || !cedula) return;
+
+  banco.value = datos.banco || '';
+  telefono.value = datos.telefono || '';
+  cedula.value = datos.cedula || '';
+
+  [banco, telefono, cedula].forEach(input => {
+    input.addEventListener('input', guardarDatosPagoClienteAutomatico);
+  });
+}
+
+function guardarDatosPagoClienteAutomatico() {
+  const datos = {
+    banco: document.getElementById('pago_banco').value.trim(),
+    telefono: document.getElementById('pago_telefono').value.trim(),
+    cedula: document.getElementById('pago_cedula').value.trim()
+  };
+
+  localStorage.setItem('pago_movil_cliente', JSON.stringify(datos));
+}
+
+document.addEventListener('DOMContentLoaded', cargarDatosPagoCliente);
+
+
+function copiarPagoMovil(banco, telefono, cedula) {
+  const texto =
+`Banco: ${banco}
+Teléfono: ${telefono}
+Cédula: ${cedula}`;
+
+  navigator.clipboard.writeText(texto)
+    .then(() => alert('✅ Datos copiados'))
+    .catch(() => alert('❌ Error al copiar'));
+}
+
+function copiarTodoPagoMovil() {
+    const banco = document.getElementById('adminPagoBanco')?.textContent || '';
+  const telefono = document.getElementById('adminPagoTelefono')?.textContent || '';
+  const cedula = document.getElementById('adminPagoCedula')?.textContent || '';
+  const monto = document.getElementById('monto-pago')?.textContent || '';
+
+  const texto = ` ${banco}
+ ${telefono}
+ ${cedula}
+ ${monto} `;
+
+  navigator.clipboard.writeText(texto)
+    .then(() => alert('✅ Todos los datos de pago copiados al portapapeles'))
+    .catch(() => alert('❌ Error al copiar'));
+}
+
+
+async function copiarListaAprobados() {
+  const filas = document.querySelectorAll('#contenedor-aprobados tbody tr');
+
+  let texto = 'LISTA DE APROBADOS\n\n';
+
+  filas.forEach(fila => {
+    const celdas = fila.querySelectorAll('td');
+
+    if (celdas.length >= 3) {
+      texto += `${celdas[0].innerText} | ${celdas[1].innerText} | ${celdas[2].innerText}\n`;
+    }
+  });
+
+  try {
+    await navigator.clipboard.writeText(texto);
+    alert('✅ Lista copiada');
+  } catch {
+    const area = document.createElement('textarea');
+    area.value = texto;
+    document.body.appendChild(area);
+    area.select();
+    document.execCommand('copy');
+    document.body.removeChild(area);
+    alert('✅ Lista copiada');
+  }
+}
+// ─── NAEGACIÓN POR PESTAÑAS DEL ADMIN ───
 function cambiarTab(tabId) {
   // Ocultar todos los contenidos
   document.querySelectorAll('.tab-content').forEach(tab => {
@@ -3924,7 +4396,7 @@ function cambiarTab(tabId) {
     btn.classList.remove('active');
   });
   
-  // Activar el seleccionado
+  // Activar el seccionado
   document.getElementById(tabId).classList.add('active');
   event.target.classList.add('active');
 }
