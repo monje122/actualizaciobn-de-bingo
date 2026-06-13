@@ -13,7 +13,7 @@
   <!-- ✅ Open Graph (para redes sociales) -->
   <meta property="og:title" content="BingoAndino75P" />
   <meta property="og:description" content="Juegos de bingo en línea con premios y diversión asegurada." />
-  <meta property="og:url" content="https://BingoAndino75/" />
+  <meta property="og:url" content="https://bingoandino75.com/" />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="https://i.postimg.cc/wj0b7wG6/bingo-andino75.png" />
   <link rel="stylesheet" href="styles.css">
@@ -71,7 +71,7 @@
   <a href="https://www.facebook.com/profile.php?id=61576936027458" target="_blank" rel="noopener noreferrer" title="Facebook">
   <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" width="40" height="40" />
 </a>
-  <a href="https://www.instagram.com/bingoandino75?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==" rel="noopener noreferrer" title="Instagram">
+  <a href="https://www.instagram.com/bingoandino75?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==" target="_blank" rel="noopener noreferrer" title="Instagram">
     <img src="https://cdn-icons-png.flaticon.com/512/1384/1384063.png" alt="Instagram" width="40" />
   </a>
   
@@ -92,7 +92,7 @@
     <button onclick="window.open('envivo.html', '_blank')">🔴 Ver En Vivo</button>
     <button onclick="mostrarVentana('top-compradores')">🏆 Top compradores</button>
     <button onclick="mostrarSeccion('ganadores')">Historial de ganadores</button>
-    <button id="boton-admin-oculto" style="display: none;" onclick="entrarAdmin()">Admin</button>
+    <button id="boton-admin-oculto" type="button" style="display: none;">Admin</button>
   </section>
 
 <section id="ganadores" class="oculto">
@@ -251,8 +251,8 @@
   
   <!-- Campos de login -->
   <div id="login-fields">
- <input type="email" id="admin-email" placeholder="Correo electrónico">
-    <input type="password" id="admin-password" placeholder="Contraseña">
+ <input type="email" id="admin-email" placeholder="goldenpro.ven@gmail.com" autocomplete="username" inputmode="email">
+    <input type="password" id="admin-password" placeholder="Contraseña" autocomplete="current-password">
     <button onclick="loginAdmin()">Iniciar Sesión</button>
     <button onclick="mostrarVentana('bienvenida')">Inicio</button>
   </div>
@@ -266,7 +266,7 @@
       <label for="otp-code">Código de 6 dígitos:</label><br>
       <input type="text" 
              id="otp-code" 
-             maxlength="6" 
+             maxlength="6" inputmode="numeric" autocomplete="one-time-code" 
              placeholder="123456" 
              style="letter-spacing: 10px; text-align: center; font-size: 24px; width: 200px; padding: 10px; margin: 10px 0;"
              oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6)">
@@ -695,11 +695,29 @@
 
 
 <script>
-  const supabaseUrl = 'https://moizrhkexrocanhkggyb.supabase.co';
-  const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8';
+  window.BINGO_SUPABASE = {
+    url: 'https://moizrhkexrocanhkggyb.supabase.co',
+    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8',
+    adminEmail: 'goldenpro.ven@gmail.com'
+  };
 
+  // La sesión de Supabase Auth se guarda en sessionStorage, no en localStorage.
+  const supabaseUrl = window.BINGO_SUPABASE.url;
+  const supabaseKey = window.BINGO_SUPABASE.anonKey;
+  const supabaseSessionStorage = {
+    getItem: (key) => sessionStorage.getItem(key),
+    setItem: (key, value) => sessionStorage.setItem(key, value),
+    removeItem: (key) => sessionStorage.removeItem(key)
+  };
 
-  window.supabase = supabase.createClient(supabaseUrl, supabaseKey);
+  window.supabase = supabase.createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storage: supabaseSessionStorage
+    }
+  });
 </script>
 
 
