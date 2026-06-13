@@ -1,4 +1,124 @@
 var supabase = window.supabase;
+
+// ==================== CONFIGURACIÓN SEGURA SUPABASE / ADMIN ====================
+const BINGO_ADMIN_EMAIL = 'goldenpro.ven@gmail.com';
+const BINGO_SUPABASE_URL = window.BINGO_SUPABASE?.url || 'https://moizrhkexrocanhkggyb.supabase.co';
+const BINGO_SUPABASE_ANON_KEY = window.BINGO_SUPABASE?.anonKey || (typeof supabaseKey !== 'undefined' ? supabaseKey : '');
+
+async function callEdgeFunction(functionName, payload = {}, options = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'apikey': BINGO_SUPABASE_ANON_KEY,
+    ...(options.headers || {})
+  };
+
+  const res = await fetch(`${BINGO_SUPABASE_URL}/functions/v1/${functionName}`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload || {})
+  });
+
+  let json = {};
+  try { json = await res.json(); } catch {}
+
+  if (!res.ok) {
+    const err = new Error(json.error || `Error ${res.status}`);
+    err.status = res.status;
+    err.payload = json;
+    throw err;
+  }
+
+  return json;
+}
+
+function getOrCreateAdminDeviceId() {
+  let deviceId = localStorage.getItem('admin_device_id');
+  if (!deviceId) {
+    const arr = new Uint32Array(4);
+    crypto.getRandomValues(arr);
+    deviceId = `device_${Date.now()}_${Array.from(arr).map(n => n.toString(36)).join('')}`;
+    localStorage.setItem('admin_device_id', deviceId);
+  }
+  return deviceId;
+}
+
+function escapeHTML(value) {
+  return String(value ?? '').replace(/[&<>'"]/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    "'": '&#39;',
+    '"': '&quot;'
+  }[ch]));
+}
+
+function escapeAttr(value) {
+  return escapeHTML(value).replace(/`/g, '&#96;');
+}
+
+function normalizeStoragePath(pathOrUrl, bucketName = 'comprobantes') {
+  if (!pathOrUrl) return '';
+  const value = String(pathOrUrl);
+  const publicMarker = `/storage/v1/object/public/${bucketName}/`;
+  const signedMarker = `/storage/v1/object/sign/${bucketName}/`;
+  if (value.includes(publicMarker)) return value.split(publicMarker).pop().split('?')[0];
+  if (value.includes(signedMarker)) return value.split(signedMarker).pop().split('?')[0];
+  return value.split('?')[0];
+}
+
+function validarImagenComprobante(file) {
+  const tiposPermitidos = ['image/jpeg', 'image/png', 'image/webp'];
+  const maxBytes = 5 * 1024 * 1024;
+
+  if (!file) throw new Error('Debes subir un comprobante');
+  if (!tiposPermitidos.includes(file.type)) {
+    throw new Error('El comprobante debe ser JPG, PNG o WEBP.');
+  }
+  if (file.size > maxBytes) {
+    throw new Error('El comprobante no puede pesar más de 5 MB.');
+  }
+}
+
+async function obtenerUrlComprobantePrivado(pathOrUrl) {
+  if (!pathOrUrl) return '#';
+  const objectPath = normalizeStoragePath(pathOrUrl, 'comprobantes');
+
+  const { data, error } = await supabase
+    .storage
+    .from('comprobantes')
+    .createSignedUrl(objectPath, 60 * 5);
+
+  if (error) {
+    console.error('No se pudo firmar comprobante:', error);
+    return '#';
+  }
+
+  return data.signedUrl;
+}
+
+async function verificarSesionSupabaseAdmin() {
+  const { data } = await supabase.auth.getSession();
+  return Boolean(data?.session?.access_token);
+}
+
+function limpiarStorageAdminLegacy() {
+  localStorage.removeItem('admin_session_token');
+  localStorage.removeItem('admin_email');
+  localStorage.removeItem('session_expires');
+  localStorage.removeItem('device_id');
+}
+
+async function exigirAdminAutenticado() {
+  const ok = await verificarSesionAdmin();
+  if (!ok) {
+    await clearAdminSession();
+    resetToLoginState();
+    throw new Error('Tu sesión admin expiró. Inicia sesión de nuevo.');
+  }
+  return true;
+}
+// ==================== FIN CONFIGURACIÓN SEGURA ====================
+
 // Configuración del admin
 let sistemaListo = false;
 // Variables globales
@@ -23,7 +143,6 @@ const CONFIG_OTP = {
 
 let credencialesVerificadas = {
   email: '',
-  password: '',
   deviceId: '',
   timestamp: 0
 };
@@ -123,132 +242,62 @@ async function setConfigValue(clave, value) {
 // Igual que logoutAdmin, pero sin confirm()
 async function logoutAdminSilencioso() {
   const email = sessionStorage.getItem('admin_email');
-  const deviceId =
-    sessionStorage.getItem('device_id') ||
-    localStorage.getItem('admin_device_id') ||
-    localStorage.getItem('device_id');
-
+  const deviceId = sessionStorage.getItem('device_id') || localStorage.getItem('admin_device_id');
   const sessionToken = sessionStorage.getItem('admin_session_token');
 
   try {
-    if (email && deviceId) {
-      await fetch('https://moizrhkexrocanhkggyb.supabase.co/functions/v1/admin-auth', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
-        },
-        body: JSON.stringify({ action: 'logout', email, deviceId, sessionToken })
+    if (email && deviceId && sessionToken) {
+      await callEdgeFunction('admin-auth', {
+        action: 'logout',
+        email,
+        deviceId,
+        sessionToken
       });
     }
   } catch (e) {
-    console.warn('Logout silencioso falló (red), limpiando local igual:', e);
+    console.warn('Logout remoto falló, limpiando local:', e);
   } finally {
-    clearAdminSession();
+    await clearAdminSession();
     resetToLoginState();
   }
 }
+
 
 // ========== FUNCIÓN LOGOUT COMPATIBLE CON TU CÓDIGO ==========
 async function logoutAdmin() {
-  // TÚ usas sessionStorage, no localStorage:
-  const email = sessionStorage.getItem('admin_email');
-  const deviceId = localStorage.getItem('admin_device_id');
-  const sessionToken = sessionStorage.getItem('admin_session_token');
-  
-  console.log('🔍 Datos para logout:', { email, deviceId, sessionToken });
-  
-  if (!email || !deviceId) {
-    console.log("⚠️ No hay sesión activa completa");
-    // Aún así redirigir
-    resetToLoginState();
-    return;
-  }
+  if (!confirm('¿Estás seguro de cerrar sesión?')) return;
 
-  try {
-    // Opcional: confirmación
-    if (!confirm('¿Estás seguro de cerrar sesión?\n\n✅ Esto liberará tu dispositivo para iniciar en otro lugar.')) {
-      return;
-    }
-    
-    console.log('🔄 Enviando logout al servidor...');
-    
-    const response = await fetch(
-      'https://moizrhkexrocanhkggyb.supabase.co/functions/v1/admin-auth',
-      {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
-        },
-        body: JSON.stringify({
-          action: 'logout',
-          email: email,
-          deviceId: deviceId,
-          sessionToken: sessionToken
-        })
-      }
-    );
-    
-    console.log('📡 Estado respuesta logout:', response.status);
-    const result = await response.json();
-    console.log('📦 Resultado logout:', result);
-    
-    if (result.success) {
-      console.log('✅ Logout exitoso en servidor');
-      clearAdminSession();
-      alert('✅ Sesión cerrada. Ahora puedes iniciar en otro dispositivo.');
-      resetToLoginState();
-    } else {
-      console.error("❌ Error del servidor al cerrar sesión:", result.error);
-      // Aún así limpiar localmente
-      clearAdminSession();
-      resetToLoginState();
-    }
-    
-  } catch (error) {
-    console.error("❌ Error en logout:", error);
-    // Aún así limpiar localmente
-    clearAdminSession();
-    resetToLoginState();
-  }
+  await logoutAdminSilencioso();
+  alert('✅ Sesión cerrada.');
 }
 
+
 // ========== FUNCIÓN PARA LIMPIAR SESIÓN (COMPATIBLE) ==========
-function clearAdminSession() {
-  console.log('🧹 Limpiando sesión...');
-  
-  // Limpiar sessionStorage (lo que TÚ usas)
+async function clearAdminSession() {
   sessionStorage.removeItem('admin_session_token');
   sessionStorage.removeItem('admin_email');
   sessionStorage.removeItem('session_expires');
   sessionStorage.removeItem('device_id');
-  
-  // NO limpiar el device_id de localStorage, se reutiliza
-  // localStorage.removeItem('admin_device_id');  // ← NO hacer esto
-  
-  // Limpiar variables globales (si las tienes)
-  if (typeof adminSession !== 'undefined') {
-    adminSession = null;
-  }
-  if (typeof sesionActiva !== 'undefined') {
-    sesionActiva = false;
-  }
-  
-  // Detener timers si existen
-  if (typeof inactivityTimer !== 'undefined' && inactivityTimer) {
-    clearTimeout(inactivityTimer);
-  }
-  if (typeof sessionCheckInterval !== 'undefined' && sessionCheckInterval) {
-    clearInterval(sessionCheckInterval);
-  }
-  
-  // Eliminar elementos del DOM que puedan existir
+  sessionStorage.removeItem('pending_email');
+  sessionStorage.removeItem('pending_deviceId');
+  sessionStorage.removeItem('pending_password');
+  limpiarStorageAdminLegacy();
+
+  try {
+    await supabase.auth.signOut();
+  } catch {}
+
+  adminSession = null;
+  sesionActiva = false;
+
+  if (inactivityTimer) clearTimeout(inactivityTimer);
+  if (typeof verificacionInterval !== 'undefined' && verificacionInterval) clearInterval(verificacionInterval);
+  if (typeof sessionCheckInterval !== 'undefined' && sessionCheckInterval) clearInterval(sessionCheckInterval);
+
   const sessionInfo = document.getElementById('session-info');
   if (sessionInfo) sessionInfo.remove();
-  
-  console.log('✅ Sesión limpiada localmente');
 }
+
 
 // ========== FUNCIÓN PARA VOLVER A LOGIN (COMPATIBLE) ==========
 function resetToLoginState() {
@@ -287,46 +336,30 @@ document.addEventListener('DOMContentLoaded', function() {
 // ==================== NUEVA: VERIFICACIÓN SESIÓN ÚNICA POR USUARIO ====================
 // Función para verificar si el usuario YA tiene sesión activa (en cualquier navegador)
 async function verificarSesionAdmin() {
-  const sessionToken =
-    sessionStorage.getItem('admin_session_token') ||
-    localStorage.getItem('admin_session_token');
-
-  const deviceId =
-    sessionStorage.getItem('device_id') ||
-    localStorage.getItem('admin_device_id');
+  const sessionToken = sessionStorage.getItem('admin_session_token');
+  const deviceId = sessionStorage.getItem('device_id') || localStorage.getItem('admin_device_id');
 
   if (!sessionToken || !deviceId) return false;
 
   try {
-    const response = await fetch(
-      'https://moizrhkexrocanhkggyb.supabase.co/functions/v1/verify-session',
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8',
-          'Authorization': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
-        },
-        body: JSON.stringify({ sessionToken, deviceId })
-      }
-    );
-
-    if (!response.ok) return false;
-
-    const result = await response.json();
-    console.log('VERIFY SESSION:', result);
+    const result = await callEdgeFunction('verify-session', { sessionToken, deviceId });
 
     if (result.expiresAt) {
       sessionStorage.setItem('session_expires', result.expiresAt);
-      localStorage.setItem('session_expires', result.expiresAt);
+    }
+    if (result.email) {
+      sessionStorage.setItem('admin_email', result.email);
     }
 
-    return result.valid === true && result.sameDevice === true;
+    // Para que las acciones admin directas pasen RLS, también debe existir sesión de Supabase Auth.
+    const tieneSesionSupabase = await verificarSesionSupabaseAdmin();
+    return result.valid === true && result.sameDevice === true && tieneSesionSupabase;
   } catch (err) {
-    console.error('Error verificando sesión:', err);
+    console.warn('Sesión admin no válida:', err.message || err);
     return false;
   }
 }
+
 
 
 // Función para mostrar alerta de sesión duplicada
@@ -368,134 +401,71 @@ function mostrarAlertaSesionDuplicada() {
 // ==================== LOGIN CON DOBLE FACTOR ====================
 // ==================== LOGIN SEGURO CON EDGE FUNCTION ====================
 async function loginAdmin() {
-  const email = document.getElementById('admin-email').value.trim();
+  const email = document.getElementById('admin-email').value.trim().toLowerCase();
   const password = document.getElementById('admin-password').value;
   const errorDiv = document.getElementById('admin-error');
-  
+
   errorDiv.textContent = '';
   errorDiv.className = '';
   errorDiv.style.whiteSpace = 'pre-line';
-  
+
   if (!email || !password) {
     errorDiv.textContent = 'Por favor ingresa email y contraseña';
     errorDiv.className = 'error';
     return;
   }
-  
-  console.log('🔄 Iniciando login con sesión única + OTP...');
-  
+
+  const deviceId = getOrCreateAdminDeviceId();
+
   try {
     errorDiv.textContent = '🔐 Verificando credenciales...';
     errorDiv.className = 'info';
-    
-    // Obtener o generar deviceId único
-    let deviceId = localStorage.getItem('admin_device_id');
-    if (!deviceId) {
-      deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem('admin_device_id', deviceId);
-    }
-    
-    console.log('📱 Device ID:', deviceId);
-    
-    // ========== PASO 1: VERIFICAR CREDENCIALES ==========
-    errorDiv.textContent = '🔐 Verificando email y contraseña...';
-    
-    const response = await fetch(
-      'https://moizrhkexrocanhkggyb.supabase.co/functions/v1/admin-auth',
-      {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
-        },
-        body: JSON.stringify({ 
-          email: email.toLowerCase().trim(), 
-          password: password,
-          deviceId: deviceId,
-          action: 'verify_credentials' // Nueva acción para solo verificar
-        })
-      }
-    );
-    
-    console.log('📡 Estado respuesta:', response.status);
-    const result = await response.json();
-    console.log('📦 Resultado:', result);
-    
-    if (!response.ok) {
-      // MANEJO DE ERRORES ESPECÍFICOS
-      if (result.error === "SESION_ACTIVA_OTRO_DISPOSITIVO") {
-        errorDiv.innerHTML = `
-          ⚠️ <strong>¡Ya tienes una sesión activa!</strong><br><br>
-          No puedes iniciar sesión en múltiples dispositivos/navegadores.<br><br>
-          <strong>Solución:</strong><br>
-          1. Ve al otro dispositivo/navegador<br>
-          2. Cierra sesión allí primero<br>
-          3. Intenta de nuevo aquí
-        `;
-        errorDiv.className = 'warning';
-      } else if (result.error === "SESION_ACTIVA") {
-        errorDiv.innerHTML = '⚠️ Ya tienes una sesión activa en otro lugar';
-        errorDiv.className = 'warning';
-      } else {
-        errorDiv.textContent = result.error || 'Error de autenticación';
-        errorDiv.className = 'error';
-      }
-      
-      document.getElementById('admin-password').value = '';
-      return;
-    }
-    
-    // ========== PASO 2: CREDENCIALES CORRECTAS - ENVIAR OTP ==========
-    console.log('✅ Credenciales verificadas correctamente');
-    
-    // Guardar credenciales temporalmente
+
+    await callEdgeFunction('admin-auth', {
+      action: 'verify_credentials',
+      email,
+      password,
+      deviceId
+    });
+
+    // Nunca guardar password en storage.
     sessionStorage.setItem('pending_email', email);
     sessionStorage.setItem('pending_deviceId', deviceId);
-    sessionStorage.setItem('pending_password', password); // Solo para referencia
-    
+
     errorDiv.innerHTML = '✅ <strong>Credenciales correctas</strong><br>📧 Enviando código de verificación...';
     errorDiv.className = 'success';
-    
-    // Enviar OTP
+
     const { error: otpError } = await supabase.auth.signInWithOtp({
-      email: email,
+      email,
       options: {
         shouldCreateUser: false,
         emailRedirectTo: window.location.origin
       }
     });
-    
+
     if (otpError) {
-      console.error('❌ Error enviando OTP:', otpError);
-      
-      // Fallback: continuar sin OTP si hay error
-      errorDiv.textContent = '⚠️ Error enviando OTP. Continuando sin verificación...';
-      
-      // Proceder directamente a crear sesión
-      await crearSesionDirecta(email, deviceId);
-      return;
+      throw new Error('No se pudo enviar el código OTP. Revisa Supabase Auth / SMTP.');
     }
-    
-    console.log('✅ OTP enviado a:', email);
-    
-    // ========== PASO 3: MOSTRAR INTERFAZ OTP ==========
+
     mostrarInterfazOTP(email);
-    
   } catch (error) {
-    console.error('❌ Error en login:', error);
-    
-    let errorMsg = 'Error de conexión';
-    if (error.message.includes('Failed to fetch')) {
-      errorMsg = 'Error de red. Verifica tu conexión a internet';
-    } else {
-      errorMsg = error.message;
+    console.error('Error en loginAdmin:', error);
+
+    let mensaje = error.message || 'Error de autenticación';
+    if (mensaje === 'SESION_ACTIVA_OTRO_DISPOSITIVO') {
+      mensaje = 'Ya hay una sesión activa en otro dispositivo. Cierra sesión allí primero.';
+    } else if (mensaje === 'CREDENCIALES_INVALIDAS') {
+      mensaje = 'Correo o contraseña incorrectos.';
+    } else if (mensaje === 'NO_ES_ADMIN') {
+      mensaje = 'Este correo no está autorizado como administrador.';
     }
-    
-    errorDiv.textContent = errorMsg;
+
+    errorDiv.textContent = `❌ ${mensaje}`;
     errorDiv.className = 'error';
     document.getElementById('admin-password').value = '';
   }
 }
+
 
 // ==================== FUNCIONES OTP ====================
 
@@ -580,272 +550,151 @@ function mostrarInterfazOTP(email) {
 
 async function verificarOTP() {
   const otpCode = document.getElementById('otp-code').value.trim();
-  const errorDiv = document.getElementById('otp-error') || document.getElementById('admin-error');
   const email = sessionStorage.getItem('pending_email');
   const deviceId = sessionStorage.getItem('pending_deviceId');
-  
-  console.log('🔍 Verificando OTP...', { email, deviceId, otpCode });
-  
-  if (!otpCode || otpCode.length !== 6) {
+
+  if (!/^\d{6}$/.test(otpCode)) {
     mostrarErrorOTP('❌ Ingresa un código de 6 dígitos');
     return;
   }
-  
+
   if (!email || !deviceId) {
     mostrarErrorOTP('❌ Sesión expirada. Vuelve a intentar.');
     cancelarOTP();
     return;
   }
-  
+
+  const input = document.getElementById('otp-code');
+
   try {
     mostrarErrorOTP('🔐 Verificando código...');
-    document.getElementById('otp-code').disabled = true;
-    
-    // 1. VERIFICAR OTP CON SUPABASE AUTH
+    if (input) input.disabled = true;
+
     const { data, error } = await supabase.auth.verifyOtp({
-      email: email,
+      email,
       token: otpCode,
       type: 'email'
     });
-    
-    if (error) {
-      if (error.message.includes('token has expired')) {
-        mostrarErrorOTP('❌ El código ha expirado. Solicita uno nuevo.');
-      } else if (error.message.includes('invalid')) {
-        mostrarErrorOTP('❌ Código incorrecto. Intenta de nuevo.');
-      } else {
-        mostrarErrorOTP('❌ Error: ' + error.message);
-      }
-      document.getElementById('otp-code').disabled = false;
-      document.getElementById('otp-code').focus();
-      return;
+
+    if (error || !data?.session?.access_token) {
+      throw new Error(error?.message || 'Código OTP inválido');
     }
-    
-    console.log('✅ OTP verificado correctamente');
-    mostrarErrorOTP('✅ Código correcto. Creando sesión...');
-    
-    // 2. CREAR SESIÓN ÚNICA CON EDGE FUNCTION (¡ESTO FALTA!)
-    console.log('🔄 Creando sesión única después de OTP...');
-    
-    const response = await fetch(
-      'https://moizrhkexrocanhkggyb.supabase.co/functions/v1/admin-auth',
-      {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
-        },
-        body: JSON.stringify({ 
-          email: email.toLowerCase().trim(), 
-          deviceId: deviceId,
-          action: 'create_session_otp' // ¡IMPORTANTE!
-        })
-      }
+
+    mostrarErrorOTP('✅ Código correcto. Creando sesión segura...');
+
+    const result = await callEdgeFunction(
+      'admin-auth',
+      { action: 'create_session_otp', deviceId },
+      { headers: { Authorization: `Bearer ${data.session.access_token}` } }
     );
-    
-    console.log('📡 Respuesta Edge Function:', response.status);
-    
-    if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.error || 'Error creando sesión');
-    }
-    
-    const result = await response.json();
-    console.log('✅ Sesión creada:', result);
-    
-    // 3. GUARDAR DATOS DE SESIÓN
+
     sessionStorage.setItem('admin_session_token', result.sessionToken);
     sessionStorage.setItem('admin_email', result.email);
     sessionStorage.setItem('session_expires', result.expiresAt);
     sessionStorage.setItem('device_id', result.deviceId);
-    localStorage.setItem('admin_session_token', result.sessionToken);
-    
-    localStorage.setItem('admin_email', result.email);
-    localStorage.setItem('session_expires', result.expiresAt);
     localStorage.setItem('admin_device_id', result.deviceId);
-    
-    // Actualizar deviceId si es necesario
-    if (result.deviceId && result.deviceId !== deviceId) {
-      localStorage.setItem('admin_device_id', result.deviceId);
-    }
-    
-    // Variables globales
+    limpiarStorageAdminLegacy();
+
     adminSession = { email: result.email, token: result.sessionToken };
     sesionActiva = true;
-    
-    // Limpiar datos temporales
+
     sessionStorage.removeItem('pending_email');
     sessionStorage.removeItem('pending_deviceId');
-    sessionStorage.removeItem('pending_password');
-    
-    // 4. MOSTRAR ÉXITO Y REDIRIGIR
-    mostrarErrorOTP('✅ ¡Autenticación completada! Redirigiendo...');
-    
-    // Redirigir al panel
-    setTimeout(() => {
-      document.getElementById('admin-login').classList.add('oculto');
-      document.getElementById('admin-panel').classList.remove('oculto');
-      document.getElementById('admin-email-display').textContent = result.email;
-      
-      // Iniciar controles
-      iniciarDetectorActividad();
-      resetInactivityTimer();
-    
-      
-      // Cargar panel
-      cargarPanelAdmin();
-      activarRefrescoAutomaticoAdmin();
-      
-    }, 1000);
-    
+
+    mostrarErrorOTP('✅ ¡Autenticación completada!');
+
+    document.getElementById('admin-login').classList.add('oculto');
+    document.getElementById('admin-panel').classList.remove('oculto');
+    document.getElementById('admin-email-display').textContent = result.email;
+
+    iniciarDetectorActividad();
+    resetInactivityTimer();
+    await cargarPanelAdmin();
+    activarRefrescoAutomaticoAdmin();
   } catch (error) {
-    console.error('❌ Error en verificarOTP:', error);
-    mostrarErrorOTP('❌ Error: ' + error.message);
-    document.getElementById('otp-code').disabled = false;
-  }
-}
-async function crearSesionUnicaOTP(email, deviceId) {
-  try {
-    const response = await fetch(
-      'https://moizrhkexrocanhkggyb.supabase.co/functions/v1/admin-auth',
-      {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
-        },
-        body: JSON.stringify({ 
-          email: email.toLowerCase().trim(), 
-          deviceId: deviceId,
-          action: 'create_session_otp' // Nueva acción para crear sesión después de OTP
-        })
-      }
-    );
-    
-    const result = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(result.error || 'Error creando sesión');
+    console.error('Error en verificarOTP:', error);
+    mostrarErrorOTP(`❌ ${error.message || 'Error verificando OTP'}`);
+    if (input) {
+      input.disabled = false;
+      input.focus();
     }
-    
-    // Guardar datos de sesión
-    sessionStorage.setItem('admin_session_token', result.sessionToken);
-    sessionStorage.setItem('admin_email', result.email);
-    sessionStorage.setItem('session_expires', result.expiresAt);
-    sessionStorage.setItem('device_id', result.deviceId);
-    
-    // Actualizar deviceId si es necesario
-    if (result.deviceId && result.deviceId !== deviceId) {
-      localStorage.setItem('admin_device_id', result.deviceId);
-    }
-    
-    // Variables globales
-    adminSession = { email: result.email, token: result.sessionToken };
-    sesionActiva = true;
-    
-    // Limpiar datos temporales
-    sessionStorage.removeItem('pending_email');
-    sessionStorage.removeItem('pending_deviceId');
-    sessionStorage.removeItem('pending_password');
-    
-    // Mostrar éxito y redirigir
-    const errorDiv = document.getElementById('admin-error');
-    errorDiv.innerHTML = '✅ <strong>¡Acceso concedido!</strong><br>Verificación en dos pasos completada';
-    errorDiv.className = 'success';
-    
-    // Redirigir al panel
-    setTimeout(() => {
-      document.getElementById('admin-login').classList.add('oculto');
-      document.getElementById('admin-panel').classList.remove('oculto');
-      document.getElementById('admin-email-display').textContent = result.email;
-      
-      // Iniciar controles
-      iniciarDetectorActividad();
-      resetInactivityTimer();
-      
-      // Cargar panel
-      cargarPanelAdmin();
-      
-    }, 1000);
-    
-  } catch (error) {
-    console.error('❌ Error creando sesión:', error);
-    mostrarErrorOTP('❌ Error creando sesión: ' + error.message);
-    
-    // Rehabilitar campo OTP
-    document.getElementById('otp-code').disabled = false;
   }
 }
 
+async function crearSesionUnicaOTP(email, deviceId) {
+  // Compatibilidad: el flujo seguro está centralizado en verificarOTP().
+  return verificarOTP();
+}
+
+
 async function reenviarOTP() {
   const email = sessionStorage.getItem('pending_email');
-  
+
   if (!email) {
     mostrarErrorOTP('❌ No hay email pendiente');
     return;
   }
-  
+
+  if (reenviosRealizados >= CONFIG_OTP.REENVIOS_MAXIMOS) {
+    mostrarErrorOTP('❌ Alcanzaste el máximo de reenvíos. Cancela e intenta de nuevo.');
+    return;
+  }
+
   try {
     mostrarErrorOTP('🔄 Reenviando código...');
-    
+
     const { error } = await supabase.auth.signInWithOtp({
-      email: email,
-      options: { shouldCreateUser: false }
+      email,
+      options: { shouldCreateUser: false, emailRedirectTo: window.location.origin }
     });
-    
+
     if (error) throw error;
-    
+
+    reenviosRealizados += 1;
     mostrarErrorOTP('✅ Código reenviado');
-    
-    // Reiniciar timer
     iniciarTimerOTP();
-    
   } catch (error) {
     console.error('Error reenviando OTP:', error);
     mostrarErrorOTP('❌ Error reenviando código');
   }
 }
 
+
 function cancelarOTP() {
-  // Limpir timer
   clearInterval(window.otpTimerInterval);
-  
-  // Limpiar datos temporales
+
   sessionStorage.removeItem('pending_email');
   sessionStorage.removeItem('pending_deviceId');
   sessionStorage.removeItem('pending_password');
-  
-  // Ocultar OTP
+
   const otpContainer = document.getElementById('otp-container');
-  if (otpContainer) {
-    otpContainer.style.display = 'none';
-  }
-  
-  // Mostrar campos de login
-  const emailField = document.getElementById('admin-email').parentElement;
-  const passwordField = document.getElementById('admin-password').parentElement;
+  if (otpContainer) otpContainer.style.display = 'none';
+
+  const emailField = document.getElementById('admin-email')?.parentElement;
+  const passwordField = document.getElementById('admin-password')?.parentElement;
   const loginButton = document.querySelector('button[onclick="loginAdmin()"]');
-  
+
   if (emailField) emailField.style.display = 'block';
   if (passwordField) passwordField.style.display = 'block';
   if (loginButton) loginButton.style.display = 'block';
-  
-  // Limpiar campos
-  document.getElementById('admin-password').value = '';
-  if (document.getElementById('otp-code')) {
-    document.getElementById('otp-code').value = '';
+
+  const pass = document.getElementById('admin-password');
+  const otp = document.getElementById('otp-code');
+  if (pass) pass.value = '';
+  if (otp) {
+    otp.value = '';
+    otp.disabled = false;
   }
-  
-  // Limpiar mensajes
+
   const errorDiv = document.getElementById('admin-error');
   if (errorDiv) {
     errorDiv.textContent = '';
     errorDiv.className = '';
   }
-  
-  // Enfocar email
-  document.getElementById('admin-email').focus();
+
+  document.getElementById('admin-email')?.focus();
 }
+
 
 function iniciarTimerOTP() {
   clearInterval(window.otpTimerInterval);
@@ -886,106 +735,50 @@ function mostrarErrorOTP(mensaje) {
 }
 
 // Función fallback si OTP falla
-async function crearSesionDirecta(email, deviceId) {
-  try {
-    const response = await fetch(
-      'https://moizrhkexrocanhkggyb.supabase.co/functions/v1/admin-auth',
-      {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
-        },
-        body: JSON.stringify({ 
-          email: email.toLowerCase().trim(), 
-          deviceId: deviceId,
-          action: 'create_session_direct'
-        })
-      }
-    );
-    
-    const result = await response.json();
-    
-    if (!response.ok) {
-      throw new Error(result.error || 'Error creando sesión');
-    }
-    
-    // Proceder con login normal
-    sessionStorage.setItem('admin_session_token', result.sessionToken);
-    sessionStorage.setItem('admin_email', result.email);
-    sessionStorage.setItem('session_expires', result.expiresAt);
-    sessionStorage.setItem('device_id', result.deviceId);
-    
-    adminSession = { email: result.email, token: result.sessionToken };
-    sesionActiva = true;
-    
-    const errorDiv = document.getElementById('admin-error');
-    errorDiv.innerHTML = '✅ <strong>¡Acceso concedido!</strong><br>Sesión única activa';
-    errorDiv.className = 'success';
-    
-    setTimeout(() => {
-      document.getElementById('admin-login').classList.add('oculto');
-      document.getElementById('admin-panel').classList.remove('oculto');
-      document.getElementById('admin-email-display').textContent = result.email;
-      
-      iniciarDetectorActividad();
-      resetInactivityTimer();
-      
-      cargarPanelAdmin();
-      
-    }, 1000);
-    
-  } catch (error) {
-    console.error('❌ Error en sesión directa:', error);
-    const errorDiv = document.getElementById('admin-error');
-    errorDiv.textContent = '❌ Error creando sesión: ' + error.message;
-    errorDiv.className = 'error';
-  }
+async function crearSesionDirecta() {
+  throw new Error('La sesión directa sin OTP fue desactivada por seguridad.');
 }
+
 
 // Función para forzar cierre remoto
 async function forzarCerrarSesionRemota() {
   const errorDiv = document.getElementById('admin-error');
-  
+  const email = sessionStorage.getItem('admin_email');
+  const deviceId = sessionStorage.getItem('device_id') || localStorage.getItem('admin_device_id');
+  const sessionToken = sessionStorage.getItem('admin_session_token');
+
+  if (!email || !deviceId || !sessionToken) {
+    alert('No hay una sesión admin válida para forzar cierre.');
+    return;
+  }
+
+  if (!confirm('¿Forzar cierre de todas las sesiones admin activas?')) return;
+
   try {
-    errorDiv.textContent = '🔄 Forzando cierre de sesión remota...';
-    errorDiv.className = 'info';
-    
-    // Aquí necesitarías crear otra   Edge Function o modificar la existente
-    // para forzar el cierre de todas las sesiones
-    
-    // Por ahora, usamos un enfoque simple: limpiar la tabla
-    const response = await fetch(
-      'https://moizrhkexrocanhkggyb.supabase.co/functions/v1/update-session',
-      {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
-        },
-        body: JSON.stringify({ 
-          action: "force_logout_all"
-        })
-      }
-    );
-    if (response.ok) {
-      errorDiv.innerHTML = '✅ Sesiones remotas cerradas.<br>Ahora puedes iniciar sesión.';
-      errorDiv.className = 'success';
-      
-      // recargar la página después de 2 segundos
-      setTimeout(() => {
-        location.reload();
-      }, 2000);
-    } else {
-      throw new Error('Error forzando cierre');
+    if (errorDiv) {
+      errorDiv.textContent = '🔄 Cerrando sesiones remotas...';
+      errorDiv.className = 'info';
     }
-    
+
+    await callEdgeFunction('admin-auth', {
+      action: 'force_logout_all',
+      email,
+      deviceId,
+      sessionToken
+    });
+
+    await clearAdminSession();
+    alert('✅ Sesiones cerradas. Inicia sesión de nuevo.');
+    resetToLoginState();
   } catch (error) {
-    console.error('❌ Error forzando cierre:', error);
-    errorDiv.textContent = 'Error al forzar cierre remoto';
-    errorDiv.className = 'error';
+    console.error('Error forzando cierre:', error);
+    if (errorDiv) {
+      errorDiv.textContent = '❌ Error al forzar cierre remoto';
+      errorDiv.className = 'error';
+    }
   }
 }
+
 
 // Función para cancelar login
 function cancelarLogin() {
@@ -996,20 +789,9 @@ function cancelarLogin() {
 }
 // Función auxiliar para generar ID de dispositivo
 function generateDeviceId() {
-  let deviceId = localStorage.getItem('admin_device_id');
-
-  if (!deviceId) {
-    deviceId =
-      'device_' +
-      btoa(navigator.userAgent).substring(0, 20) + '_' +
-      Date.now() + '_' +
-      Math.random().toString(36).substr(2, 9);
-
-    localStorage.setItem('admin_device_id', deviceId);
-  }
-
-  return deviceId;
+  return getOrCreateAdminDeviceId();
 }
+
 
 
 // Función pa obtener IP del cliente (simplificada)
@@ -1025,47 +807,29 @@ async function getClientIP() {
 
 // Función para continuar con sesión exitosa
 function proceedWithSession(sessionToken, email, expiresAt) {
-  console.log('✅ Sesión única creada exitosamente');
-  
-  // Guardar sesión localmente
+  // El flujo antiguo fue reemplazado por loginAdmin() + verificarOTP().
   sessionStorage.setItem('admin_session_token', sessionToken);
   sessionStorage.setItem('admin_email', email);
   sessionStorage.setItem('session_expires', expiresAt);
-  sessionStorage.setItem('device_id', generateDeviceId());
-  
-  // Actualizar variables globales
-  adminSession = { email: email, token: sessionToken };
+  sessionStorage.setItem('device_id', getOrCreateAdminDeviceId());
+  adminSession = { email, token: sessionToken };
   sesionActiva = true;
-  
-  // Mostrar mensaje de éxito
-  const errorDiv = document.getElementById('admin-error');
-  errorDiv.innerHTML = '✅ <strong>Autenticación exitosa!</strong><br><small>Sesión única activa</small>';
-  errorDiv.className = 'success';
-  
-  setTimeout(() => {
-    document.getElementById('admin-email-display').textContent = email;
-    mostrarPanelAdminSeguro(sessionToken);
-    
-    // Iniciar controles de sesión
-    iniciarDetectorActividad();
-    resetInactivityTimer();
-  }, 1000);
+  mostrarPanelAdminSeguro(sessionToken);
 }
+
 // Nueva función para mostrar panel seguro
 async function mostrarPanelAdminSeguro(sessionToken) {
-  console.log('🎉 Mostrando panel admin seguro');
+  await exigirAdminAutenticado();
 
-  // Ocultar todas las secciones visibles
   document.querySelectorAll('section').forEach(sec => sec.classList.add('oculto'));
+  document.getElementById('admin-login')?.classList.add('oculto');
 
-  // Ocultar login si estaba abierto
-  document.getElementById('admin-login').classList.add('oculto');
-
-  // Mostrar panel admin
   const panel = document.getElementById('admin-panel');
   panel.classList.remove('oculto');
 
-  // Insertar info de sesión
+  const old = document.getElementById('session-info');
+  if (old) old.remove();
+
   const sessionInfo = document.createElement('div');
   sessionInfo.id = 'session-info';
   sessionInfo.style.cssText = `
@@ -1077,21 +841,15 @@ async function mostrarPanelAdminSeguro(sessionToken) {
     color: #155724;
     border: 1px solid #c3e6cb;
   `;
-  sessionInfo.innerHTML = `
-    🔒 <strong>SESIÓN SEGURA ACTIVA</strong><br>
-    <small>Autenticación vía Edge Function</small><br>
-    <small>Token: ${sessionToken?.substring(0, 25)}...</small>
-  `;
-  const firstElement = panel.querySelector('h2').nextElementSibling;
+  sessionInfo.innerHTML = `🔒 <strong>SESIÓN ADMIN ACTIVA</strong><br><small>${escapeHTML(sessionStorage.getItem('admin_email') || BINGO_ADMIN_EMAIL)}</small>`;
+
+  const firstElement = panel.querySelector('h2')?.nextElementSibling;
   if (firstElement) panel.insertBefore(sessionInfo, firstElement.nextSibling);
 
-  // Cargar datos del panel y refresco automático
   await cargarPanelAdmin();
   activarRefrescoAutomaticoAdmin();
-
-  // Llevar la ventana al top
-  
 }
+
 // Función para verificar OTP
 
 // Función para verificación periódica de sesión
@@ -1135,63 +893,9 @@ function generateSessionToken() {
 
 // Mostrar panel admin con OTP
 async function mostrarPanelAdminOTP(sessionToken) {
-  console.log('🎉 Mostrando panel admin con token:', sessionToken);
-  
-  document.getElementById('admin-login').classList.add('oculto');
-  document.getElementById('admin-panel').classList.remove('oculto');
-  
-  // Mostrar estado de sesión única
-  const sessionInfo = document.createElement('div');
-  sessionInfo.id = 'session-info';
-  sessionInfo.style.margin = '10px 0';
-  sessionInfo.style.padding = '10px';
-  sessionInfo.style.borderRadius = '5px';
-  sessionInfo.style.fontSize = '14px';
-  sessionInfo.style.background = '#d4edda';
-  sessionInfo.style.color = '#155724';
-  sessionInfo.style.border = '1px solid #c3e6cb';
-  sessionInfo.innerHTML = `
-    ✅ <strong>SESIÓN ÚNICA ACTIVA</strong><br>
-    <small>Solo tú puedes acceder hasta que cierres sesión.</small><br>
-    <small>Token: ${sessionToken?.substring(0, 20)}...</small>
-  `;
-  
-  const panel = document.getElementById('admin-panel');
-  const firstElement = panel.querySelector('h2').nextElementSibling;
-  if (firstElement) {
-    panel.insertBefore(sessionInfo, firstElement.nextSibling);
-  }
-  
-  // Agregar botón de cerrar sesión prominente
-  const cerrarBtn = document.createElement('button');
-  cerrarBtn.textContent = '🔒 Cerrar Sesión (Liberar Panel)';
-  cerrarBtn.className = 'btn-danger';
-  cerrarBtn.style.margin = '10px 0';
-  cerrarBtn.style.padding = '10px 20px';
-  cerrarBtn.style.fontSize = '16px';
-  cerrarBtn.onclick = logoutAdmin;
-  
-  // Agregar botón de forzar cierre remoto
-  const forzarBtn = document.createElement('button');
-  forzarBtn.textContent = '🔓 Forzar Cierre Remoto';
-  forzarBtn.style.margin = '10px 10px';
-  forzarBtn.style.padding = '10px 20px';
-  forzarBtn.style.fontSize = '16px';
-  forzarBtn.style.background = '#ff6b6b';
-  forzarBtn.style.color = 'white';
-  forzarBtn.style.border = 'none';
-  forzarBtn.style.borderRadius = '5px';
-  forzarBtn.onclick = forzarCerrarSesionRemota;
-  
-  if (firstElement) {
-    panel.insertBefore(cerrarBtn, firstElement.nextSibling.nextSibling);
-    panel.insertBefore(forzarBtn, cerrarBtn.nextSibling);
-  }
-  
-  // Cargar datos del panel
-  await cargarPanelAdmin();
-  activarRefrescoAutomaticoAdmin();
+  return mostrarPanelAdminSeguro(sessionToken);
 }
+
 
 
 // Función para actualizar actividad de sesión
@@ -1262,85 +966,42 @@ function limpiarStorageTemporal() {
 async function verificarSesionInicial() {
   console.log('🔍 Verificando sesión inicial al cargar...');
 
-  // Ocultar panel y login mientras se verifica
   document.getElementById('admin-panel')?.classList.add('oculto');
   document.getElementById('admin-login')?.classList.add('oculto');
   document.getElementById('bienvenida')?.classList.remove('oculto');
 
-  const sessionToken =
-    sessionStorage.getItem('admin_session_token') ||
-    localStorage.getItem('admin_session_token');
-
+  const sessionToken = sessionStorage.getItem('admin_session_token');
   if (!sessionToken) {
-    console.log('ℹ️ No hay token guardado');
+    limpiarStorageAdminLegacy();
     return;
   }
 
-  try {
-    const esValida = await verificarSesionAdmin();
+  const esValida = await verificarSesionAdmin();
 
-    if (esValida) {
-      const email =
-        sessionStorage.getItem('admin_email') ||
-        localStorage.getItem('admin_email');
+  if (!esValida) {
+    console.log('⚠️ Sesión inválida o sin sesión Supabase Auth. Limpiando...');
+    await clearAdminSession();
+    document.getElementById('admin-login')?.classList.add('oculto');
+    document.getElementById('admin-panel')?.classList.add('oculto');
+    document.getElementById('bienvenida')?.classList.remove('oculto');
+    return;
+  }
 
-      console.log('✅ Sesión válida guardada para:', email);
+  const email = sessionStorage.getItem('admin_email') || BINGO_ADMIN_EMAIL;
+  adminSession = { email, token: sessionToken };
+  sesionActiva = true;
 
-      adminSession = { email, token: sessionToken };
-      sesionActiva = true;
+  if (document.getElementById('admin-email-display')) {
+    document.getElementById('admin-email-display').textContent = email;
+  }
 
-      if (document.getElementById('admin-email-display')) {
-        document.getElementById('admin-email-display').textContent = email;
-      }
+  iniciarDetectorActividad();
+  resetInactivityTimer();
+  activarRefrescoAutomaticoAdmin();
 
-      await cargarPanelAdmin();
-      activarRefrescoAutomaticoAdmin();
-      iniciarDetectorActividad();
-      resetInactivityTimer();
-
-      // **IMPORTANTE:** No abrir el panel automáticamente
-      // Solo deja la sesión activa lista para cuando el usuario haga clic en Admin
-      return;
-
-    } else {
-  console.log('⚠️ Sesión inválida, limpiando...');
-
-  sessionStorage.removeItem('admin_session_token');
-  sessionStorage.removeItem('admin_email');
-  sessionStorage.removeItem('session_expires');
-  sessionStorage.removeItem('device_id');
-
-  localStorage.removeItem('admin_session_token');
-  localStorage.removeItem('admin_email');
-  localStorage.removeItem('session_expires');
-
-  sesionActiva = false;
-  adminSession = null;
-
-  document.getElementById('admin-login')?.classList.add('oculto');
-  document.getElementById('admin-panel')?.classList.add('oculto');
-  document.getElementById('bienvenida')?.classList.remove('oculto');
+  // No abrir el panel automáticamente; solo queda lista la sesión.
 }
- } catch (error) {
-  console.error('❌ Error verificando sesión inicial:', error);
 
-  sessionStorage.removeItem('admin_session_token');
-  sessionStorage.removeItem('admin_email');
-  sessionStorage.removeItem('session_expires');
-  sessionStorage.removeItem('device_id');
-
-  localStorage.removeItem('admin_session_token');
-  localStorage.removeItem('admin_email');
-  localStorage.removeItem('session_expires');
-
-  sesionActiva = false;
-  adminSession = null;
-
-  document.getElementById('admin-login')?.classList.add('oculto');
-  document.getElementById('admin-panel')?.classList.add('oculto');
-  document.getElementById('bienvenida')?.classList.remove('oculto');
-}
-}
 // ==================== FUNCIONES FALTANTES QUE NECESITA EL HTML ====================
 
 // Función para ver lista de aprobados
@@ -2169,9 +1830,13 @@ function actualizarMonto() {
 // ==================== FUNCIONES DE PAGO ====================
 async function enviarComprobante() {
   const boton = document.getElementById('btnEnviarComprobante');
-  const textoOriginal = boton.textContent;
-  boton.disabled = true;
-  boton.textContent = 'Cargando comprobante...';
+  const textoOriginal = boton?.textContent || 'Enviar comprobante';
+  if (boton) {
+    boton.disabled = true;
+    boton.textContent = 'Cargando comprobante...';
+  }
+
+  let nombreArchivo = '';
 
   try {
     if (!usuario.nombre || !usuario.telefono || !usuario.cedula) {
@@ -2182,158 +1847,114 @@ async function enviarComprobante() {
     if (!/^\d{4}$/.test(referencia4dig)) {
       throw new Error('Debes ingresar los últimos 4 dígitos de la referencia bancaria.');
     }
-const PagoBanco = document.getElementById('pago_banco').value.trim();
-const PagoTelefono = document.getElementById('pago_telefono').value.trim();
-const PagoCedula = document.getElementById('pago_cedula').value.trim();
 
-if (!PagoBanco || !PagoTelefono || !PagoCedula) {
-  throw new Error('Debes registrar tu Pago Móvil para el pago ganador.');
-}
+    const PagoBanco = document.getElementById('pago_banco').value.trim();
+    const PagoTelefono = document.getElementById('pago_telefono').value.trim();
+    const PagoCedula = document.getElementById('pago_cedula').value.trim();
 
-guardarDatosPagoClienteAutomatico();
+    if (!PagoBanco || !PagoTelefono || !PagoCedula) {
+      throw new Error('Debes registrar tu Pago Móvil para el pago ganador.');
+    }
+
+    guardarDatosPagoClienteAutomatico();
+
     const archivo = document.getElementById('comprobante').files[0];
-    if (!archivo) throw new Error('Debes subir un comprobante');
+    validarImagenComprobante(archivo);
 
-    const ext = archivo.name.split('.').pop();
-    const nombreArchivo = `${usuario.cedula}-${Date.now()}.${ext}`;
+    const ext = (archivo.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
+    const cedulaLimpia = String(usuario.cedula || '').trim();
+    nombreArchivo = `${cedulaLimpia}-${Date.now()}.${ext}`;
+
     const { error: errorUpload } = await supabase.storage
       .from('comprobantes')
-      .upload(nombreArchivo, archivo);
-    if (errorUpload) throw new Error('Error subiendo imagen');
+      .upload(nombreArchivo, archivo, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: archivo.type
+      });
 
-    const urlPublica = `${supabaseUrl}/storage/v1/object/public/comprobantes/${nombreArchivo}`;
+    if (errorUpload) throw new Error('Error subiendo comprobante: ' + errorUpload.message);
 
     const promo = getPromocionSeleccionada();
     const monto = promo ? promo.precio : (usuario.cartones.length * (precioPorCarton || 0));
-    const cartonesEnviar = (usuario.cartones || []).map(n => Number(n));
+    const cartonesEnviar = (usuario.cartones || []).map(n => Number(n)).filter(Number.isFinite);
 
-if (cartonesEnviar.length === 0) {
-  throw new Error('Debes seleccionar al menos un cartón.');
-}
-
-if (cartonesEnviar.length !== cantidadPermitida) {
-  throw new Error('La cantidad de cartones seleccionados no coincide con la cantidad elegida.');
-}
-
-// 1. Validar que esos cartones estén reservados por esta misma cédula
-const { data: reservas, error: errorReservas } = await supabase
-  .from('cartones')
-  .select('numero, cedula')
-  .in('numero', cartonesEnviar);
-
-if (errorReservas) {
-  throw new Error('No se pudieron validar tus cartones.');
-}
-
-const cedulaLimpia = String(usuario.cedula || '').trim();
-
-const reservasValidas = (reservas || [])
-  .filter(r => String(r.cedula || '').trim() === cedulaLimpia)
-  .map(r => Number(r.numero));
-
-const faltantes = cartonesEnviar.filter(n => !reservasValidas.includes(n));
-
-if (faltantes.length > 0) {
-  await supabase.rpc('rpc_liberar_reserva', {
-    _cedula: cedulaLimpia,
-    _partida_id: null
-  });
-
-  alert('⚠️ Estos cartones ya no están reservados para ti: ' + faltantes.join(', ') + '\n\nElige otros cartones.');
-  await cargarCartones();
-  mostrarVentana('cartones');
-  return;
-}
-
-// 2. Validar que no existan en otra inscripción pendiente/aprobada
-const { data: inscripcionesActivas, error: errorInscripciones } = await supabase
-  .from('inscripciones')
-  .select('id, nombre, cedula, cartones')
-  .in('estado', ['pendiente', 'aprobado']);
-
-if (errorInscripciones) {
-  throw new Error('No se pudieron verificar cartones duplicados.');
-}
-
-const duplicados = [];
-
-(inscripcionesActivas || []).forEach(ins => {
-  const otrosCartones = (ins.cartones || []).map(n => Number(n));
-
-  cartonesEnviar.forEach(n => {
-    if (otrosCartones.includes(n)) {
-      duplicados.push({
-        carton: n,
-        nombre: ins.nombre,
-        cedula: ins.cedula
-      });
+    if (cartonesEnviar.length === 0) {
+      throw new Error('Debes seleccionar al menos un cartón.');
     }
-  });
-});
 
-if (duplicados.length > 0) {
-  const numeros = [...new Set(duplicados.map(d => d.carton))];
-
-  await supabase.rpc('rpc_liberar_reserva', {
-    _cedula: cedulaLimpia,
-    _partida_id: null
-  });
-
-  alert('⚠️ Estos cartones ya fueron tomados: ' + numeros.join(', ') + '\n\nElige otros cartones.');
-  await cargarCartones();
-  mostrarVentana('cartones');
-  return;
-}
-    const { error: errorInsert } = await supabase.from('inscripciones').insert([{
-      nombre: usuario.nombre,
-      telefono: usuario.telefono,
-      cedula: cedulaLimpia,
-      referido: usuario.referido,
-      cartones: cartonesEnviar.map(String),
-      referencia4dig: referencia4dig,
-      comprobante: urlPublica,
-      estado: 'pendiente',
-      monto_bs: monto,
-      pago_banco: PagoBanco,
-      pago_telefono: PagoTelefono,
-      pago_cedula: PagoCedula,
-      usa_promo: !!promo,
-      promo_desc: promo ? promo.descripcion : null,
-      precio_unitario_bs: promo ? null : (precioPorCarton || 0) 
-    }]);
-
-    if (errorInsert) {
-      await supabase.rpc('rpc_liberar_reserva', {
-  _cedula: cedulaLimpia,
-  _partida_id: null
-});
-      throw new Error('Error guardando la inscripción');
+    if (cartonesEnviar.length !== cantidadPermitida) {
+      throw new Error('La cantidad de cartones seleccionados no coincide con la cantidad elegida.');
     }
-clearInterval(timerReserva);
-    alert('Inscripción y comprobante enviados con éxito');
+
+    const { data, error } = await supabase.rpc('rpc_crear_inscripcion_publica', {
+      _nombre: usuario.nombre,
+      _telefono: usuario.telefono,
+      _cedula: cedulaLimpia,
+      _referido: usuario.referido || null,
+      _cartones: cartonesEnviar,
+      _referencia4dig: referencia4dig,
+      _comprobante: nombreArchivo,
+      _monto_bs: monto,
+      _pago_banco: PagoBanco,
+      _pago_telefono: PagoTelefono,
+      _pago_cedula: PagoCedula,
+      _usa_promo: !!promo,
+      _promo_desc: promo ? promo.descripcion : null,
+      _precio_unitario_bs: promo ? null : (precioPorCarton || 0)
+    });
+
+    if (error) throw new Error(error.message || 'Error guardando la inscripción');
+
+    clearInterval(timerReserva);
+    alert('✅ Inscripción y comprobante enviados con éxito. Espera la aprobación del administrador.');
     location.reload();
   } catch (err) {
     console.error(err);
+
+    if (nombreArchivo) {
+      try { await supabase.storage.from('comprobantes').remove([nombreArchivo]); } catch {}
+    }
+
+    try {
+      await supabase.rpc('rpc_liberar_reserva', {
+        _cedula: String(usuario.cedula || '').trim(),
+        _partida_id: null
+      });
+    } catch {}
+
     alert(err.message || 'Ocurrió un error inesperado');
   } finally {
-    boton.disabled = false;
-    boton.textContent = textoOriginal;
+    if (boton) {
+      boton.disabled = false;
+      boton.textContent = textoOriginal;
+    }
   }
 }
+
 
 // ==================== fUNCIONES DE USUARIO ====================
 async function consultarCartones() {
   const cedula = document.getElementById('consulta-cedula').value.trim();
-
   const cont = document.getElementById('cartones-usuario');
   cont.innerHTML = '';
 
-  const { data: todas } = await supabase
-    .from('inscripciones')
-    .select('*')
-    .eq('cedula', cedula);
+  if (!cedula) {
+    cont.innerHTML = '<p style="text-align:center;color:#ff4444;">Ingresa tu cédula.</p>';
+    return;
+  }
 
-  if (!todas || todas.length === 0) {
+  const { data, error } = await supabase.rpc('rpc_consultar_cartones_publico', { _cedula: cedula });
+
+  if (error) {
+    console.error(error);
+    cont.innerHTML = '<p style="text-align:center;color:#ff4444;">Error consultando tus cartones.</p>';
+    return;
+  }
+
+  const todas = data || [];
+
+  if (!todas.length) {
     cont.innerHTML = `
       <p style="text-align:center;color:#ff4444;">
         No se encontró ninguna compra registrada con esta cédula.
@@ -2345,45 +1966,31 @@ async function consultarCartones() {
   const tieneAprobada = todas.some(i => i.estado === 'aprobado');
   const tienePendiente = todas.some(i => i.estado === 'pendiente');
   const tieneRechazada = todas.some(i => i.estado === 'rechazado');
-  
+
   const mensaje = document.createElement('div');
   mensaje.style.textAlign = 'center';
   mensaje.style.marginBottom = '15px';
   mensaje.style.fontWeight = 'bold';
 
   if (tieneAprobada && tienePendiente && tieneRechazada) {
-  mensaje.innerHTML =
-    '✅ Tienes compras aprobadas.<br>⏳ También tienes compras pendientes de aprobación.<br>❌ También tienes compras rechazadas(consulta con soporte).';
-}
- else if (tieneAprobada && tieneRechazada) {
-  mensaje.innerHTML =
-    '✅ Tienes compras aprobadas.<br>❌ También tienes compras rechazadas, consulta a soporte.';
-}
-else if (tieneAprobada && tienePendiente) {
-  mensaje.innerHTML =
-    '✅ Tienes compras aprobadas.<br>⏳ También tienes compras pendientes de aprobación.';
-}
-else if (tieneRechazada && tienePendiente) {
-  mensaje.innerHTML =
-    '❌ Tienes compras rechazadas.<br>⏳ También tienes compras pendientes de aprobación.';
-}
-else if (tieneAprobada) {
-  mensaje.innerHTML =
-    '✅ Tu compra ha sido aprobada.';
-}
-else if (tieneRechazada) {
-  mensaje.innerHTML =
-    '❌ Tu compra fue rechazada.';
-}
-else {
-  mensaje.innerHTML =
-    '⏳ Tu compra está pendiente de aprobación.';
-}
+    mensaje.innerHTML = '✅ Tienes compras aprobadas.<br>⏳ También tienes compras pendientes de aprobación.<br>❌ También tienes compras rechazadas (consulta con soporte).';
+  } else if (tieneAprobada && tieneRechazada) {
+    mensaje.innerHTML = '✅ Tienes compras aprobadas.<br>❌ También tienes compras rechazadas, consulta a soporte.';
+  } else if (tieneAprobada && tienePendiente) {
+    mensaje.innerHTML = '✅ Tienes compras aprobadas.<br>⏳ También tienes compras pendientes de aprobación.';
+  } else if (tieneRechazada && tienePendiente) {
+    mensaje.innerHTML = '❌ Tienes compras rechazadas.<br>⏳ También tienes compras pendientes de aprobación.';
+  } else if (tieneAprobada) {
+    mensaje.innerHTML = '✅ Tu compra ha sido aprobada.';
+  } else if (tieneRechazada) {
+    mensaje.innerHTML = '❌ Tu compra fue rechazada.';
+  } else {
+    mensaje.innerHTML = '⏳ Tu compra está pendiente de aprobación.';
+  }
 
   cont.appendChild(mensaje);
   mensaje.classList.add('estado-consulta');
 
-  // Mostrar cartones aunque esté pendiente
   todas.forEach(item => {
     (item.cartones || []).forEach(num => {
       const img = document.createElement('img');
@@ -2395,36 +2002,55 @@ else {
   });
 }
 
-async function elegirMasCartones() {
-  const cedula = document.getElementById('consulta-cedula').value;
-  const { data, error } = await supabase.from('inscripciones').select('*').eq('cedula', cedula);
 
-  if (error || data.length === 0) {
-    return alert('No se encontró ningún usuario con esa cédula');
+async function elegirMasCartones() {
+  const cedula = document.getElementById('consulta-cedula').value.trim();
+  if (!cedula) return alert('Ingresa tu cédula primero.');
+
+  const { data, error } = await supabase.rpc('rpc_consultar_cartones_publico', { _cedula: cedula });
+  if (error || !data || data.length === 0) {
+    return alert('No se encontró ninguna compra con esa cédula.');
   }
 
-  const inscripcion = data[0];
-  usuario.nombre = inscripcion.nombre;
-  usuario.telefono = inscripcion.telefono;
-  usuario.cedula = inscripcion.cedula;
-  usuario.referido = inscripcion.referido;
+  usuario.cedula = cedula;
   usuario.cartones = [];
 
-  mostrarVentana('cantidad');
-  actualizarPreseleccion();
+  const nombreLocal = localStorage.getItem('cliente_nombre') || '';
+  const telefonoLocal = localStorage.getItem('cliente_telefono') || '';
+  const cedulaLocal = localStorage.getItem('cliente_cedula') || '';
+
+  if (cedulaLocal === cedula && nombreLocal && telefonoLocal) {
+    usuario.nombre = nombreLocal;
+    usuario.telefono = telefonoLocal;
+    usuario.referido = localStorage.getItem('cliente_referido') || '';
+    mostrarVentana('cantidad');
+    actualizarPreseleccion();
+  } else {
+    alert('Por seguridad, completa tus datos otra vez para comprar más cartones.');
+    mostrarVentana('inscripcion');
+    const cedulaInput = document.getElementById('cedula');
+    if (cedulaInput) cedulaInput.value = cedula;
+  }
 }
+
 
 // ==================== FUNCIOS DEL PANEL ADMIN ====================
 async function cargarPanelAdmin() {
- await Promise.all([
-  obtenerMontoTotalRecaudado(),
-  contarCartonesVendidos(),
-  cargarModoCartonesAdmin(),
-  cargarCartones(),
-  cargarPromocionesAdmin()
-]);
-  
- 
+  try {
+    await exigirAdminAutenticado();
+  } catch (e) {
+    console.warn(e.message);
+    return;
+  }
+
+  await Promise.all([
+    obtenerMontoTotalRecaudado(),
+    contarCartonesVendidos(),
+    cargarModoCartonesAdmin(),
+    cargarCartones(),
+    cargarPromocionesAdmin()
+  ]);
+
   const { data, error } = await supabase
     .from('inscripciones')
     .select(`
@@ -2445,81 +2071,79 @@ async function cargarPanelAdmin() {
 
   if (error) {
     console.error(error);
-    return alert('Error cargando inscripciones');
+    return alert('Error cargando inscripciones. Revisa que sigas logueado como admin.');
   }
 
   const tbody = document.querySelector('#tabla-comprobantes tbody');
+  if (!tbody) return;
   tbody.innerHTML = '';
 
-  data.forEach(item => {
+  for (const item of (data || [])) {
     const tr = document.createElement('tr');
+    const compUrl = await obtenerUrlComprobantePrivado(item.comprobante);
+    const telefono = item.telefono || '';
+    const nombre = item.nombre || '';
+    const banco = item.pago_banco || '';
+    const pagoTel = item.pago_telefono || '';
+    const pagoCed = item.pago_cedula || '';
+
     tr.innerHTML = `
-      <td>${item.nombre}</td>
+      <td>${escapeHTML(nombre)}</td>
       <td>
-        <a href="${buildWhatsAppLink(item.telefono, `Hola ${item.nombre}, te escribo de parte del equipo de bingoandino75.`)}"
+        <a href="${escapeAttr(buildWhatsAppLink(telefono, `Hola ${nombre}, te escribo de parte del equipo de bingoandino75.`))}"
            target="_blank" rel="noopener">
-          ${item.telefono}
+          ${escapeHTML(telefono)}
         </a>
       </td>
-      <td>${item.cedula}</td>
-      <td>${item.referido}</td>
-      <td>${Array.isArray(item.cartones) ? item.cartones.join(', ') : ''}</td>
-      <td class="celda-ref" data-id="${item.id}">
-        <span class="ref-text">${item.referencia4dig || ''}</span>
+      <td>${escapeHTML(item.cedula)}</td>
+      <td>${escapeHTML(item.referido || '')}</td>
+      <td>${escapeHTML(Array.isArray(item.cartones) ? item.cartones.join(', ') : '')}</td>
+      <td class="celda-ref" data-id="${escapeAttr(item.id)}">
+        <span class="ref-text">${escapeHTML(item.referencia4dig || '')}</span>
         <button class="btn-accion btn-edit-ref" title="Editar">&#9998;</button>
       </td>
-      <td><a href="${item.comprobante}" target="_blank">
-            <img src="${item.comprobante}" alt="Comp." loading="lazy">
-          </a></td>
-          <td class="pago-ganador-admin">
-  <strong>${item.pago_banco || 'Sin banco'}</strong><br>
-  📱 ${item.pago_telefono || 'Sin número'}<br>
-  🪪 ${item.pago_cedula || 'Sin cédula'}
-   <button
-    class="btn-copiar-pago"
-    onclick="copiarPagoMovil(
-      '${item.pago_banco || ''}',
-      '${item.pago_telefono || ''}',
-      '${item.pago_cedula || ''}'
-    )">
-    📋 Copiar
-  </button>
-</td>
       <td>
-        <span class="estado-circulo ${
-  item.estado === 'aprobado'
-    ? 'verde'
-    : item.estado === 'rechazado'
-      ? 'naranja'
-      : 'rojo'
-}"></span>
+        <a href="${escapeAttr(compUrl)}" target="_blank" rel="noopener">
+          <img src="${escapeAttr(compUrl)}" alt="Comp." loading="lazy">
+        </a>
+      </td>
+      <td class="pago-ganador-admin">
+        <strong>${escapeHTML(banco || 'Sin banco')}</strong><br>
+        📱 ${escapeHTML(pagoTel || 'Sin número')}<br>
+        🪪 ${escapeHTML(pagoCed || 'Sin cédula')}
+        <button class="btn-copiar-pago">📋 Copiar</button>
+      </td>
+      <td>
+        <span class="estado-circulo ${item.estado === 'aprobado' ? 'verde' : item.estado === 'rechazado' ? 'naranja' : 'rojo'}"></span>
         <button class="btn-accion btn-aprobar" title="Aprobar">&#x2705;</button>
         <button class="btn-accion btn-rechazar" title="Rechazar">&#x274C;</button>
         <button class="btn-accion btn-eliminar" title="Eliminar">&#x1F5D1;</button>
       </td>
     `;
 
-    const btnAprobar = tr.querySelector('.btn-aprobar');
-    const btnRechazar = tr.querySelector('.btn-rechazar');
-    const btnEliminar = tr.querySelector('.btn-eliminar');
-    const btnEditRef = tr.querySelector('.btn-edit-ref');
-
-    btnAprobar.onclick = () => aprobarInscripcion(item.id, tr);
-    btnRechazar.onclick = () => rechazarInscripcion(item, tr);
-    btnEliminar.onclick = () => eliminarInscripcion(item, tr);
-    btnEditRef.onclick = () => editarReferencia(tr.querySelector('.celda-ref'));
-    
-  
+    tr.querySelector('.btn-aprobar').onclick = () => aprobarInscripcion(item.id, tr);
+    tr.querySelector('.btn-rechazar').onclick = () => rechazarInscripcion(item, tr);
+    tr.querySelector('.btn-eliminar').onclick = () => eliminarInscripcion(item, tr);
+    tr.querySelector('.btn-edit-ref').onclick = () => editarReferencia(tr.querySelector('.celda-ref'));
+    tr.querySelector('.btn-copiar-pago').onclick = () => copiarPagoMovil(banco, pagoTel, pagoCed);
 
     tbody.appendChild(tr);
-  });
+  }
 
-  document.getElementById('contador-clientes').textContent = data.length;
-  document.getElementById('contadorCartones').innerText = 
-    `Cartones disponibles: ${totalCartones - cartonesOcupados.length} de ${totalCartones}`;
-  const pendientes = data.filter(item => item.estado === 'pendiente').length;
-document.getElementById('pendientes-count').textContent = pendientes;
+  const contadorClientes = document.getElementById('contador-clientes');
+  if (contadorClientes) contadorClientes.textContent = (data || []).length;
+
+  const contador = document.getElementById('contadorCartones');
+  if (contador) {
+    contador.innerText = `Cartones disponibles: ${totalCartones - cartonesOcupados.length} de ${totalCartones}`;
+  }
+
+  const pendientesEl = document.getElementById('pendientes-count');
+  if (pendientesEl) {
+    pendientesEl.textContent = (data || []).filter(item => item.estado === 'pendiente').length;
+  }
 }
+
 document.getElementById('btn-recargar-panel').addEventListener('click', () => {
   cargarPanelAdmin();  // Llama directamente a la función que refresca el contenido
 });
@@ -2650,12 +2274,14 @@ async function eliminarInscripcion(item, fila) {
   if (!confirmar) return;
 
   try {
+    await exigirAdminAutenticado();
+
     const { data, error } = await supabase.rpc('rpc_eliminar_inscripcion_seguro', { _id: item.id });
     if (error) throw error;
 
     if (item.comprobante) {
-      const nombreArchivo = item.comprobante.split('/').pop();
-      await supabase.storage.from('comprobantes').remove([nombreArchivo]);
+      const nombreArchivo = normalizeStoragePath(item.comprobante, 'comprobantes');
+      if (nombreArchivo) await supabase.storage.from('comprobantes').remove([nombreArchivo]);
     }
 
     fila.remove();
@@ -2666,114 +2292,101 @@ async function eliminarInscripcion(item, fila) {
     alert(`Inscripción eliminada. Cartones liberados: ${data ?? 0}`);
   } catch (e) {
     console.error(e);
-    alert('Error al eliminar inscripción.');
+    alert(e.message || 'Error al eliminar inscripción.');
   }
 }
+
 
 async function cerrarVentas() {
-  const confirmacion = confirm("¿Estás seguro que quieres cerrar las ventas?");
-  if (!confirmacion) return;
+  if (!confirm('¿Estás seguro que quieres cerrar las ventas?')) return;
 
-  const { error } = await supabase
-    .from('configuracion')
-    .update({ valor: false })
-    .eq('clave', 'ventas_abierta');
+  try {
+    await exigirAdminAutenticado();
+    const { error } = await supabase
+      .from('configuracion')
+      .update({ valore: 'false', valor: 'false' })
+      .eq('clave', 'ventas_abierta');
 
-  if (error) {
-    alert("Error al cerrar las ventas");
-    console.error(error);
-  } else {
-    alert("Ventas cerradas correctamente");
+    if (error) throw error;
+    alert('Ventas cerradas correctamente');
     location.reload();
+  } catch (error) {
+    alert(error.message || 'Error al cerrar las ventas');
+    console.error(error);
   }
 }
+
 
 async function abrirVentas() {
-  const confirmacion = confirm("¿Estás seguro que quieres abrir las ventas?");
-  if (!confirmacion) return;
+  if (!confirm('¿Estás seguro que quieres abrir las ventas?')) return;
 
-  const { error } = await supabase
-    .from('configuracion')
-    .update({ valor: true })
-    .eq('clave', 'ventas_abierta');
+  try {
+    await exigirAdminAutenticado();
+    const { error } = await supabase
+      .from('configuracion')
+      .update({ valore: 'true', valor: 'true' })
+      .eq('clave', 'ventas_abierta');
 
-  if (error) {
-    alert("Error al abrir las ventas");
-    console.error(error);
-  } else {
-    alert("Ventas abiertas correctamente");
+    if (error) throw error;
+    alert('Ventas abiertas correctamente');
     location.reload();
+  } catch (error) {
+    alert(error.message || 'Error al abrir las ventas');
+    console.error(error);
   }
 }
+
 
 async function reiniciarTodo() {
-  if (!confirm('⚠️ ¿Estás seguro de reiniciar todo?\n\nEsto borrará todos los datos permanentemente.')) {
-    return;
-  }
-  
-  const claveIngresada = prompt('🔒 INGRESA LA CLAVE DE SEGURIDAD PARA CONTINUAR:');
-  
-  if (!claveIngresada) {
-    alert('❌ Operación cancelada. No se ingresó clave.');
-    return;
-  }
-  
-  const { data: claveData, error } = await supabase
-    .from('configuracion')
-    .select('valore')
-    .eq('clave', 'clave_reinicio')
-    .single();
-  
-  if (error || !claveData) {
-    alert('❌ Error del sistema. No se pudo verificar la clave.');
-    return;
-  }
-  
-  const claveCorrecta = claveData.valore;
-  
-  if (claveIngresada.trim() !== claveCorrecta) {
-    alert('❌ CLAVE INCORRECTA\n\nOperación cancelada por seguridad.');
-    return;
-  }
-  
-  if (!confirm('🔥 ÚLTIMA CONFIRMACIÓN\n\n¿Estás ABSOLUTAMENTE seguro?\n\nEsto NO se puede deshacer.')) {
-    alert('✅ Operación cancelada.');
-    return;
-  }
-  
-  await supabase.from('inscripciones').delete().neq('cedula', '');
-  await supabase.from('cartones').delete().neq('numero', 0);
+  if (!confirm('⚠️ ¿Estás seguro de reiniciar todo?\n\nEsto borrará inscripciones, cartones y comprobantes.')) return;
 
-  let totalEliminados = 0;
-  const pageSize = 1500;
-  let offset = 0;
+  const confirmacion = prompt('Escribe REINICIAR para confirmar:');
+  if (confirmacion !== 'REINICIAR') {
+    alert('Operación cancelada.');
+    return;
+  }
 
-  while (true) {
-    const { data: files, error: listErr } = await supabase.storage
-      .from('comprobantes')
-      .list('', { limit: pageSize, offset, sortBy: { column: 'name', order: 'asc' } });
+  try {
+    await exigirAdminAutenticado();
 
-    if (listErr) {
-      alert('Error listando comprobantes: ' + listErr.message);
-      break;
-    }
-    if (!files || files.length === 0) break;
-
-    const names = files.map(f => f.name);
-    const { error: delErr } = await supabase.storage.from('comprobantes').remove(names);
-    if (delErr) {
-      alert('Error eliminando comprobantes: ' + delErr.message);
-      break;
+    if (!confirm('🔥 ÚLTIMA CONFIRMACIÓN\n\nEsto NO se puede deshacer.')) {
+      alert('Operación cancelada.');
+      return;
     }
 
-    totalEliminados += names.length;
-    if (files.length < pageSize) break;
-    offset += pageSize;
-  }
+    const { error: errIns } = await supabase.from('inscripciones').delete().not('id', 'is', null);
+    if (errIns) throw errIns;
 
-  alert(`✅ Datos reiniciados. Comprobantes eliminados: ${totalEliminados}`);
-  location.reload();
+    const { error: errCart } = await supabase.from('cartones').delete().gt('numero', 0);
+    if (errCart) throw errCart;
+
+    let totalEliminados = 0;
+    const pageSize = 1000;
+
+    while (true) {
+      const { data: files, error: listErr } = await supabase.storage
+        .from('comprobantes')
+        .list('', { limit: pageSize, sortBy: { column: 'name', order: 'asc' } });
+
+      if (listErr) throw listErr;
+      if (!files || files.length === 0) break;
+
+      const names = files.map(f => f.name);
+      const { error: delErr } = await supabase.storage.from('comprobantes').remove(names);
+      if (delErr) throw delErr;
+
+      totalEliminados += names.length;
+      if (files.length < pageSize) break;
+    }
+
+    alert(`✅ Datos reiniciados. Comprobantes eliminados: ${totalEliminados}`);
+    location.reload();
+  } catch (error) {
+    console.error(error);
+    alert(error.message || 'Error reiniciando datos.');
+  }
 }
+
 
 // ==================== FUNCIONES DE MODAL ====================
 let cartonSeleccionadoTemporal = null;
@@ -2971,15 +2584,13 @@ function mostrarSeccion(id) {
 }
 
 async function cargarListaAprobadosSeccion() {
-  const { data, error } = await supabase
-    .from('inscripciones')
-    .select('*')
-    .eq('estado', 'aprobado');
+  const { data, error } = await supabase.rpc('rpc_lista_aprobados_publico');
 
   const contenedor = document.getElementById('contenedor-aprobados');
   contenedor.innerHTML = '';
 
-  if (error || !data.length) {
+  if (error || !data || !data.length) {
+    if (error) console.error(error);
     contenedor.innerHTML = '<p>No hay aprobados aún.</p>';
     return;
   }
@@ -2999,32 +2610,20 @@ async function cargarListaAprobadosSeccion() {
   `;
 
   const tbody = tabla.querySelector('tbody');
-  let filas = [];
 
-  data.forEach(item => {
-    item.cartones.forEach(carton => {
-      filas.push({
-        carton,
-        nombre: item.nombre,
-        cedula: item.cedula
-      });
-    });
-  });
-
-  filas.sort((a, b) => a.carton - b.carton);
-
-  filas.forEach(item => {
+  (data || []).forEach(item => {
     const tr = document.createElement('tr');
     tr.innerHTML = `
-      <td>${item.carton}</td>
-      <td>${item.nombre}</td>
-      <td>${'*'.repeat(Math.max(0, String(item.cedula || '').length - 4))}${String(item.cedula || '').slice(-4)}</td>
+      <td>${escapeHTML(item.carton)}</td>
+      <td>${escapeHTML(item.nombre)}</td>
+      <td>${escapeHTML(item.cedula_mask)}</td>
     `;
     tbody.appendChild(tr);
   });
 
   contenedor.appendChild(tabla);
 }
+
 
 function actualizarHoraVenezuela() {
   const contenedor = document.getElementById('hora-venezuela');
@@ -3919,10 +3518,7 @@ async function liberarReservaPorTiempo() {
   }
 }
 async function cargarTopCompradores() {
-  const { data, error } = await supabase
-    .from('inscripciones')
-    .select('nombre, cedula, telefono, cartones, estado')
-    .in('estado', ['aprobado']);
+  const { data, error } = await supabase.rpc('rpc_top_compradores_publico');
 
   const cont = document.getElementById('listaTopCompradores');
   cont.innerHTML = '';
@@ -3933,27 +3529,7 @@ async function cargarTopCompradores() {
     return;
   }
 
-  const ranking = {};
-
-  (data || []).forEach(item => {
-    const cedula = item.cedula || 'sin-cedula';
-    const cantidad = Array.isArray(item.cartones) ? item.cartones.length : 0;
-
-    if (!ranking[cedula]) {
-      ranking[cedula] = {
-        nombre: item.nombre || 'Sin nombre',
-        cedula,
-        telefono: item.telefono || '',
-        total: 0
-      };
-    }
-
-    ranking[cedula].total += cantidad;
-  });
-
-  const top = Object.values(ranking)
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 5);
+  const top = data || [];
 
   if (!top.length) {
     cont.innerHTML = '<p>No hay compradores todavía.</p>';
@@ -3964,14 +3540,15 @@ async function cargarTopCompradores() {
     <ol class="top-compradores-lista">
       ${top.map((p, i) => `
         <li>
-          <strong>#${i + 1} ${p.nombre}</strong><br>
-          Cédula: ****${String(p.cedula || '').slice(-4)}<br>
-          Cartones comprados: <strong>${p.total}</strong>
+          <strong>#${i + 1} ${escapeHTML(p.nombre)}</strong><br>
+          Cédula: ${escapeHTML(p.cedula_mask)}<br>
+          Cartones comprados: <strong>${escapeHTML(p.total)}</strong>
         </li>
       `).join('')}
     </ol>
   `;
 }
+
 
 let canalTopCompradores = null;
 
@@ -4386,20 +3963,21 @@ async function copiarListaAprobados() {
 }
 // ─── NAEGACIÓN POR PESTAÑAS DEL ADMIN ───
 function cambiarTab(tabId) {
-  // Ocultar todos los contenidos
   document.querySelectorAll('.tab-content').forEach(tab => {
     tab.classList.remove('active');
   });
-  
-  // Desactivar todos los botones
+
   document.querySelectorAll('.tab-btn').forEach(btn => {
     btn.classList.remove('active');
   });
-  
-  // Activar el seccionado
-  document.getElementById(tabId).classList.add('active');
-  event.target.classList.add('active');
+
+  const tab = document.getElementById(tabId);
+  if (tab) tab.classList.add('active');
+
+  const btn = document.querySelector(`.tab-btn[onclick*="${tabId}"]`);
+  if (btn) btn.classList.add('active');
 }
+
 
 // ==================== EXPORTAR FUNCIONES ====================
 window.mostrarVentana = mostrarVentana;
@@ -4428,5 +4006,10 @@ window.cancelarOTP = cancelarOTP;
 window.reenviarOTP = reenviarOTP;
 window.forzarCerrarSesionRemota = forzarCerrarSesionRemota;
 window.recuperarPasswordAdmin = recuperarPasswordAdmin;
+
+
+window.callEdgeFunction = callEdgeFunction;
+window.obtenerUrlComprobantePrivado = obtenerUrlComprobantePrivado;
+window.validarImagenComprobante = validarImagenComprobante;
 
 console.log('✅ Sistema de sesión única configurado correctamente');
