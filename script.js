@@ -1,10 +1,3 @@
-// ==================== CONFIGURACIÓN SUPABASE ====================
-const SUPABASE_URL = 'https://moizrhkexrocanhkggyb.supabase.co';
-const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8';
-
-// Compatibilidad con funciones que usan supabaseUrl / supabaseKey.
-const supabaseUrl = SUPABASE_URL;
-const supabaseKey = SUPABASE_ANON_KEY;
 
 function supabaseFunctionUrl(functionName) {
   return `${SUPABASE_URL}/functions/v1/${functionName}`;
