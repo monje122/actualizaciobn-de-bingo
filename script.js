@@ -425,36 +425,53 @@ async function logoutAdmin() {
 // ========== FUNCIÓN PARA LIMPIA SESIÓN (COMPATIBLE) ==========
 function clearAdminSession() {
   console.log('🧹 Limpiando sesión...');
-  
-  // Limpiar sessionStorage (lo que TÚ usas)
-  sessionStorage.removeItem('admin_session_token');
+
+  // Limpiar datos nuevos del login con Supabase Auth
   sessionStorage.removeItem('admin_email');
+  sessionStorage.removeItem('admin_rol');
+  sessionStorage.removeItem('admin_site_id');
+  sessionStorage.removeItem('admin_is_master');
+
+  // Limpiar datos viejos del sistema anterior
+  sessionStorage.removeItem('admin_session_token');
   sessionStorage.removeItem('session_expires');
   sessionStorage.removeItem('device_id');
-  
-  // NO limpiar el device_id de localStorage, se reutiliza
-  // localStorage.removeItem('admin_device_id');  // ← NO hacer esto
-  
-  // Limpiar variables globales (si las tienes)
-  if (typeof adminSession !== 'undefined') {
-    adminSession = null;
-  }
-  if (typeof sesionActiva !== 'undefined') {
-    sesionActiva = false;
-  }
-  
-  // Detener timers si existen
+  sessionStorage.removeItem('pending_email');
+  sessionStorage.removeItem('pending_deviceId');
+  sessionStorage.removeItem('pending_password');
+
+  // No limpiar el device_id de localStorage
+  // localStorage.removeItem('admin_device_id');
+
+  // Limpiar variables globales
+  adminSession = null;
+  sesionActiva = false;
+
+  // Detener timers
   if (typeof inactivityTimer !== 'undefined' && inactivityTimer) {
     clearTimeout(inactivityTimer);
+    inactivityTimer = null;
   }
+
   if (typeof sessionCheckInterval !== 'undefined' && sessionCheckInterval) {
     clearInterval(sessionCheckInterval);
+    sessionCheckInterval = null;
   }
-  
+
+  if (typeof verificacionInterval !== 'undefined' && verificacionInterval) {
+    clearInterval(verificacionInterval);
+    verificacionInterval = null;
+  }
+
+  if (window.otpTimerInterval) {
+    clearInterval(window.otpTimerInterval);
+    window.otpTimerInterval = null;
+  }
+
   // Eliminar elementos del DOM que puedan existir
   const sessionInfo = document.getElementById('session-info');
   if (sessionInfo) sessionInfo.remove();
-  
+
   console.log('✅ Sesión limpiada localmente');
 }
 
@@ -1783,24 +1800,29 @@ async function liberarHuerfanos() {
 }
 // Función para guardar precio por cartón
 async function guardarPrecioPorCarton() {
-  const nuevoPrecio = parseFloat(document.getElementById('precioCarton').value);
+  const input = document.getElementById('precioCarton');
+  const nuevoPrecio = parseFloat(input.value);
+
   if (isNaN(nuevoPrecio) || nuevoPrecio < 0) {
     alert('Ingrese un precio válido');
     return;
   }
 
-  const { error } = await supabase
-    .from('configuracion')
-    .upsert({ clave: 'precio_carton', valore: nuevoPrecio.toString() }, { onConflict: 'clave' });
+  const ok = await setConfigValue('precio_carton', nuevoPrecio.toString());
 
-  if (error) {
+  if (!ok) {
     alert('Error guardando el precio');
-    console.error(error);
-  } else {
-    alert('Precio actualizado correctamente');
-    precioPorCarton = nuevoPrecio;
-    await cargarPrecioPorCarton();
+    return;
   }
+
+  precioPorCarton = nuevoPrecio;
+
+  if (sitioActual) {
+    sitioActual.precio_carton_bs = nuevoPrecio;
+  }
+
+  alert('Precio actualizado correctamente');
+  await cargarPrecioPorCarton();
 }
 
 // ==================== FUNCIONES EXISTENTES ====================
@@ -2085,64 +2107,69 @@ function isTrue(v) {
 
 async function mostrarVentana(id) {
   if (!sistemaListo) return;
+
   if (id === 'top-compradores') {
-  await cargarTopCompradores();
-     activarTopCompradoresRealtime()
-}
+    await cargarTopCompradores();
+    activarTopCompradoresRealtime();
+  }
+
   if (id === 'admin') {
     await entrarAdmin();
     return;
   }
-  
-  // 1) Si va a CARTONES, valida ventas_abierta
-  if (id === 'cartones') {
-    const { data } = await supabase
-      .from('configuracion')
-      .select('valore, valor')
-      .eq('clave', 'ventas_abierta')
-      .single();
 
-    const ventasAbierta = data ? (data.valore ?? data.valor ?? 'true') : 'true';
+  // 1) Si va a CARTONES, valida ventas_abierta por sitio
+  if (id === 'cartones') {
+    const fallbackVentas = sitioActual?.ventas_abiertas === false ? 'false' : 'true';
+    const ventasAbierta = await getConfigValue('ventas_abierta', fallbackVentas);
+
     if (!isTrue(ventasAbierta)) {
       alert('Las ventas están cerradas');
+
       document.querySelectorAll('section').forEach(s => s.classList.add('oculto'));
-      document.getElementById('bienvenida').classList.remove('oculto');
+      document.getElementById('bienvenida')?.classList.remove('oculto');
+
       return;
     }
   }
 
   // 2) Si va a PAGO, valida cantidad exacta
   if (id === 'pago') {
-    const requerido = (modoCartones === 'fijo') ? cantidadFijaCartones : cantidadPermitida;
+    const requerido = modoCartones === 'fijo' ? cantidadFijaCartones : cantidadPermitida;
+
     if (usuario.cartones.length !== requerido) {
       alert(`Debes elegir exactamente ${requerido} cartones antes de continuar.`);
       return;
-      
     }
   }
 
   // 3) Mostrar la ventana solicitada
   document.querySelectorAll('section').forEach(s => s.classList.add('oculto'));
+
   const target = document.getElementById(id);
   if (target) target.classList.remove('oculto');
-requestAnimationFrame(() => {
-  document.documentElement.scrollTop = 0;
-  document.body.scrollTop = 0;
-});
+
+  requestAnimationFrame(() => {
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  });
 
   if (id === 'cantidad') {
     promocionSeleccionada = null;
     await cargarPromocionesConfig();
     actualizarPreseleccion();
   }
-  
+
   if (id === 'pago') {
     const promo = getPromocionSeleccionada();
-    const monto = promo ? promo.precio : (usuario.cartones.length * (precioPorCarton || 0));
-    document.getElementById('monto-pago').textContent = monto.toFixed(2);
-     iniciarContadorReserva(5);
+    const monto = promo ? promo.precio : usuario.cartones.length * (precioPorCarton || 0);
+
+    const montoPago = document.getElementById('monto-pago');
+    if (montoPago) montoPago.textContent = monto.toFixed(2);
+
+    iniciarContadorReserva(5);
   }
-  
+
   if (id === 'cartones') {
     await cargarCartones();
   }
@@ -2151,7 +2178,6 @@ requestAnimationFrame(() => {
     await cargarListaAprobadosSeccion();
   }
 }
-
 // Guardar datos del formulario
 function guardarDatosInscripcion() {
   usuario.nombre = document.getElementById('nombre').value;
@@ -2410,183 +2436,233 @@ function urlCartonWebP(numero) {
 }
 async function enviarComprobante() {
   const boton = document.getElementById('btnEnviarComprobante');
-  const textoOriginal = boton.textContent;
-  boton.disabled = true;
-  boton.textContent = 'Cargando comprobante...';
+  const textoOriginal = boton ? boton.textContent : 'Enviar comprobante';
+
+  if (boton) {
+    boton.disabled = true;
+    boton.textContent = 'Cargando comprobante...';
+  }
+
+  let nombreArchivo = null;
+  let cartonesEnviar = [];
+  let cedulaLimpia = '';
 
   try {
+    if (!SITE_ID) {
+      throw new Error('No se pudo identificar el sitio actual.');
+    }
+
     if (!usuario.nombre || !usuario.telefono || !usuario.cedula) {
       throw new Error('Debes completar primero los datos de inscripción');
     }
 
     const referencia4dig = document.getElementById('referencia4dig').value.trim();
+
     if (!/^\d{4}$/.test(referencia4dig)) {
       throw new Error('Debes ingresar los últimos 4 dígitos de la referencia bancaria.');
     }
-const PagoBanco = document.getElementById('pago_banco').value.trim();
-const PagoTelefono = document.getElementById('pago_telefono').value.trim();
-const PagoCedula = document.getElementById('pago_cedula').value.trim();
 
-if (!PagoBanco || !PagoTelefono || !PagoCedula) {
-  throw new Error('Debes registrar tu Pago Móvil para el pago ganador.');
-}
+    const PagoBanco = document.getElementById('pago_banco').value.trim();
+    const PagoTelefono = document.getElementById('pago_telefono').value.trim();
+    const PagoCedula = document.getElementById('pago_cedula').value.trim();
 
-guardarDatosPagoClienteAutomatico();
-   const archivoOriginal = document.getElementById('comprobante').files[0];
-if (!archivoOriginal) throw new Error('Debes subir un comprobante');
+    if (!PagoBanco || !PagoTelefono || !PagoCedula) {
+      throw new Error('Debes registrar tu Pago Móvil para el pago ganador.');
+    }
 
-// Convertir automáticamente JPG / PNG / WEBP a WebP optimizado
-const archivoWebP = await convertirImagenAWebP(archivoOriginal, 0.85, 1600);
+    guardarDatosPagoClienteAutomatico();
 
-const cedulaArchivo = String(usuario.cedula || '')
-  .replace(/\D/g, '') || 'sin-cedula';
+    const archivoOriginal = document.getElementById('comprobante').files[0];
 
-const idArchivo = crypto.randomUUID
-  ? crypto.randomUUID()
-  : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    if (!archivoOriginal) {
+      throw new Error('Debes subir un comprobante');
+    }
 
-const nombreArchivo = `${cedulaArchivo}-${Date.now()}-${idArchivo}.webp`;
+    const archivoWebP = await convertirImagenAWebP(archivoOriginal, 0.85, 1600);
 
-const { error: errorUpload } = await supabase.storage
-  .from('comprobantes')
-  .upload(nombreArchivo, archivoWebP, {
-    contentType: 'image/webp',
-    upsert: false,
-    cacheControl: '31536000'
-  });
+    cedulaLimpia = String(usuario.cedula || '').trim();
 
-if (errorUpload) {
-  throw new Error('Error subiendo comprobante: ' + errorUpload.message);
-}
+    const cedulaArchivo = cedulaLimpia.replace(/\D/g, '') || 'sin-cedula';
 
-// URL pública del comprobante en WebP
-const { data: publicData } = supabase.storage
-  .from('comprobantes')
-  .getPublicUrl(nombreArchivo);
+    const idArchivo = crypto.randomUUID
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-const urlPublica = publicData.publicUrl;
+    nombreArchivo = `${SITE_SLUG}/${cedulaArchivo}-${Date.now()}-${idArchivo}.webp`;
+
+    const { error: errorUpload } = await supabase.storage
+      .from('comprobantes')
+      .upload(nombreArchivo, archivoWebP, {
+        contentType: 'image/webp',
+        upsert: false,
+        cacheControl: '31536000'
+      });
+
+    if (errorUpload) {
+      throw new Error('Error subiendo comprobante: ' + errorUpload.message);
+    }
+
+    const { data: publicData } = supabase.storage
+      .from('comprobantes')
+      .getPublicUrl(nombreArchivo);
+
+    const urlPublica = publicData.publicUrl;
 
     const promo = getPromocionSeleccionada();
     const monto = promo ? promo.precio : (usuario.cartones.length * (precioPorCarton || 0));
-    const cartonesEnviar = (usuario.cartones || []).map(n => Number(n));
 
-if (cartonesEnviar.length === 0) {
-  throw new Error('Debes seleccionar al menos un cartón.');
-}
+    cartonesEnviar = (usuario.cartones || [])
+      .map(n => Number(n))
+      .filter(Number.isFinite);
 
-if (cartonesEnviar.length !== cantidadPermitida) {
-  throw new Error('La cantidad de cartones seleccionados no coincide con la cantidad elegida.');
-}
-
-// 1. Validar que esos cartones estén reservados por esta misma cédula
-const { data: reservas, error: errorReservas } = await supabase
-  .from('cartones')
-  .select('numero, cedula')
-  .eq('site_id', SITE_ID)
-  .in('numero', cartonesEnviar);
-
-if (errorReservas) {
-  throw new Error('No se pudieron validar tus cartones.');
-}
-
-const cedulaLimpia = String(usuario.cedula || '').trim();
-
-const reservasValidas = (reservas || [])
-  .filter(r => String(r.cedula || '').trim() === cedulaLimpia)
-  .map(r => Number(r.numero));
-
-const faltantes = cartonesEnviar.filter(n => !reservasValidas.includes(n));
-
-if (faltantes.length > 0) {
-  await supabase.rpc('rpc_liberar_reserva', {
-    _cedula: cedulaLimpia,
-    _partida_id: null
-  });
-
-  alert('⚠️ Estos cartones ya no están reservados para ti: ' + faltantes.join(', ') + '\n\nElige otros cartones.');
-  await cargarCartones();
-  mostrarVentana('cartones');
-  return;
-}
-
-// 2. Validar que no existan en otra inscripción pendiente/aprobada
-const { data: inscripcionesActivas, error: errorInscripciones } = await supabase
-  .from('inscripciones')
-  .select('id, nombre, cedula, cartones')
-.eq('site_id', SITE_ID)
-  .in('estado', ['pendiente', 'aprobado']);
-
-if (errorInscripciones) {
-  throw new Error('No se pudieron verificar cartones duplicados.');
-}
-
-const duplicados = [];
-
-(inscripcionesActivas || []).forEach(ins => {
-  const otrosCartones = (ins.cartones || []).map(n => Number(n));
-
-  cartonesEnviar.forEach(n => {
-    if (otrosCartones.includes(n)) {
-      duplicados.push({
-        carton: n,
-        nombre: ins.nombre,
-        cedula: ins.cedula
-      });
+    if (cartonesEnviar.length === 0) {
+      throw new Error('Debes seleccionar al menos un cartón.');
     }
-  });
-});
 
-if (duplicados.length > 0) {
-  const numeros = [...new Set(duplicados.map(d => d.carton))];
+    if (cartonesEnviar.length !== cantidadPermitida) {
+      throw new Error('La cantidad de cartones seleccionados no coincide con la cantidad elegida.');
+    }
 
-  await supabase.rpc('rpc_liberar_reserva', {
-    _cedula: cedulaLimpia,
-    _partida_id: null
-  });
+    // 1. Validar que esos cartones estén reservados por esta misma cédula en este sitio
+    const { data: reservas, error: errorReservas } = await supabase
+      .from('cartones')
+      .select('numero, cedula')
+      .eq('site_id', SITE_ID)
+      .in('numero', cartonesEnviar);
 
-  alert('⚠️ Estos cartones ya fueron tomados: ' + numeros.join(', ') + '\n\nElige otros cartones.');
-  await cargarCartones();
-  mostrarVentana('cartones');
-  return;
-}
-    const { error: errorInsert } = await supabase.from('inscripciones').insert([{
-      site_id: SITE_ID,
-      nombre: usuario.nombre,
-      telefono: usuario.telefono,
-      cedula: cedulaLimpia,
-      referido: usuario.referido,
-      cartones: cartonesEnviar.map(String),
-      referencia4dig: referencia4dig,
-      comprobante: urlPublica,
-      estado: 'pendiente',
-      monto_bs: monto,
-      pago_banco: PagoBanco,
-      pago_telefono: PagoTelefono,
-      pago_cedula: PagoCedula,
-      usa_promo: !!promo,
-      promo_desc: promo ? promo.descripcion : null,
-      precio_unitario_bs: promo ? null : (precioPorCarton || 0) 
-    }]);
+    if (errorReservas) {
+      throw new Error('No se pudieron validar tus cartones.');
+    }
+
+    const reservasValidas = (reservas || [])
+      .filter(r => String(r.cedula || '').trim() === cedulaLimpia)
+      .map(r => Number(r.numero));
+
+    const faltantes = cartonesEnviar.filter(n => !reservasValidas.includes(n));
+
+    if (faltantes.length > 0) {
+      await liberarReservasSeleccionadas(cedulaLimpia, cartonesEnviar);
+
+      alert(
+        '⚠️ Estos cartones ya no están reservados para ti: ' +
+        faltantes.join(', ') +
+        '\n\nElige otros cartones.'
+      );
+
+      await cargarCartones();
+      mostrarVentana('cartones');
+      return;
+    }
+
+    // 2. Validar que no existan en otra inscripción pendiente/aprobada del mismo sitio
+    const { data: inscripcionesActivas, error: errorInscripciones } = await supabase
+      .from('inscripciones')
+      .select('id, nombre, cedula, cartones')
+      .eq('site_id', SITE_ID)
+      .in('estado', ['pendiente', 'aprobado']);
+
+    if (errorInscripciones) {
+      throw new Error('No se pudieron verificar cartones duplicados.');
+    }
+
+    const duplicados = [];
+
+    (inscripcionesActivas || []).forEach(ins => {
+      const otrosCartones = (ins.cartones || []).map(n => Number(n));
+
+      cartonesEnviar.forEach(n => {
+        if (otrosCartones.includes(n)) {
+          duplicados.push({
+            carton: n,
+            nombre: ins.nombre,
+            cedula: ins.cedula
+          });
+        }
+      });
+    });
+
+    if (duplicados.length > 0) {
+      const numeros = [...new Set(duplicados.map(d => d.carton))];
+
+      await liberarReservasSeleccionadas(cedulaLimpia, cartonesEnviar);
+
+      alert(
+        '⚠️ Estos cartones ya fueron tomados: ' +
+        numeros.join(', ') +
+        '\n\nElige otros cartones.'
+      );
+
+      await cargarCartones();
+      mostrarVentana('cartones');
+      return;
+    }
+
+    // 3. Guardar inscripción
+    const { error: errorInsert } = await supabase
+      .from('inscripciones')
+      .insert([{
+        site_id: SITE_ID,
+        nombre: usuario.nombre,
+        telefono: usuario.telefono,
+        cedula: cedulaLimpia,
+        referido: usuario.referido,
+        cartones: cartonesEnviar,
+        referencia4dig: referencia4dig,
+        comprobante: urlPublica,
+        estado: 'pendiente',
+        monto_bs: monto,
+        pago_banco: PagoBanco,
+        pago_telefono: PagoTelefono,
+        pago_cedula: PagoCedula,
+        usa_promo: !!promo,
+        promo_desc: promo ? promo.descripcion : null,
+        precio_unitario_bs: promo ? null : (precioPorCarton || 0)
+      }]);
 
     if (errorInsert) {
-      await supabase.rpc('rpc_liberar_reserva', {
-  _cedula: cedulaLimpia,
-  _partida_id: null
-});
+      console.error('Error insertando inscripción:', errorInsert);
+
+      await liberarReservasSeleccionadas(cedulaLimpia, cartonesEnviar);
+
+      if (nombreArchivo) {
+        await supabase.storage
+          .from('comprobantes')
+          .remove([nombreArchivo]);
+      }
+
       throw new Error('Error guardando la inscripción');
     }
-clearInterval(timerReserva);
+
+    clearInterval(timerReserva);
+
     alert('Inscripción y comprobante enviados con éxito');
     location.reload();
+
   } catch (err) {
     console.error(err);
     alert(err.message || 'Ocurrió un error inesperado');
   } finally {
-    boton.disabled = false;
-    boton.textContent = textoOriginal;
+    if (boton) {
+      boton.disabled = false;
+      boton.textContent = textoOriginal;
+    }
   }
 }
 
+async function liberarReservasSeleccionadas(cedulaLimpia, cartones = usuario.cartones) {
+  const lista = (cartones || [])
+    .map(Number)
+    .filter(Number.isFinite);
+
+  for (const numero of lista) {
+    await supabase.rpc('rpc_liberar_reserva', {
+      _site_id: SITE_ID,
+      _numero: numero,
+      _cedula: cedulaLimpia,
+      _partida_id: null
+    });
+  }
+}
 // ==================== fUNCIONES DE USUARIO ====================
 async function consultarCartones() {
   const cedula = document.getElementById('consulta-cedula').value.trim();
@@ -3002,80 +3078,113 @@ async function abrirVentas() {
 }
 
 async function reiniciarTodo() {
-  if (!confirm('⚠️ ¿Estás seguro de reiniciar todo?\n\nEsto borrará todos los datos permanentemente.')) {
+  if (!SITE_ID || !SITE_SLUG) {
+    alert('❌ No se pudo identificar el sitio actual.');
     return;
   }
-  
+
+  if (!confirm('⚠️ ¿Estás seguro de reiniciar este sitio?\n\nEsto borrará inscripciones, cartones y comprobantes de ESTE sitio.')) {
+    return;
+  }
+
   const claveIngresada = prompt('🔒 INGRESA LA CLAVE DE SEGURIDAD PARA CONTINUAR:');
-  
+
   if (!claveIngresada) {
     alert('❌ Operación cancelada. No se ingresó clave.');
     return;
   }
-  
-  const { data: claveData, error } = await supabase
-    .from('configuracion')
-    .select('valore')
-    .eq('clave', 'clave_reinicio')
-    .single();
-  
-  if (error || !claveData) {
-    alert('❌ Error del sistema. No se pudo verificar la clave.');
+
+  const claveCorrecta = await getConfigValue('clave_reinicio', null);
+
+  if (!claveCorrecta) {
+    alert('❌ Error del sistema. No se pudo verificar la clave de reinicio.');
     return;
   }
-  
-  const claveCorrecta = claveData.valore;
-  
-  if (claveIngresada.trim() !== claveCorrecta) {
+
+  if (claveIngresada.trim() !== String(claveCorrecta).trim()) {
     alert('❌ CLAVE INCORRECTA\n\nOperación cancelada por seguridad.');
     return;
   }
-  
+
   if (!confirm('🔥 ÚLTIMA CONFIRMACIÓN\n\n¿Estás ABSOLUTAMENTE seguro?\n\nEsto NO se puede deshacer.')) {
     alert('✅ Operación cancelada.');
     return;
   }
-  
- await supabase
-  .from('inscripciones')
-  .delete()
-  .eq('site_id', SITE_ID)
-  .neq('cedula', '');
 
-await supabase
-  .from('cartones')
-  .delete()
-  .eq('site_id', SITE_ID)
-  .neq('numero', 0);
+  // Borrar inscripciones solo de este sitio
+  const { error: errorInscripciones } = await supabase
+    .from('inscripciones')
+    .delete()
+    .eq('site_id', SITE_ID)
+    .gte('id', 0);
 
+  if (errorInscripciones) {
+    alert('❌ Error eliminando inscripciones: ' + errorInscripciones.message);
+    return;
+  }
+
+  // Borrar cartones solo de este sitio
+  const { error: errorCartones } = await supabase
+    .from('cartones')
+    .delete()
+    .eq('site_id', SITE_ID)
+    .gte('numero', 1);
+
+  if (errorCartones) {
+    alert('❌ Error eliminando cartones: ' + errorCartones.message);
+    return;
+  }
+
+  // Opcional: borrar ganadores solo de este sitio
+  const { error: errorGanadores } = await supabase
+    .from('ganadores')
+    .delete()
+    .eq('site_id', SITE_ID)
+    .gte('id', 0);
+
+  if (errorGanadores) {
+    console.warn('No se pudieron borrar ganadores:', errorGanadores);
+  }
+
+  // Borrar comprobantes solo dentro de la carpeta del sitio
   let totalEliminados = 0;
-  const pageSize = 1500;
-  let offset = 0;
+  const pageSize = 1000;
 
   while (true) {
     const { data: files, error: listErr } = await supabase.storage
       .from('comprobantes')
-      .list('', { limit: pageSize, offset, sortBy: { column: 'name', order: 'asc' } });
+      .list(SITE_SLUG, {
+        limit: pageSize,
+        sortBy: { column: 'name', order: 'asc' }
+      });
 
     if (listErr) {
-      alert('Error listando comprobantes: ' + listErr.message);
+      alert('❌ Error listando comprobantes: ' + listErr.message);
       break;
     }
+
     if (!files || files.length === 0) break;
 
-    const names = files.map(f => f.name);
-    const { error: delErr } = await supabase.storage.from('comprobantes').remove(names);
+    const names = files.map(f => `${SITE_SLUG}/${f.name}`);
+
+    const { error: delErr } = await supabase.storage
+      .from('comprobantes')
+      .remove(names);
+
     if (delErr) {
-      alert('Error eliminando comprobantes: ' + delErr.message);
+      alert('❌ Error eliminando comprobantes: ' + delErr.message);
       break;
     }
 
     totalEliminados += names.length;
+
     if (files.length < pageSize) break;
-    offset += pageSize;
   }
 
-  alert(`✅ Datos reiniciados. Comprobantes eliminados: ${totalEliminados}`);
+  usuario.cartones = [];
+  cartonesOcupados = [];
+
+  alert(`✅ Sitio reiniciado correctamente.\n\nComprobantes eliminados: ${totalEliminados}`);
   location.reload();
 }
 
@@ -3117,30 +3226,40 @@ function actualizarContadorCartones(total, ocupados, seleccionados) {
 
 // ==================== FUNCIONES AUXILIARES ====================
 async function guardarNuevoTotal() {
-  const nuevoTotal = parseInt(document.getElementById("nuevoTotalCartones").value, 10);
+  const input = document.getElementById("nuevoTotalCartones");
   const estado = document.getElementById("estadoTotalCartones");
 
+  const nuevoTotal = parseInt(input.value, 10);
+
   if (isNaN(nuevoTotal) || nuevoTotal < 1) {
-    estado.textContent = "Número inválido.";
+    if (estado) estado.textContent = "Número inválido.";
     return;
   }
 
-  const { error } = await supabase
-    .from('configuracion')
-    .upsert(
-      [{ clave: 'total_cartones', valore: String(nuevoTotal) }],
-      { onConflict: 'clave' }
-    );
-
-  if (error) {
-    console.error('guardarNuevoTotal error:', error);
-    estado.textContent = "Error al actualizar.";
-  } else {
-    estado.textContent = "¡Total actualizado!";
-    totalCartones = nuevoTotal;
+  if (!SITE_ID) {
+    if (estado) estado.textContent = "Error: sitio no identificado.";
+    return;
   }
-}
 
+  const ok = await setConfigValue('total_cartones', String(nuevoTotal));
+
+  if (!ok) {
+    if (estado) estado.textContent = "Error al actualizar.";
+    return;
+  }
+
+  totalCartones = nuevoTotal;
+
+  if (sitioActual) {
+    sitioActual.total_cartones = nuevoTotal;
+    sitioActual.cartones_visibles = nuevoTotal;
+  }
+
+  if (estado) estado.textContent = "¡Total actualizado!";
+
+  await cargarCartones();
+  await contarCartonesVendidos();
+}
 async function cargarPromocionesConfig() {
   try {
     for (let i = 0; i < promociones.length; i++) {
@@ -3179,39 +3298,52 @@ async function cargarPromocionesAdmin() {
 
 async function guardarPromociones() {
   const estado = document.getElementById('estadoPromociones');
-  
-  try {
-    const updates = [];
-    
-    for (let i = 1; i <= 4; i++) {
-      const activa = document.getElementById(`promo${i}_activa`).checked;
-      const desc = document.getElementById(`promo${i}_descripcion`).value.trim();
-      const cant = parseInt(document.getElementById(`promo${i}_cantidad`).value) || 0;
-      const precio = parseFloat(document.getElementById(`promo${i}_precio`).value) || 0;
-      
-      updates.push(
-        { clave: `promo${i}_activa`, valore: String(activa) },
-        { clave: `promo${i}_descripcion`, valore: desc },
-        { clave: `promo${i}_cantidad`, valore: String(cant) },
-        { clave: `promo${i}_precio`, valore: String(precio) }
-      );
-    }
-    
-    const { error } = await supabase.from('configuracion').upsert(updates, { onConflict: 'clave' });
-    
-    if (error) {
-      estado.textContent = 'Error guardando promociones';
+
+  if (!SITE_ID) {
+    if (estado) {
+      estado.textContent = 'Error: sitio no identificado';
       estado.style.color = 'red';
-    } else {
+    }
+    return;
+  }
+
+  try {
+    for (let i = 1; i <= 4; i++) {
+      const activa = document.getElementById(`promo${i}_activa`)?.checked || false;
+      const desc = document.getElementById(`promo${i}_descripcion`)?.value.trim() || '';
+      const cant = parseInt(document.getElementById(`promo${i}_cantidad`)?.value, 10) || 0;
+      const precio = parseFloat(document.getElementById(`promo${i}_precio`)?.value) || 0;
+
+      const resultados = await Promise.all([
+        setConfigValue(`promo${i}_activa`, String(activa)),
+        setConfigValue(`promo${i}_descripcion`, desc),
+        setConfigValue(`promo${i}_cantidad`, String(cant)),
+        setConfigValue(`promo${i}_precio`, String(precio))
+      ]);
+
+      if (resultados.some(ok => !ok)) {
+        throw new Error(`No se pudo guardar la promoción ${i}`);
+      }
+    }
+
+    if (estado) {
       estado.textContent = '✅ Todas las promociones guardadas correctamente';
       estado.style.color = 'green';
-      await cargarPromocionesConfig();
-      setTimeout(() => { estado.textContent = ''; }, 3000);
     }
+
+    await cargarPromocionesConfig();
+
+    setTimeout(() => {
+      if (estado) estado.textContent = '';
+    }, 3000);
+
   } catch (error) {
-    console.error('Error:', error);
-    estado.textContent = 'Error inesperado al guardar';
-    estado.style.color = 'red';
+    console.error('Error guardando promociones:', error);
+
+    if (estado) {
+      estado.textContent = 'Error inesperado al guardar';
+      estado.style.color = 'red';
+    }
   }
 }
 
@@ -3361,114 +3493,130 @@ function actualizarHoraVenezuela() {
 }
 
 async function guardarLinkWhatsapp() {
-  const link = document.getElementById('inputWhatsapp').value.trim();
-  if (!link) return alert('Ingresa un enlace válido');
+  const link = document.getElementById('inputWhatsapp')?.value.trim();
 
-  const { error } = await supabase
-    .from('configuracion')
-    .upsert([{ clave: 'link_whatsapp', valore: link }], { onConflict: 'clave' });
-
-  if (error) {
-    alert('Error guardando el enlace');
-    console.error(error);
-  } else {
-    alert('Enlace guardado');
-  }
-}
-async function cargarLinkWhatsapp() {
-  const { data, error } = await supabase
-    .from('configuracion')
-    .select('valore')
-    .eq('clave', 'link_whatsapp')
-    .single();
-
-  if (error || !data) {
-    console.error('Error al cargar link WhatsApp', error);
+  if (!link) {
+    alert('Ingresa un enlace válido');
     return;
   }
 
+  const ok = await setConfigValue('link_whatsapp', link);
+
+  if (!ok) {
+    alert('Error guardando el enlace');
+    return;
+  }
+
+  alert('Enlace guardado');
+
   const btn = document.getElementById('btnWhatsapp');
-  btn.href = data.valore;
+  if (btn) {
+    btn.href = link;
+    btn.style.display = 'inline-block';
+  }
+}
+
+async function cargarLinkWhatsapp() {
+  const linkConfig = await getConfigValue('link_whatsapp', null);
+
+  const btn = document.getElementById('btnWhatsapp');
+  if (!btn) return;
+
+  const linkFinal = linkConfig || sitioActual?.whatsapp_grupo || '';
+
+  if (!linkFinal) {
+    btn.style.display = 'none';
+    return;
+  }
+
+  btn.href = linkFinal;
   btn.style.display = 'inline-block';
 }
 
 function cerrarTerminos() {
-  document.getElementById('modal-terminos').classList.add('oculto');
+  document.getElementById('modal-terminos')?.classList.add('oculto');
 }
 
 async function guardarLinkYoutube() {
-  const link = document.getElementById("inputYoutube").value;
-  const { error } = await supabase
-    .from("configuracion")
-    .update({ valore: link })
-    .eq("clave", "youtube_live");
+  const link = document.getElementById("inputYoutube")?.value.trim();
 
-  if (error) {
-    alert("Error al guardar el enlace: " + error.message);
-  } else {
-    alert("Enlace de YouTube guardado exitosamente.");
+  if (!link) {
+    alert("Ingresa un enlace válido de YouTube.");
+    return;
   }
+
+  const ok = await setConfigValue('youtube_live', link);
+
+  if (!ok) {
+    alert("Error al guardar el enlace de YouTube.");
+    return;
+  }
+
+  alert("Enlace de YouTube guardado exitosamente.");
 }
 
 async function cargarConfiguracionModoCartones() {
-  const { data: modoData, error: modoError } = await supabase
-    .from('configuracion')
-    .select('valore')
-    .eq('clave', 'modo_cartones')
-    .single();
+  const modoGuardado = await getConfigValue('modo_cartones', sitioActual?.modo_cartones || 'libre');
+  modoCartones = modoGuardado || 'libre';
 
-  if (!modoError && modoData) {
-    modoCartones = modoData.valore;
-  }
+  const inputCantidad = document.getElementById('cantidadCartones');
+  const btnMas = document.getElementById('btnMas');
+  const btnMenos = document.getElementById('btnMenos');
 
   if (modoCartones === "fijo") {
-    const { data: cantData, error: cantError } = await supabase
-      .from('configuracion')
-      .select('valore')
-      .eq('clave', 'cartones_obligatorios')
-      .single();
+    const cantidadGuardada = await getConfigValue(
+      'cartones_obligatorios',
+      String(sitioActual?.cantidad_fija_cartones || 1)
+    );
 
-    if (!cantError && cantData) {
-      cantidadFijaCartones = parseInt(cantData.valore) || 1;
-      document.getElementById('cantidadCartones').value = cantidadFijaCartones;
-      document.getElementById('btnMas').disabled = true;
-      document.getElementById('btnMenos').disabled = true;
-      document.getElementById('cantidadCartones').readOnly = true;
+    cantidadFijaCartones = parseInt(cantidadGuardada, 10) || 1;
+
+    if (inputCantidad) {
+      inputCantidad.value = cantidadFijaCartones;
+      inputCantidad.readOnly = true;
     }
+
+    if (btnMas) btnMas.disabled = true;
+    if (btnMenos) btnMenos.disabled = true;
+
   } else {
-    document.getElementById('btnMas').disabled = false;
-    document.getElementById('btnMenos').disabled = false;
-    document.getElementById('cantidadCartones').readOnly = false;
+    if (inputCantidad) inputCantidad.readOnly = false;
+    if (btnMas) btnMas.disabled = false;
+    if (btnMenos) btnMenos.disabled = false;
   }
 }
 
 async function cargarModoCartonesAdmin() {
-  const { data: modoData } = await supabase
-    .from('configuracion')
-    .select('valore')
-    .eq('clave', 'modo_cartones')
-    .single();
+  const modoGuardado = await getConfigValue('modo_cartones', sitioActual?.modo_cartones || 'libre');
 
-  if (modoData) {
-    document.getElementById('modoCartonesSelect').value = modoData.valore;
+  const selectModo = document.getElementById('modoCartonesSelect');
+  const contenedorFijos = document.getElementById('contenedorCartonesFijos');
+  const inputFijos = document.getElementById('cantidadCartonesFijos');
+
+  if (selectModo) {
+    selectModo.value = modoGuardado || 'libre';
   }
 
-  if (modoData && modoData.valore === 'fijo') {
-    const { data: cantData } = await supabase
-      .from('configuracion')
-      .select('valore')
-      .eq('clave', 'cartones_obligatorios')
-      .single();
+  if (modoGuardado === 'fijo') {
+    const cantidadGuardada = await getConfigValue(
+      'cartones_obligatorios',
+      String(sitioActual?.cantidad_fija_cartones || 1)
+    );
 
-    if (cantData) {
-      document.getElementById('cantidadCartonesFijos').value = cantData.valore;
+    if (inputFijos) {
+      inputFijos.value = cantidadGuardada || '1';
     }
-    document.getElementById('contenedorCartonesFijos').style.display = 'block';
+
+    if (contenedorFijos) {
+      contenedorFijos.style.display = 'block';
+    }
+
   } else {
-    document.getElementById('contenedorCartonesFijos').style.display = 'none';
+    if (contenedorFijos) {
+      contenedorFijos.style.display = 'none';
+    }
   }
 }
-
 function cambiarModoCartones() {
   const modo = document.getElementById('modoCartonesSelect').value;
   const contenedor = document.getElementById('contenedorCartonesFijos');
@@ -3487,31 +3635,54 @@ function cambiarModoCartones() {
 }
 
 async function guardarModoCartones() {
-  const modo = document.getElementById('modoCartonesSelect').value;
-  const cantidad = parseInt(document.getElementById('cantidadCartonesFijos').value);
+  const modo = document.getElementById('modoCartonesSelect')?.value || 'libre';
+  const cantidadInput = document.getElementById('cantidadCartonesFijos');
+  const cantidad = parseInt(cantidadInput?.value, 10);
 
-  const updates = [
-    { clave: 'modo_cartones', valore: modo }
-  ];
+  if (!SITE_ID) {
+    alert('Error: sitio no identificado.');
+    return;
+  }
 
   if (modo === 'fijo') {
     if (isNaN(cantidad) || cantidad < 1) {
-      return alert('Cantidad fija inválida');
+      alert('Cantidad fija inválida');
+      return;
     }
-    updates.push({ clave: 'cartones_obligatorios', valore: cantidad });
   }
 
-  const { error } = await supabase
-    .from('configuracion')
-    .upsert(updates, { onConflict: 'clave' });
+  const okModo = await setConfigValue('modo_cartones', modo);
 
-  if (error) {
-    alert('Error guardando configuración');
-    console.error(error);
-  } else {
-    alert('Modo actualizado correctamente');
-    await cargarConfiguracionModoCartones();
+  if (!okModo) {
+    alert('Error guardando modo de cartones');
+    return;
   }
+
+  if (modo === 'fijo') {
+    const okCantidad = await setConfigValue('cartones_obligatorios', String(cantidad));
+
+    if (!okCantidad) {
+      alert('Error guardando cantidad fija');
+      return;
+    }
+
+    cantidadFijaCartones = cantidad;
+
+    if (sitioActual) {
+      sitioActual.cantidad_fija_cartones = cantidad;
+    }
+  }
+
+  modoCartones = modo;
+
+  if (sitioActual) {
+    sitioActual.modo_cartones = modo;
+  }
+
+  alert('Modo actualizado correctamente');
+
+  await cargarConfiguracionModoCartones();
+  await cargarModoCartonesAdmin();
 }
 
 async function guardarGanador() {
@@ -3589,16 +3760,19 @@ function toggleFormularioGanador() {
 }
 
 async function activarCohetes() {
-  const { error } = await supabase
-    .from('configuracion')
-    .update({ valore: true })
-    .eq('clave', 'cohetes_activados');
-
-  if (error) {
-    alert("Error activando cohetes");
-  } else {
-    alert("¡Cohetes activados!");
+  if (!SITE_ID) {
+    alert('Error: sitio no identificado.');
+    return;
   }
+
+  const ok = await setConfigValue('cohetes_activados', 'true');
+
+  if (!ok) {
+    alert('Error activando cohetes');
+    return;
+  }
+
+  alert('¡Cohetes activados!');
 }
 
 function ordenarInscripcionesPorNombre() {
@@ -4023,97 +4197,167 @@ async function subirCartones() {
 }
 
 async function borrarCartones() {
-  const { data: claveData, error: claveError } = await supabase
-    .from('configuracion')
-    .select('valore')
-    .eq('clave', 'clave_borrar_cartones')
-    .single();
-
-  if (claveError || !claveData) {
-    alert("Error al obtener la clave de seguridad. Contacta al administrador.");
-    console.error('Error obteniendo clave:', claveError);
+  if (!SITE_ID || !SITE_SLUG) {
+    alert("Error: sitio no identificado.");
     return;
   }
 
-  const claveCorrecta = claveData.valore;
-  const claveIngresada = prompt("Ingrese la clave de seguridad para borrar todos los cartones:");
+  const claveCorrecta = await getConfigValue('clave_borrar_cartones', null);
+
+  if (!claveCorrecta) {
+    alert("Error al obtener la clave de seguridad. Contacta al administrador.");
+    return;
+  }
+
+  const claveIngresada = prompt("Ingrese la clave de seguridad para borrar los cartones de este sitio:");
 
   if (!claveIngresada) {
     alert("Operación cancelada.");
     return;
   }
 
-  if (claveIngresada.trim() !== claveCorrecta.trim()) {
+  if (claveIngresada.trim() !== String(claveCorrecta).trim()) {
     alert("Clave incorrecta. No se borraron los cartones.");
     return;
   }
 
-  if (!confirm("⚠️ ¿ESTÁS ABSOLUTAMENTE SEGURO?\n\nEsta acción borrará TODAS las imágenes de cartones.\n\nEsto NO se puede deshacer.")) {
+  if (!confirm("⚠️ ¿ESTÁS ABSOLUTAMENTE SEGURO?\n\nEsta acción borrará SOLO las imágenes de cartones de este sitio.\n\nEsto NO se puede deshacer.")) {
     alert("Operación cancelada.");
     return;
   }
 
   const status = document.getElementById('deleteStatus');
-  status.innerHTML = '<p style="color:blue;">Cargando lista de imágenes...</p>';
+
+  if (status) {
+    status.innerHTML = '<p style="color:blue;">Cargando lista de imágenes...</p>';
+  }
 
   try {
-    const { data: list, error: listError } = await supabase.storage
-      .from('cartones')
-      .list('', { limit: 1000 });
+    let totalEliminados = 0;
+    const pageSize = 1000;
 
-    if (listError) throw listError;
+    while (true) {
+      const { data: list, error: listError } = await supabase.storage
+        .from('cartones')
+        .list(SITE_SLUG, {
+          limit: pageSize,
+          sortBy: { column: 'name', order: 'asc' }
+        });
 
-    if (!list || list.length === 0) {
-      status.innerHTML = '<p style="color:orange;">No hay imágenes para borrar.</p>';
-      setTimeout(() => { status.innerHTML = ''; }, 3000);
-      return;
+      if (listError) throw listError;
+
+      if (!list || list.length === 0) break;
+
+      const fileNames = list
+        .filter(file => file.name)
+        .map(file => `${SITE_SLUG}/${file.name}`);
+
+      if (fileNames.length === 0) break;
+
+      const { error: deleteError } = await supabase.storage
+        .from('cartones')
+        .remove(fileNames);
+
+      if (deleteError) throw deleteError;
+
+      totalEliminados += fileNames.length;
+
+      if (list.length < pageSize) break;
     }
 
-    const fileNames = list.map(file => file.name);
-    const { error: deleteError } = await supabase.storage
-      .from('cartones')
-      .remove(fileNames);
+    if (status) {
+      if (totalEliminados === 0) {
+        status.innerHTML = '<p style="color:orange;">No hay imágenes para borrar en este sitio.</p>';
+      } else {
+        status.innerHTML = `<p style="color:green;">✅ Se borraron ${totalEliminados} imágenes de este sitio.</p>`;
+      }
+    }
 
-    if (deleteError) throw deleteError;
-
-    status.innerHTML = `<p style="color:green;">✅ Se borraron ${fileNames.length} imágenes exitosamente.</p>`;
-    
   } catch (error) {
     console.error('Error borrando cartones:', error);
-    status.innerHTML = `<p style="color:red;">❌ Error al borrar imágenes: ${error.message}</p>`;
+
+    if (status) {
+      status.innerHTML = `<p style="color:red;">❌ Error al borrar imágenes: ${error.message}</p>`;
+    }
   }
 
   setTimeout(() => {
-    status.innerHTML = '';
+    if (status) status.innerHTML = '';
   }, 5000);
 }
 
 // ==================== FUNCIÓN entrarAdmin ====================
 async function entrarAdmin() {
-  // Verificar si ya tiene sesión válida
-  const sessionToken = sessionStorage.getItem('admin_session_token');
-  
-  if (sessionToken && await verificarSesionAdmin()) {
-    // Ya tiene sesión válida
-    const email = sessionStorage.getItem('admin_email');
-    adminSession = { email, token: sessionToken };
-    sesionActiva = true;
-    
-    document.getElementById('admin-email-display').textContent = email;
-    mostrarPanelAdminSeguro(sessionToken);
-    iniciarDetectorActividad();
-    resetInactivityTimer();
-    
+  if (!SITE_ID) {
+    alert('La página todavía no terminó de cargar.');
     return;
   }
-  
-  // No tiene sesión, mostrar login
-  mostrarVentana('admin-login');
-  
-  // Limpiar campos
-  document.getElementById('admin-email').value = '';
-  document.getElementById('admin-password').value = '';
-  document.getElementById('admin-error').textContent = '';
+
+  const { data: sessionData } = await supabase.auth.getSession();
+  const session = sessionData?.session;
+
+  if (!session?.user?.email) {
+    mostrarVentana('admin-login');
+
+    const emailInput = document.getElementById('admin-email');
+    const passwordInput = document.getElementById('admin-password');
+    const errorDiv = document.getElementById('admin-error');
+
+    if (emailInput) emailInput.value = '';
+    if (passwordInput) passwordInput.value = '';
+    if (errorDiv) {
+      errorDiv.textContent = '';
+      errorDiv.className = '';
+    }
+
+    return;
+  }
+
+  const { data: ctx, error } = await supabase.rpc('rpc_auth_admin_context', {
+    _site_id: SITE_ID
+  });
+
+  if (error) {
+    console.error(error);
+    alert('No se pudo verificar el permiso del administrador.');
+    return;
+  }
+
+  const permiso = Array.isArray(ctx) ? ctx[0] : ctx;
+
+  if (!permiso || (!permiso.es_master && !permiso.es_admin_sitio)) {
+    await supabase.auth.signOut();
+    alert('Este correo no tiene permiso para administrar esta página.');
+    return;
+  }
+
+  adminSession = {
+    email: permiso.email,
+    rol: permiso.rol,
+    site_id: SITE_ID,
+    es_master: permiso.es_master
+  };
+
+  sesionActiva = true;
+
+  sessionStorage.setItem('admin_email', permiso.email);
+  sessionStorage.setItem('admin_rol', permiso.rol || 'admin');
+  sessionStorage.setItem('admin_site_id', SITE_ID);
+  sessionStorage.setItem('admin_is_master', permiso.es_master ? 'true' : 'false');
+
+  document.querySelectorAll('section').forEach(sec => sec.classList.add('oculto'));
+
+  const panel = document.getElementById('admin-panel');
+  if (panel) panel.classList.remove('oculto');
+
+  const emailDisplay = document.getElementById('admin-email-display');
+  if (emailDisplay) emailDisplay.textContent = permiso.email;
+
+  iniciarDetectorActividad();
+  resetInactivityTimer();
+
+  await cargarPanelAdmin();
+  activarRefrescoAutomaticoAdmin();
 }
 // ==================== FUNCIÓN PARA RECUPERAR PASSWORD ====================
 async function recuperarPasswordAdmin() {
@@ -4239,19 +4483,14 @@ function iniciarContadorReserva(minutos = 5) {
   }, 1000);
 }
 async function liberarReservaPorTiempo() {
-
   try {
+    const cedulaLimpia = String(usuario.cedula || '').trim();
 
-    await supabase.rpc('rpc_liberar_reserva', {
-      _cedula: usuario.cedula,
-      _partida_id: null
-    });
+    await liberarReservasSeleccionadas(cedulaLimpia, usuario.cartones);
 
     usuario.cartones = [];
 
-    alert(
-      'Tu tiempo para enviar el comprobante expiró. Debes seleccionar nuevamente tus cartones.'
-    );
+    alert('Tu tiempo para enviar el comprobante expiró. Debes seleccionar nuevamente tus cartones.');
 
     mostrarSeccion('cartones');
 
@@ -4342,10 +4581,34 @@ function activarTopCompradoresRealtime() {
     .subscribe();
 }
 
+function obtenerRutaStorageDesdeUrlImagen(url) {
+  if (!url) return null;
+
+  try {
+    const parte = String(url).split('/storage/v1/object/public/imagenes/')[1];
+
+    if (parte) {
+      return decodeURIComponent(parte.split('?')[0]);
+    }
+
+    // Compatibilidad con imágenes viejas guardadas sin carpeta
+    return String(url).split('/').pop().split('?')[0];
+
+  } catch (err) {
+    console.error('Error obteniendo ruta de imagen:', err);
+    return null;
+  }
+}
+
 async function subirImagenPremiosInicio() {
   const input = document.getElementById('inputPremiosInicio');
   const estado = document.getElementById('estadoPremiosInicio');
-  const archivoOriginal = input.files[0];
+  const archivoOriginal = input?.files?.[0];
+
+  if (!SITE_ID || !SITE_SLUG) {
+    alert('Error: sitio no identificado.');
+    return;
+  }
 
   if (!archivoOriginal) {
     alert('Selecciona una imagen');
@@ -4353,18 +4616,20 @@ async function subirImagenPremiosInicio() {
   }
 
   try {
-    estado.textContent = 'Convirtiendo imagen a WebP...';
+    if (estado) estado.textContent = 'Convirtiendo imagen a WebP...';
 
-    // Convierte JPG / PNG / WEBP a WebP optimizado
+    const imagenAnterior = await getConfigValue('imagen_premios_inicio', null);
+
+    // Convertir JPG / PNG / WEBP a WebP optimizado
     const archivoWebP = await convertirImagenAWebP(archivoOriginal, 0.85, 1400);
 
     const idArchivo = crypto.randomUUID
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-    const nombreArchivo = `premios-inicio-${Date.now()}-${idArchivo}.webp`;
+    const nombreArchivo = `${SITE_SLUG}/premios-inicio-${Date.now()}-${idArchivo}.webp`;
 
-    estado.textContent = 'Subiendo imagen...';
+    if (estado) estado.textContent = 'Subiendo imagen...';
 
     const { error: uploadError } = await supabase.storage
       .from('imagenes')
@@ -4375,41 +4640,50 @@ async function subirImagenPremiosInicio() {
       });
 
     if (uploadError) {
-      estado.textContent = 'Error subiendo imagen';
+      if (estado) estado.textContent = 'Error subiendo imagen';
       console.error(uploadError);
       return;
     }
 
-    // URL pública en WebP
     const { data: publicData } = supabase.storage
       .from('imagenes')
       .getPublicUrl(nombreArchivo);
 
     const url = publicData.publicUrl;
 
-    estado.textContent = 'Guardando configuración...';
+    if (estado) estado.textContent = 'Guardando configuración...';
 
-    const { error } = await supabase
-      .from('configuracion')
-      .upsert(
-        [{ clave: 'imagen_premios_inicio', valore: url }],
-        { onConflict: 'clave' }
-      );
+    const ok = await setConfigValue('imagen_premios_inicio', url);
 
-    if (error) {
-      estado.textContent = 'Error guardando imagen';
-      console.error(error);
+    if (!ok) {
+      if (estado) estado.textContent = 'Error guardando imagen';
+
+      await supabase.storage
+        .from('imagenes')
+        .remove([nombreArchivo]);
+
       return;
     }
 
-    input.value = '';
-    estado.textContent = '✅ Imagen guardada en WebP';
+    // Borrar imagen anterior solo después de guardar la nueva correctamente
+    if (imagenAnterior) {
+      const rutaAnterior = obtenerRutaStorageDesdeUrlImagen(imagenAnterior);
+
+      if (rutaAnterior && rutaAnterior !== nombreArchivo) {
+        await supabase.storage
+          .from('imagenes')
+          .remove([rutaAnterior]);
+      }
+    }
+
+    if (input) input.value = '';
+    if (estado) estado.textContent = '✅ Imagen guardada en WebP';
 
     await cargarImagenPremiosInicio();
 
   } catch (error) {
     console.error(error);
-    estado.textContent = '❌ Error: ' + error.message;
+    if (estado) estado.textContent = '❌ Error: ' + error.message;
   }
 }
 
@@ -4417,45 +4691,45 @@ async function cargarImagenPremiosInicio() {
   const img = document.getElementById('imagenPremiosInicio');
   if (!img) return;
 
-  const { data, error } = await supabase
-    .from('configuracion')
-    .select('valore')
-    .eq('clave', 'imagen_premios_inicio')
-    .single();
+  const url = await getConfigValue('imagen_premios_inicio', '');
 
-  if (error || !data?.valore) {
+  if (!url) {
+    img.src = '';
     img.classList.add('oculto');
     return;
   }
 
-  img.src = data.valore;
+  img.src = url;
   img.classList.remove('oculto');
 }
 
-window.subirImagenPremiosInicio = subirImagenPremiosInicio;
-
 async function eliminarImagenPremiosInicio() {
+  if (!SITE_ID || !SITE_SLUG) {
+    alert('Error: sitio no identificado.');
+    return;
+  }
+
   if (!confirm('¿Eliminar la imagen de premios?')) return;
 
   try {
-    const { data } = await supabase
-      .from('configuracion')
-      .select('valore')
-      .eq('clave', 'imagen_premios_inicio')
-      .single();
+    const urlActual = await getConfigValue('imagen_premios_inicio', null);
 
-    if (data?.valore) {
-      const nombreArchivo = data.valore.split('/').pop();
+    if (urlActual) {
+      const rutaArchivo = obtenerRutaStorageDesdeUrlImagen(urlActual);
 
-      await supabase.storage
-        .from('imagenes')
-        .remove([nombreArchivo]);
+      if (rutaArchivo) {
+        await supabase.storage
+          .from('imagenes')
+          .remove([rutaArchivo]);
+      }
     }
 
-    await supabase
-      .from('configuracion')
-      .update({ valore: null })
-      .eq('clave', 'imagen_premios_inicio');
+    const ok = await setConfigValue('imagen_premios_inicio', '');
+
+    if (!ok) {
+      alert('Error limpiando la configuración de la imagen');
+      return;
+    }
 
     const img = document.getElementById('imagenPremiosInicio');
 
@@ -4472,8 +4746,8 @@ async function eliminarImagenPremiosInicio() {
   }
 }
 
+window.subirImagenPremiosInicio = subirImagenPremiosInicio;
 window.eliminarImagenPremiosInicio = eliminarImagenPremiosInicio;
-
 async function cargarBarraProgresoInicio() {
   const contenedor = document.getElementById('barraProgresoInicio');
   const texto = document.getElementById('textoProgresoCartones');
