@@ -408,133 +408,96 @@ async function loginAdmin() {
   const email = document.getElementById('admin-email').value.trim();
   const password = document.getElementById('admin-password').value;
   const errorDiv = document.getElementById('admin-error');
-  
+
   errorDiv.textContent = '';
   errorDiv.className = '';
   errorDiv.style.whiteSpace = 'pre-line';
-  
+
   if (!email || !password) {
     errorDiv.textContent = 'Por favor ingresa email y contraseña';
     errorDiv.className = 'error';
     return;
   }
-  
-  console.log('🔄 Iniciando login con sesión única + OTP...');
-  
+
+  console.log('🔄 Iniciando login SIN OTP...');
+
   try {
     errorDiv.textContent = '🔐 Verificando credenciales...';
     errorDiv.className = 'info';
-    
-    // Obtener o generar deviceId único
+
     let deviceId = localStorage.getItem('admin_device_id');
     if (!deviceId) {
       deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       localStorage.setItem('admin_device_id', deviceId);
     }
-    
-    console.log('📱 Device ID:', deviceId);
-    
-    // ========== PASO 1: VERIFICAR CREDENCIALES ==========
-    errorDiv.textContent = '🔐 Verificando email y contraseña...';
-    
+
     const response = await fetch(
       'https://zxtgaovreqzcpzdvmmcx.supabase.co/functions/v1/admin-auth',
       {
         method: 'POST',
-        headers: { 
+        headers: {
           'Content-Type': 'application/json',
           'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4dGdhb3ZyZXF6Y3B6ZHZtbWN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NzUwOTUsImV4cCI6MjA5NzE1MTA5NX0.aUqskDkosOTXmWOm0q0RacgAnQezSxVD2wGB6CXOB3g'
         },
-        body: JSON.stringify({ 
-          email: email.toLowerCase().trim(), 
+        body: JSON.stringify({
+          email: email.toLowerCase().trim(),
           password: password,
           deviceId: deviceId,
-          action: 'verify_credentials' // Nueva acción para solo verificar
+          action: 'login'
         })
       }
     );
-    
+
     console.log('📡 Estado respuesta:', response.status);
+
     const result = await response.json();
-    console.log('📦 Resultado:', result);
-    
-    if (!response.ok) {
-      // MANEJO DE ERRORES ESPECÍFICOS
-      if (result.error === "SESION_ACTIVA_OTRO_DISPOSITIVO") {
+    console.log('📦 Resultado login:', result);
+
+    if (!response.ok || !result.success) {
+      if (result.error === 'SESION_ACTIVA') {
         errorDiv.innerHTML = `
-          ⚠️ <strong>¡Ya tienes una sesión activa!</strong><br><br>
-          No puedes iniciar sesión en múltiples dispositivos/navegadores.<br><br>
-          <strong>Solución:</strong><br>
-          1. Ve al otro dispositivo/navegador<br>
-          2. Cierra sesión allí primero<br>
-          3. Intenta de nuevo aquí
+          ⚠️ <strong>Ya hay una sesión activa</strong><br><br>
+          Cierra sesión en el otro navegador/dispositivo o libera la sesión desde Supabase.
         `;
         errorDiv.className = 'warning';
-      } else if (result.error === "SESION_ACTIVA") {
-        errorDiv.innerHTML = '⚠️ Ya tienes una sesión activa en otro lugar';
-        errorDiv.className = 'warning';
       } else {
-        errorDiv.textContent = result.error || 'Error de autenticación';
+        errorDiv.textContent = result.message || result.error || 'Credenciales incorrectas';
         errorDiv.className = 'error';
       }
-      
+
       document.getElementById('admin-password').value = '';
       return;
     }
-    
-    // ========== PASO 2: CREDENCIALES CORRECTAS - ENVIAR OTP ==========
-    console.log('✅ Credenciales verificadas correctamente');
-    
-    // Guardar credenciales temporalmente
-    // Guardar solo datos necesarios, nunca la contraseña
-sessionStorage.setItem('pending_email', email.toLowerCase().trim());
-sessionStorage.setItem('pending_deviceId', deviceId);
 
-errorDiv.innerHTML = '✅ <strong>Credenciales correctas</strong><br>📧 Enviando código de verificación...';
-errorDiv.className = 'success';
+    localStorage.setItem('admin_session_token', result.sessionToken);
+    localStorage.setItem('admin_device_id', result.deviceId || deviceId);
+    localStorage.setItem('admin_expires_at', result.expiresAt);
+    localStorage.setItem('admin_email', result.email);
 
-// Enviar OTP
-const { error: otpError } = await supabase.auth.signInWithOtp({
-  email: email.toLowerCase().trim(),
-  options: {
-    shouldCreateUser: false,
-    emailRedirectTo: window.location.origin
-  }
-});
+    document.getElementById('admin-password').value = '';
 
-if (otpError) {
-  console.error('❌ Error enviando OTP:', otpError);
+    errorDiv.innerHTML = '✅ <strong>Login correcto</strong><br>Entrando al panel...';
+    errorDiv.className = 'success';
 
-  errorDiv.textContent = '❌ No se pudo enviar el código OTP. Intenta de nuevo.';
-  errorDiv.className = 'error';
+    setTimeout(() => {
+      window.location.reload();
+    }, 800);
 
-  document.getElementById('admin-password').value = '';
-  return;
-}
-
-document.getElementById('admin-password').value = '';
-    
-    console.log('✅ OTP enviado a:', email);
-    
-    // ========== PASO 3: MOSTRAR INTERFAZ OTP ==========
-    mostrarInterfazOTP(email);
-    
   } catch (error) {
     console.error('❌ Error en login:', error);
-    
+
     let errorMsg = 'Error de conexión';
-    if (error.message.includes('Failed to fetch')) {
+    if (error.message && error.message.includes('Failed to fetch')) {
       errorMsg = 'Error de red. Verifica tu conexión a internet';
     } else {
-      errorMsg = error.message;
+      errorMsg = error.message || 'Error desconocido';
     }
-    
+
     errorDiv.textContent = errorMsg;
     errorDiv.className = 'error';
     document.getElementById('admin-password').value = '';
   }
 }
-
 // ==================== FUNCIONES OTP ====================
 
 function mostrarInterfazOTP(email) {
