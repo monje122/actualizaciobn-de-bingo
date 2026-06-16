@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BingoAndino7- Juegos en línea y diversión</title>
-   <link rel="icon" type="image/png" href="https://moizrhkexrocanhkggyb.supabase.co/storage/v1/object/public/1/bingo-andino75.png">
+   <link rel="icon" type="image/png" href="https://dbkixcpwirjwjvjintkr.supabase.co/storage/v1/object/public/1/bingo-andino75.png">
    <!-- ✅ Metaetiquetas SEO -->
   <meta name="description" content="Disfruta de los mejores juegos de bingo en línea. Juega, gana y diviértete con BingoAndino75." />
   <meta name="keywords" content="bingo, juegos, en línea, ganar dinero, entretenimiento, GOLDEM GP, venezuela" />
@@ -42,7 +42,7 @@
   </a>
 </footer>
 
-  <img src="https://moizrhkexrocanhkggyb.supabase.co/storage/v1/object/public/1/bingo-andino75.png" alt="Logo" class="logo">
+  <img src="https://dbkixcpwirjwjvjintkr.supabase.co/storage/v1/object/public/1/bingo-andino75.png" alt="Logo" class="logo">
     <img id="imagenPremiosInicio" class="imagen-premios-inicio oculto" alt="Premios">
 <div id="hora-venezuela" style="
   margin-top: 15px;
@@ -226,7 +226,7 @@
       <input type="text" id="pago_cedula" placeholder="Tu cédula de Pago Móvil">
     </div>
 <h2>💳 Sube tu comprobante</h2>
-    <input type="file" accept="image/*" id="comprobante">
+    <input type="file" accept="image/jpeg,image/png,image/webp" id="comprobante">
     <input type="text" id="referencia4dig" maxlength="4" placeholder="Últimos 4 dígitos de la referencia">
 
     <button id="btnEnviarComprobante" onclick="enviarComprobante()">Enviar comprobante</button>
@@ -476,7 +476,7 @@
         <h3>🖼️ Imágenes de Cartones</h3>
       </div>
       <div class="upload-area">
-        <input type="file" id="cartonImageInput" multiple accept="image/*">
+        <input type="file" id="cartonImageInput" multiple accept="image/jpeg,image/png,image/webp">
         <button onclick="subirCartones()" class="btn-primary">⬆️ Subir Imágenes</button>
         <button onclick="borrarCartones()" class="btn-danger">🗑️ Borrar Todas</button>
       </div>
@@ -589,7 +589,7 @@
       
       <div class="panel-section">
   <h3>🏆 Imagen de premios del inicio</h3>
-  <input type="file" id="inputPremiosInicio" accept="image/*">
+  <input type="file" id="inputPremiosInicio" accept="image/jpeg,image/png,image/webp">
   <button onclick="subirImagenPremiosInicio()" class="btn-primary">💾 Guardar imagen</button>
         <button onclick="eliminarImagenPremiosInicio()">
 🗑 Eliminar Imagen
@@ -698,11 +698,8 @@
   const supabaseUrl = 'https://moizrhkexrocanhkggyb.supabase.co';
   const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8';
 
-  if (!window.supabase || typeof window.supabase.createClient !== 'function') {
-    console.error('Supabase JS no cargó. Revisa el CDN antes de script.js');
-  } else {
-    window.supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
-  }
+
+  window.supabase = supabase.createClient(supabaseUrl, supabaseKey);
 </script>
 
 
