@@ -1,4 +1,19 @@
 var supabase = window.supabase;
+// ==================== MULTI-SITIO ====================
+let sitioActual = null;
+let SITE_ID = null;
+let SITE_SLUG = 'golden';
+
+function obtenerSlugSitio() {
+  const params = new URLSearchParams(window.location.search);
+  const slugUrl = params.get('site');
+
+  if (slugUrl && slugUrl.trim()) {
+    return slugUrl.trim().toLowerCase();
+  }
+
+  return 'golden';
+}
 // Configuración del admin
 let sistemaListo = false;
 // Variables globales
@@ -54,10 +69,10 @@ async function procesarEstadoUnaVez(id, fila, nuevoEstado, accion) {
   }
 }
 const CONFIG_OTP = {
-  ACTIVADO: true,                     // Activar/desactivar OTP
+  ACTIVADO: false,                     // Activar/desactivar OTP
   TIEMPO_EXPIRACION: 10,              // Minutos para usar el código
   REENVIOS_MAXIMOS: 2,                // Máximo de reenvíos
-  REQUERIDO_SIEMPRE: true             // Siempre pedir OTP
+  REQUERIDO_SIEMPRE: false            // Siempre pedir OTP
 };
 
 let credencialesVerificadas = {
@@ -133,25 +148,246 @@ if (botonAdmin) {
     }
   });
 }
+
+async function iniciarSitioActual() {
+  SITE_SLUG = obtenerSlugSitio();
+
+  console.log('🌐 Cargando sitio:', SITE_SLUG);
+
+  const { data, error } = await supabase.rpc('rpc_public_get_sitio', {
+    _slug: SITE_SLUG
+  });
+
+  if (error) {
+    console.error('❌ Error cargando sitio:', error);
+    mostrarSitioNoDisponible('No se pudo cargar esta página.');
+    return false;
+  }
+
+  const sitio = Array.isArray(data) ? data[0] : data;
+
+  if (!sitio) {
+    mostrarSitioNoDisponible('Esta página no existe.');
+    return false;
+  }
+
+  sitioActual = sitio;
+  SITE_ID = sitio.id;
+
+  console.log('✅ Sitio cargado:', sitioActual);
+
+  aplicarDatosSitio(sitioActual);
+
+  if (!sitioActual.activo) {
+    mostrarSitioPausado(sitioActual);
+    return false;
+  }
+
+  return true;
+}
+
+function aplicarDatosSitio(sitio) {
+  if (!sitio) return;
+
+  // Título de la pestaña
+  document.title = sitio.titulo_publico || sitio.nombre || 'Bingo';
+
+  // Logo principal
+  const logo = document.querySelector('#bienvenida .logo');
+  if (logo && sitio.logo_url) {
+    logo.src = sitio.logo_url;
+    logo.alt = sitio.nombre || 'Logo';
+  }
+
+  // Favicon
+  if (sitio.favicon_url) {
+    let favicon = document.querySelector('link[rel="icon"]');
+    if (!favicon) {
+      favicon = document.createElement('link');
+      favicon.rel = 'icon';
+      document.head.appendChild(favicon);
+    }
+    favicon.href = sitio.favicon_url;
+  }
+
+  // Imagen de premio
+  const imgPremio = document.getElementById('imagenPremiosInicio');
+  if (imgPremio) {
+    if (sitio.imagen_premio_url) {
+      imgPremio.src = sitio.imagen_premio_url;
+      imgPremio.classList.remove('oculto');
+    } else {
+      imgPremio.classList.add('oculto');
+    }
+  }
+
+  // Colores CSS globales
+  document.documentElement.style.setProperty('--site-primary', sitio.color_principal || '#020A35');
+  document.documentElement.style.setProperty('--site-secondary', sitio.color_secundario || '#FFA500');
+  document.documentElement.style.setProperty('--site-buttons', sitio.color_botones || sitio.color_principal || '#020A35');
+  document.documentElement.style.setProperty('--site-bg', sitio.color_fondo || '#ffffff');
+  document.documentElement.style.setProperty('--site-text', sitio.color_texto || '#000000');
+
+  document.body.style.backgroundColor = sitio.color_fondo || '';
+  document.body.style.color = sitio.color_texto || '';
+
+  // Total de cartones y precio desde sitios
+  totalCartones = parseInt(sitio.total_cartones || sitio.cartones_visibles || 0, 10) || 0;
+  precioPorCarton = parseFloat(sitio.precio_carton_bs || 0) || 0;
+
+  // Pago móvil
+  aplicarDatosPagoSitio(sitio);
+
+  // Redes sociales
+  aplicarRedesSitio(sitio);
+}
+
+function aplicarDatosPagoSitio(sitio) {
+  const banco = document.getElementById('adminPagoBanco');
+  const telefono = document.getElementById('adminPagoTelefono');
+  const cedula = document.getElementById('adminPagoCedula');
+
+  if (banco) {
+    banco.textContent = sitio.pago_banco_codigo || sitio.pago_banco || '';
+  }
+
+  if (telefono) {
+    telefono.textContent = sitio.pago_telefono || '';
+  }
+
+  if (cedula) {
+    cedula.textContent = sitio.pago_cedula || '';
+  }
+}
+
+function aplicarRedesSitio(sitio) {
+  const contenedor = document.getElementById('redes-sociales');
+  if (!contenedor) return;
+
+  const redes = [];
+
+  if (sitio.whatsapp) {
+    const numero = String(sitio.whatsapp).replace(/\D/g, '');
+    redes.push(`
+      <a href="https://wa.me/${numero}" target="_blank" rel="noopener noreferrer" title="WhatsApp">
+        <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" alt="WhatsApp" width="40">
+      </a>
+    `);
+  }
+
+  if (sitio.youtube) {
+    redes.push(`
+      <a href="${sitio.youtube}" target="_blank" rel="noopener noreferrer" title="YouTube">
+        <img src="https://cdn-icons-png.flaticon.com/512/1384/1384060.png" alt="YouTube" width="40">
+      </a>
+    `);
+  }
+
+  if (sitio.facebook) {
+    redes.push(`
+      <a href="${sitio.facebook}" target="_blank" rel="noopener noreferrer" title="Facebook">
+        <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" width="40">
+      </a>
+    `);
+  }
+
+  if (sitio.instagram) {
+    redes.push(`
+      <a href="${sitio.instagram}" target="_blank" rel="noopener noreferrer" title="Instagram">
+        <img src="https://cdn-icons-png.flaticon.com/512/1384/1384063.png" alt="Instagram" width="40">
+      </a>
+    `);
+  }
+
+  if (sitio.tiktok) {
+    redes.push(`
+      <a href="${sitio.tiktok}" target="_blank" rel="noopener noreferrer" title="TikTok">
+        <img src="https://cdn-icons-png.flaticon.com/512/3046/3046121.png" alt="TikTok" width="40">
+      </a>
+    `);
+  }
+
+  if (sitio.whatsapp_grupo) {
+    redes.push(`
+      <a id="btnWhatsapp" href="${sitio.whatsapp_grupo}" target="_blank" rel="noopener noreferrer">
+        Unirse al grupo de WhatsApp
+      </a>
+    `);
+  }
+
+  contenedor.innerHTML = redes.join('');
+}
+
+function mostrarSitioNoDisponible(mensaje) {
+  const overlay = document.getElementById('overlay-carga');
+  if (overlay) overlay.style.display = 'none';
+
+  document.body.innerHTML = `
+    <section style="min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;">
+      <div style="max-width:500px;background:white;border-radius:12px;padding:30px;box-shadow:0 4px 20px rgba(0,0,0,.15);">
+        <h1>⚠️ Página no disponible</h1>
+        <p>${mensaje}</p>
+      </div>
+    </section>
+  `;
+}
+
+function mostrarSitioPausado(sitio) {
+  const overlay = document.getElementById('overlay-carga');
+  if (overlay) overlay.style.display = 'none';
+
+  document.body.innerHTML = `
+    <section style="min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;background:#f8f9fa;">
+      <div style="max-width:520px;background:white;border-radius:12px;padding:30px;box-shadow:0 4px 20px rgba(0,0,0,.15);">
+        ${sitio.logo_url ? `<img src="${sitio.logo_url}" alt="${sitio.nombre}" style="max-width:140px;margin-bottom:15px;">` : ''}
+        <h1>⏸️ Página pausada</h1>
+        <p>Esta página está temporalmente pausada o vencida.</p>
+        <p><strong>${sitio.nombre || ''}</strong></p>
+        <small>Contacta al administrador para renovar el servicio.</small>
+      </div>
+    </section>
+  `;
+}
 // ==================== FUNCIONES DE CONFIGURACIÓN ====================
 async function getConfigValue(clave, fallback = null) {
-  const { data, error } = await supabase
-    .from('configuracion')
-    .select('valore, valor')
-    .eq('clave', clave)
-    .single();
+  if (!SITE_ID) {
+    console.warn('SITE_ID no cargado todavía para getConfigValue:', clave);
+    return fallback;
+  }
 
-  if (error || !data) return fallback;
-  return (data.valore ?? data.valor ?? fallback);
+  const { data, error } = await supabase.rpc('rpc_get_config_sitio', {
+    _site_id: SITE_ID,
+    _clave: clave,
+    _fallback: fallback
+  });
+
+  if (error) {
+    console.warn('Error getConfigValue:', clave, error);
+    return fallback;
+  }
+
+  return data ?? fallback;
 }
 
 async function setConfigValue(clave, value) {
-  const { error } = await supabase
-    .from('configuracion')
-    .upsert([{ clave, valore: value }], { onConflict: 'clave' });
-  return !error;
-}
+  if (!SITE_ID) {
+    console.warn('SITE_ID no cargado todavía para setConfigValue:', clave);
+    return false;
+  }
 
+  const { data, error } = await supabase.rpc('rpc_set_config_sitio', {
+    _site_id: SITE_ID,
+    _clave: clave,
+    _valor: String(value)
+  });
+
+  if (error) {
+    console.error('Error setConfigValue:', clave, error);
+    return false;
+  }
+
+  return data === true;
+}
 // ==================== SISTEMA DE SESIÓN ÚNICA ====================
 // Función para cerrar sesión
  async function cerrarSesionAdmin() {
@@ -162,99 +398,31 @@ async function setConfigValue(clave, value) {
 
 // Igual que logoutAdmin, pero sin confirm()
 async function logoutAdminSilencioso() {
-  const email = sessionStorage.getItem('admin_email');
-  const deviceId =
-    sessionStorage.getItem('device_id') ||
-    localStorage.getItem('admin_device_id') ||
-    localStorage.getItem('device_id');
-
-  const sessionToken = sessionStorage.getItem('admin_session_token');
-
   try {
-    if (email && deviceId) {
-      await fetch('https://zxtgaovreqzcpzdvmmcx.supabase.co/functions/v1/admin-auth', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4dGdhb3ZyZXF6Y3B6ZHZtbWN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NzUwOTUsImV4cCI6MjA5NzE1MTA5NX0.aUqskDkosOTXmWOm0q0RacgAnQezSxVD2wGB6CXOB3g'
-        },
-        body: JSON.stringify({ action: 'logout', email, deviceId, sessionToken })
-      });
-    }
-  } catch (e) {
-    console.warn('Logout silencioso falló (red), limpiando local igual:', e);
+    await supabase.auth.signOut();
+  } catch (error) {
+    console.warn('Logout silencioso falló:', error);
   } finally {
     clearAdminSession();
     resetToLoginState();
   }
 }
-
 // ========== FUNCIÓN LOGOUT COMPATIBLE CON TU CÓDIGO ==========
 async function logoutAdmin() {
-  // TÚ usas sessionStorage, no localStorage:
-  const email = sessionStorage.getItem('admin_email');
-  const deviceId = localStorage.getItem('admin_device_id');
-  const sessionToken = sessionStorage.getItem('admin_session_token');
-  
-  console.log('🔍 Datos para logout:', { email, deviceId, sessionToken });
-  
-  if (!email || !deviceId) {
-    console.log("⚠️ No hay sesión activa completa");
-    // Aún así redirigir
-    resetToLoginState();
-    return;
-  }
+  if (!confirm('¿Estás seguro de cerrar sesión?')) return;
 
   try {
-    // Opcional: confirmación
-    if (!confirm('¿Estás seguro de cerrar sesión?\n\n✅ Esto liberará tu dispositivo para iniciar en otro lugar.')) {
-      return;
-    }
-    
-    console.log('🔄 Enviando logout al servidor...');
-    
-    const response = await fetch(
-      'https://zxtgaovreqzcpzdvmmcx.supabase.co/functions/v1/admin-auth',
-      {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4dGdhb3ZyZXF6Y3B6ZHZtbWN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NzUwOTUsImV4cCI6MjA5NzE1MTA5NX0.aUqskDkosOTXmWOm0q0RacgAnQezSxVD2wGB6CXOB3g'
-        },
-        body: JSON.stringify({
-          action: 'logout',
-          email: email,
-          deviceId: deviceId,
-          sessionToken: sessionToken
-        })
-      }
-    );
-    
-    console.log('📡 Estado respuesta logout:', response.status);
-    const result = await response.json();
-    console.log('📦 Resultado logout:', result);
-    
-    if (result.success) {
-      console.log('✅ Logout exitoso en servidor');
-      clearAdminSession();
-      alert('✅ Sesión cerrada. Ahora puedes iniciar en otro dispositivo.');
-      resetToLoginState();
-    } else {
-      console.error("❌ Error del servidor al cerrar sesión:", result.error);
-      // Aún así limpiar localmente
-      clearAdminSession();
-      resetToLoginState();
-    }
-    
+    await supabase.auth.signOut();
   } catch (error) {
-    console.error("❌ Error en logout:", error);
-    // Aún así limpiar localmente
-    clearAdminSession();
-    resetToLoginState();
+    console.warn('Error cerrando sesión Auth:', error);
   }
-}
 
-// ========== FUNCIÓN PARA LIMPIAR SESIÓN (COMPATIBLE) ==========
+  clearAdminSession();
+  resetToLoginState();
+
+  alert('Sesión cerrada correctamente');
+}
+// ========== FUNCIÓN PARA LIMPIA SESIÓN (COMPATIBLE) ==========
 function clearAdminSession() {
   console.log('🧹 Limpiando sesión...');
   
@@ -405,131 +573,102 @@ function mostrarAlertaSesionDuplicada() {
 // ==================== LOGIN CON DOBLE FACTOR ====================
 // ==================== LOGIN SEGURO CON EDGE FUNCTION ====================
 async function loginAdmin() {
-  const email = document.getElementById('admin-email').value.trim();
+  const email = document.getElementById('admin-email').value.trim().toLowerCase();
   const password = document.getElementById('admin-password').value;
   const errorDiv = document.getElementById('admin-error');
-  
+
   errorDiv.textContent = '';
   errorDiv.className = '';
   errorDiv.style.whiteSpace = 'pre-line';
-  
+
   if (!email || !password) {
     errorDiv.textContent = 'Por favor ingresa email y contraseña';
     errorDiv.className = 'error';
     return;
   }
-  
-  console.log('🔄 Iniciando login con sesión única + OTP...');
-  
+
+  if (!SITE_ID) {
+    errorDiv.textContent = 'La página todavía no terminó de cargar. Intenta de nuevo.';
+    errorDiv.className = 'error';
+    return;
+  }
+
   try {
-    errorDiv.textContent = '🔐 Verificando credenciales...';
+    errorDiv.textContent = '🔐 Verificando acceso...';
     errorDiv.className = 'info';
-    
-    // Obtener o generar deviceId único
-    let deviceId = localStorage.getItem('admin_device_id');
-    if (!deviceId) {
-      deviceId = `device_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      localStorage.setItem('admin_device_id', deviceId);
-    }
-    
-    console.log('📱 Device ID:', deviceId);
-    
-    // ========== PASO 1: VERIFICAR CREDENCIALES ==========
-    errorDiv.textContent = '🔐 Verificando email y contraseña...';
-    
-    const response = await fetch(
-      'https://zxtgaovreqzcpzdvmmcx.supabase.co/functions/v1/admin-auth',
-      {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4dGdhb3ZyZXF6Y3B6ZHZtbWN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NzUwOTUsImV4cCI6MjA5NzE1MTA5NX0.aUqskDkosOTXmWOm0q0RacgAnQezSxVD2wGB6CXOB3g'
-        },
-        body: JSON.stringify({ 
-          email: email.toLowerCase().trim(), 
-          password: password,
-          deviceId: deviceId,
-          action: 'verify_credentials' // Nueva acción para solo verificar
-        })
-      }
-    );
-    
-    console.log('📡 Estado respuesta:', response.status);
-    const result = await response.json();
-    console.log('📦 Resultado:', result);
-    
-    if (!response.ok) {
-      // MANEJO DE ERRORES ESPECÍFICOS
-      if (result.error === "SESION_ACTIVA_OTRO_DISPOSITIVO") {
-        errorDiv.innerHTML = `
-          ⚠️ <strong>¡Ya tienes una sesión activa!</strong><br><br>
-          No puedes iniciar sesión en múltiples dispositivos/navegadores.<br><br>
-          <strong>Solución:</strong><br>
-          1. Ve al otro dispositivo/navegador<br>
-          2. Cierra sesión allí primero<br>
-          3. Intenta de nuevo aquí
-        `;
-        errorDiv.className = 'warning';
-      } else if (result.error === "SESION_ACTIVA") {
-        errorDiv.innerHTML = '⚠️ Ya tienes una sesión activa en otro lugar';
-        errorDiv.className = 'warning';
-      } else {
-        errorDiv.textContent = result.error || 'Error de autenticación';
-        errorDiv.className = 'error';
-      }
-      
+
+    const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (loginError) {
+      console.error('Error login:', loginError);
+      errorDiv.textContent = 'Correo o clave incorrectos';
+      errorDiv.className = 'error';
       document.getElementById('admin-password').value = '';
       return;
     }
-    
-    // ========== PASO 2: CREDENCIALES CORRECTAS - ENVIAR OTP ==========
-    console.log('✅ Credenciales verificadas correctamente');
-    
-    // Guardar credenciales temporalmente
-    // Guardar solo datos necesarios, nunca la contraseña
-sessionStorage.setItem('pending_email', email.toLowerCase().trim());
-sessionStorage.setItem('pending_deviceId', deviceId);
 
-errorDiv.innerHTML = '✅ <strong>Credenciales correctas</strong><br>📧 Enviando código de verificación...';
-errorDiv.className = 'success';
+    const { data: ctx, error: ctxError } = await supabase.rpc('rpc_auth_admin_context', {
+      _site_id: SITE_ID
+    });
 
-// Enviar OTP
-const { error: otpError } = await supabase.auth.signInWithOtp({
-  email: email.toLowerCase().trim(),
-  options: {
-    shouldCreateUser: false,
-    emailRedirectTo: window.location.origin
-  }
-});
-
-if (otpError) {
-  console.error('❌ Error enviando OTP:', otpError);
-
-  errorDiv.textContent = '❌ No se pudo enviar el código OTP. Intenta de nuevo.';
-  errorDiv.className = 'error';
-
-  document.getElementById('admin-password').value = '';
-  return;
-}
-
-document.getElementById('admin-password').value = '';
-    
-    console.log('✅ OTP enviado a:', email);
-    
-    // ========== PASO 3: MOSTRAR INTERFAZ OTP ==========
-    mostrarInterfazOTP(email);
-    
-  } catch (error) {
-    console.error('❌ Error en login:', error);
-    
-    let errorMsg = 'Error de conexión';
-    if (error.message.includes('Failed to fetch')) {
-      errorMsg = 'Error de red. Verifica tu conexión a internet';
-    } else {
-      errorMsg = error.message;
+    if (ctxError) {
+      console.error('Error verificando permisos:', ctxError);
+      await supabase.auth.signOut();
+      errorDiv.textContent = 'No se pudo verificar el permiso del administrador';
+      errorDiv.className = 'error';
+      return;
     }
-    
-    errorDiv.textContent = errorMsg;
+
+    const permiso = Array.isArray(ctx) ? ctx[0] : ctx;
+
+    if (!permiso || (!permiso.es_master && !permiso.es_admin_sitio)) {
+      await supabase.auth.signOut();
+
+      errorDiv.textContent = 'Este correo no tiene permiso para administrar esta página';
+      errorDiv.className = 'error';
+      document.getElementById('admin-password').value = '';
+      return;
+    }
+
+    sessionStorage.setItem('admin_email', permiso.email);
+    sessionStorage.setItem('admin_rol', permiso.rol || 'admin');
+    sessionStorage.setItem('admin_site_id', SITE_ID);
+    sessionStorage.setItem('admin_is_master', permiso.es_master ? 'true' : 'false');
+
+    adminSession = {
+      email: permiso.email,
+      rol: permiso.rol,
+      site_id: SITE_ID,
+      es_master: permiso.es_master
+    };
+
+    sesionActiva = true;
+
+    document.getElementById('admin-password').value = '';
+
+    errorDiv.innerHTML = '✅ <strong>Acceso correcto</strong><br>Entrando al panel...';
+    errorDiv.className = 'success';
+
+    setTimeout(async () => {
+      document.getElementById('admin-login').classList.add('oculto');
+      document.getElementById('admin-panel').classList.remove('oculto');
+
+      const emailDisplay = document.getElementById('admin-email-display');
+      if (emailDisplay) emailDisplay.textContent = permiso.email;
+
+      iniciarDetectorActividad();
+      resetInactivityTimer();
+
+      await cargarPanelAdmin();
+      activarRefrescoAutomaticoAdmin();
+    }, 700);
+
+  } catch (error) {
+    console.error('Error en loginAdmin:', error);
+    errorDiv.textContent = 'Error de conexión o configuración';
     errorDiv.className = 'error';
     document.getElementById('admin-password').value = '';
   }
@@ -1246,82 +1385,78 @@ function limpiarStorageTemporal() {
 
 // ==================== VERIFICACIÓN INICIAL ====================
 async function verificarSesionInicial() {
-  console.log('🔍 Verificando sesión inicial al cargar...');
+  console.log('🔍 Verificando sesión inicial con Supabase Auth...');
 
-  // Ocultar panel y login mientras se verifica
   document.getElementById('admin-panel')?.classList.add('oculto');
   document.getElementById('admin-login')?.classList.add('oculto');
   document.getElementById('bienvenida')?.classList.remove('oculto');
 
-  const sessionToken = sessionStorage.getItem('admin_session_token');
-
-  if (!sessionToken) {
-    console.log('ℹ️ No hay token guardado');
+  if (!SITE_ID) {
+    console.warn('SITE_ID no está cargado todavía');
     return;
   }
 
   try {
-    const esValida = await verificarSesionAdmin();
+    const { data: sessionData } = await supabase.auth.getSession();
+    const session = sessionData?.session;
 
-    if (esValida) {
-     const email = sessionStorage.getItem('admin_email');
-
-      console.log('✅ Sesión válida guardada para:', email);
-
-      adminSession = { email, token: sessionToken };
-      sesionActiva = true;
-
-      if (document.getElementById('admin-email-display')) {
-        document.getElementById('admin-email-display').textContent = email;
-      }
-
-      await cargarPanelAdmin();
-      activarRefrescoAutomaticoAdmin();
-      iniciarDetectorActividad();
-      resetInactivityTimer();
-
-      // **IMPORTANTE:** No abrir el panel automáticamente
-      // Solo deja la sesión activa lista para cuando el usuario haga clic en Admin
+    if (!session?.user?.email) {
+      console.log('ℹ️ No hay sesión Auth activa');
+      sesionActiva = false;
+      adminSession = null;
       return;
+    }
 
-    } else {
-  console.log('⚠️ Sesión inválida, limpiando...');
+    const { data: ctx, error: ctxError } = await supabase.rpc('rpc_auth_admin_context', {
+      _site_id: SITE_ID
+    });
 
-  sessionStorage.removeItem('admin_session_token');
-  sessionStorage.removeItem('admin_email');
-  sessionStorage.removeItem('session_expires');
-  sessionStorage.removeItem('device_id');
+    if (ctxError) {
+      console.error('Error verificando contexto admin:', ctxError);
+      await supabase.auth.signOut();
+      sesionActiva = false;
+      adminSession = null;
+      return;
+    }
 
-  localStorage.removeItem('admin_session_token');
-  localStorage.removeItem('admin_email');
-  localStorage.removeItem('session_expires');
+    const permiso = Array.isArray(ctx) ? ctx[0] : ctx;
 
-  sesionActiva = false;
-  adminSession = null;
+    if (!permiso || (!permiso.es_master && !permiso.es_admin_sitio)) {
+      console.warn('Sesión Auth existe, pero no tiene permiso en este sitio');
+      await supabase.auth.signOut();
+      sesionActiva = false;
+      adminSession = null;
+      return;
+    }
 
-  document.getElementById('admin-login')?.classList.add('oculto');
-  document.getElementById('admin-panel')?.classList.add('oculto');
-  document.getElementById('bienvenida')?.classList.remove('oculto');
-}
- } catch (error) {
-  console.error('❌ Error verificando sesión inicial:', error);
+    sessionStorage.setItem('admin_email', permiso.email);
+    sessionStorage.setItem('admin_rol', permiso.rol || 'admin');
+    sessionStorage.setItem('admin_site_id', SITE_ID);
+    sessionStorage.setItem('admin_is_master', permiso.es_master ? 'true' : 'false');
 
-  sessionStorage.removeItem('admin_session_token');
-  sessionStorage.removeItem('admin_email');
-  sessionStorage.removeItem('session_expires');
-  sessionStorage.removeItem('device_id');
+    adminSession = {
+      email: permiso.email,
+      rol: permiso.rol,
+      site_id: SITE_ID,
+      es_master: permiso.es_master
+    };
 
-  localStorage.removeItem('admin_session_token');
-  localStorage.removeItem('admin_email');
-  localStorage.removeItem('session_expires');
+    sesionActiva = true;
 
-  sesionActiva = false;
-  adminSession = null;
+    const emailDisplay = document.getElementById('admin-email-display');
+    if (emailDisplay) emailDisplay.textContent = permiso.email;
 
-  document.getElementById('admin-login')?.classList.add('oculto');
-  document.getElementById('admin-panel')?.classList.add('oculto');
-  document.getElementById('bienvenida')?.classList.remove('oculto');
-}
+    iniciarDetectorActividad();
+    resetInactivityTimer();
+
+    console.log('✅ Sesión admin válida:', adminSession);
+
+  } catch (error) {
+    console.error('❌ Error verificando sesión inicial:', error);
+    await supabase.auth.signOut();
+    sesionActiva = false;
+    adminSession = null;
+  }
 }
 // ==================== FUNCIONES FALTANTES QUE NECESITA EL HTML ====================
 
@@ -1330,6 +1465,7 @@ async function verListaAprobados() {
   const { data, error } = await supabase
     .from('inscripciones')
     .select('*')
+  .eq('site_id', SITE_ID)
     .eq('estado', 'aprobado');
 
   const listaDiv = document.getElementById('listaAprobados');
@@ -1404,6 +1540,7 @@ async function detectarCartonesDuplicados() {
     const { data, error } = await supabase
       .from('inscripciones')
       .select('id,nombre,cedula,estado,cartones')
+    .eq('site_id', SITE_ID)
       .in('estado', ['pendiente', 'aprobado']);
 
     if (error) throw error;
@@ -1536,20 +1673,21 @@ function resaltarCeldasDuplicadas(duplicadosSet) {
 async function verHuerfanos() {
   const btn = document.getElementById('btnVerHuerfanos');
   if (!btn) return;
-  
+
   const prev = btn.textContent;
   btn.disabled = true;
   btn.textContent = 'Buscando...';
-  
+
   try {
     const { data, error } = await supabase.rpc('rpc_listar_cartones_huerfanos', {
+      _site_id: SITE_ID,
       _min_age: '5 minutes'
     });
-    
+
     if (error) throw error;
-    
+
     renderTablaHuerfanos(data || []);
-    
+
   } catch (e) {
     console.error(e);
     const resultado = document.getElementById('huerfanosResultado');
@@ -1612,28 +1750,29 @@ function renderTablaHuerfanos(rows) {
 
 // Función para liberar huérfanos
 async function liberarHuerfanos() {
-  if (!confirm('¿Liberar todos los cartones huérfanos?')) return;
-  
+  if (!confirm('¿Liberar todos los cartones huérfanos de este sitio?')) return;
+
   const btn = document.getElementById('btnLiberarHuerfanos');
   if (!btn) return;
-  
+
   const prev = btn.textContent;
   btn.disabled = true;
   btn.textContent = 'Limpiando...';
-  
+
   try {
     const { data, error } = await supabase.rpc('rpc_liberar_cartones_huerfanos', {
+      _site_id: SITE_ID,
       _min_age: '5 minutes'
     });
-    
+
     if (error) throw error;
 
     alert(`Listo. Cartones liberados: ${data ?? 0}`);
-    
+
     await verHuerfanos();
     await cargarCartones();
     await contarCartonesVendidos();
-    
+
   } catch (e) {
     console.error(e);
     alert('Error al liberar huérfanos.');
@@ -1642,7 +1781,6 @@ async function liberarHuerfanos() {
     btn.textContent = prev;
   }
 }
-
 // Función para guardar precio por cartón
 async function guardarPrecioPorCarton() {
   const nuevoPrecio = parseFloat(document.getElementById('precioCarton').value);
@@ -1671,6 +1809,7 @@ async function obtenerMontoTotalRecaudado() {
    const { data, error } = await supabase
     .from('inscripciones')
     .select('monto_bs, cartones')
+   .eq('site_id', SITE_ID)
     .eq('estado', 'aprobado'); 
 
   if (error) {
@@ -1702,10 +1841,11 @@ async function contarCartonesVendidos() {
   await obtenerTotalCartones();
 
   const { count, error } = await supabase
-    .from('cartones')
-    .select('numero', { count: 'exact', head: true })
-    .gte('numero', 1)
-    .lte('numero', totalCartones);
+  .from('cartones')
+  .select('numero', { count: 'exact', head: true })
+  .eq('site_id', SITE_ID)
+  .gte('numero', 1)
+  .lte('numero', totalCartones);
 
   if (error) {
     console.error('Error al contar cartones:', error);
@@ -1758,6 +1898,12 @@ function renderizarBotonesPromociones() {
 window.addEventListener('DOMContentLoaded', async () => {
   console.log('🚀 Inicializando sistema...');
     sistemaListo = false;
+  const sitioOk = await iniciarSitioActual();
+
+if (!sitioOk) {
+  console.warn('Sitio no disponible o pausado.');
+  return;
+}
   // Crear ta¿'bl ses nxiste
    document.getElementById('modal-terminos').classList.remove('oculto');
    await obtenerTotalCartones();
@@ -1805,28 +1951,23 @@ window.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function obtenerTotalCartones() {
-  const { data, error } = await supabase
-    .from('configuracion')
-    .select('valore')
-    .eq('clave', 'total_cartones')
-    .single();
+  if (sitioActual?.total_cartones) {
+    totalCartones = parseInt(sitioActual.total_cartones, 10) || 0;
+    return;
+  }
 
-  totalCartones = (!error && data) ? parseInt(data.valore, 10) || 0 : 0;
+  const valor = await getConfigValue('total_cartones', '0');
+  totalCartones = parseInt(valor, 10) || 0;
 }
 
 async function cargarPrecioPorCarton() {
-  const { data, error } = await supabase
-    .from('configuracion')
-    .select('valore')
-    .eq('clave', 'precio_carton')
-    .single();
-
-  if (!error && data) {
-    precioPorCarton = parseFloat(data.valore);
-  } else {
-    console.error('Error cargando el precio del cartón', error);
-    precioPorCarton = 0;
+  if (sitioActual?.precio_carton_bs !== null && sitioActual?.precio_carton_bs !== undefined) {
+    precioPorCarton = parseFloat(sitioActual.precio_carton_bs) || 0;
+    return;
   }
+
+  const valor = await getConfigValue('precio_carton', '0');
+  precioPorCarton = parseFloat(valor) || 0;
 }
 
 function generarCartones() {
@@ -2064,8 +2205,9 @@ if (maxDisponibles <= 0) {
 // ==================== FUNCIONES DE CARTONES ====================
 async function cargarCartones() {
   const { error: errorHuerfanos } = await supabase.rpc('rpc_liberar_cartones_huerfanos', {
-    _min_age: '5 minutes'
-  });
+  _site_id: SITE_ID,
+  _min_age: '5 minutes'
+});
 
   if (errorHuerfanos) {
     console.error('Error liberando huérfanos:', errorHuerfanos);
@@ -2116,11 +2258,11 @@ async function toggleCarton(num, elem) {
   
 
 const { data: liberado, error: errorLiberar } = await supabase.rpc('rpc_liberar_reserva', {
+  _site_id: SITE_ID,
   _numero: num,
   _cedula: cedulaLimpia,
   _partida_id: null
 });
-    
     console.log('Liberar cartón:', {
       numero: num,
       cedula: cedulaLimpia,
@@ -2156,11 +2298,12 @@ const { data: liberado, error: errorLiberar } = await supabase.rpc('rpc_liberar_
   // No permitir más de la cantidad elegida
   if (usuario.cartones.length >= cantidadPermitida) return;
 
-  const { data, error } = await supabase.rpc('rpc_reservar_carton', {
-    _numero: num,
-    _cedula: cedulaLimpia,
-    _partida_id: null
-  });
+ const { data, error } = await supabase.rpc('rpc_reservar_carton', {
+  _site_id: SITE_ID,
+  _numero: num,
+  _cedula: cedulaLimpia,
+  _partida_id: null
+});
 
   if (error || data !== true) {
     alert('Ese cartón ya fue tomado por otra persona. Elige otro.');
@@ -2339,6 +2482,7 @@ if (cartonesEnviar.length !== cantidadPermitida) {
 const { data: reservas, error: errorReservas } = await supabase
   .from('cartones')
   .select('numero, cedula')
+  .eq('site_id', SITE_ID)
   .in('numero', cartonesEnviar);
 
 if (errorReservas) {
@@ -2369,6 +2513,7 @@ if (faltantes.length > 0) {
 const { data: inscripcionesActivas, error: errorInscripciones } = await supabase
   .from('inscripciones')
   .select('id, nombre, cedula, cartones')
+.eq('site_id', SITE_ID)
   .in('estado', ['pendiente', 'aprobado']);
 
 if (errorInscripciones) {
@@ -2405,6 +2550,7 @@ if (duplicados.length > 0) {
   return;
 }
     const { error: errorInsert } = await supabase.from('inscripciones').insert([{
+      site_id: SITE_ID,
       nombre: usuario.nombre,
       telefono: usuario.telefono,
       cedula: cedulaLimpia,
@@ -2451,6 +2597,7 @@ async function consultarCartones() {
   const { data: todas } = await supabase
     .from('inscripciones')
     .select('*')
+  .eq('site_id', SITE_ID)
     .eq('cedula', cedula);
 
   if (!todas || todas.length === 0) {
@@ -2565,6 +2712,7 @@ cartonesOcupados = await fetchTodosLosOcupados();
       pago_cedula,
       estado
     `)
+  .eq('site_id', SITE_ID)
     .order('id', { ascending: false });
 
   if (error) {
@@ -2669,6 +2817,7 @@ async function aprobarInscripcion(id, fila) {
     .from('inscripciones')
     .select('cartones,nombre')
     .eq('id', id)
+  .eq('site_id', SITE_ID)
     .single();
 
   if (errorActual || !actual) {
@@ -2683,6 +2832,7 @@ async function aprobarInscripcion(id, fila) {
     .from('inscripciones')
     .select('id,nombre,cartones')
     .eq('estado', 'aprobado')
+  .eq('site_id', SITE_ID)
     .neq('id', id);
 
   if (errorAprobados) {
@@ -2722,6 +2872,7 @@ async function aprobarInscripcion(id, fila) {
   const { error } = await supabase
     .from('inscripciones')
     .update({ estado: 'aprobado' })
+  .eq('site_id', SITE_ID)
     .eq('id', id);
 
   if (error) {
@@ -2746,6 +2897,7 @@ async function confirmarCambioEstado(id, nuevoEstado) {
     .from('inscripciones')
     .select('estado')
     .eq('id', id)
+  .eq('site_id', SITE_ID)
     .single();
 
   if (!data) return false;
@@ -2766,6 +2918,7 @@ async function rechazarInscripcion(item, fila) {
   const { error: errUpd } = await supabase
     .from('inscripciones')
     .update({ estado: 'rechazado' })
+  .eq('site_id', SITE_ID)
     .eq('id', item.id);
 
   if (errUpd) {
@@ -2791,7 +2944,10 @@ async function eliminarInscripcion(item, fila) {
   if (!confirmar) return;
 
   try {
-    const { data, error } = await supabase.rpc('rpc_eliminar_inscripcion_seguro', { _id: item.id });
+    const { data, error } = await supabase.rpc('rpc_eliminar_inscripcion_seguro', {
+  _site_id: SITE_ID,
+  _id: item.id
+});
     if (error) throw error;
 
     if (item.comprobante) {
@@ -2815,36 +2971,34 @@ async function cerrarVentas() {
   const confirmacion = confirm("¿Estás seguro que quieres cerrar las ventas?");
   if (!confirmacion) return;
 
-  const { error } = await supabase
-    .from('configuracion')
-    .update({ valor: false })
-    .eq('clave', 'ventas_abierta');
+  const ok = await setConfigValue('ventas_abierta', 'false');
 
-  if (error) {
+  if (!ok) {
     alert("Error al cerrar las ventas");
-    console.error(error);
-  } else {
-    alert("Ventas cerradas correctamente");
-    location.reload();
+    return;
   }
+
+  if (sitioActual) sitioActual.ventas_abiertas = false;
+
+  alert("Ventas cerradas correctamente");
+  location.reload();
 }
 
 async function abrirVentas() {
   const confirmacion = confirm("¿Estás seguro que quieres abrir las ventas?");
   if (!confirmacion) return;
 
-  const { error } = await supabase
-    .from('configuracion')
-    .update({ valor: true })
-    .eq('clave', 'ventas_abierta');
+  const ok = await setConfigValue('ventas_abierta', 'true');
 
-  if (error) {
+  if (!ok) {
     alert("Error al abrir las ventas");
-    console.error(error);
-  } else {
-    alert("Ventas abiertas correctamente");
-    location.reload();
+    return;
   }
+
+  if (sitioActual) sitioActual.ventas_abiertas = true;
+
+  alert("Ventas abiertas correctamente");
+  location.reload();
 }
 
 async function reiniciarTodo() {
@@ -2882,8 +3036,17 @@ async function reiniciarTodo() {
     return;
   }
   
-  await supabase.from('inscripciones').delete().neq('cedula', '');
-  await supabase.from('cartones').delete().neq('numero', 0);
+ await supabase
+  .from('inscripciones')
+  .delete()
+  .eq('site_id', SITE_ID)
+  .neq('cedula', '');
+
+await supabase
+  .from('cartones')
+  .delete()
+  .eq('site_id', SITE_ID)
+  .neq('numero', 0);
 
   let totalEliminados = 0;
   const pageSize = 1500;
@@ -3124,6 +3287,7 @@ async function cargarListaAprobadosSeccion() {
   const { data, error } = await supabase
     .from('inscripciones')
     .select('*')
+  .eq('site_id', SITE_ID)
     .eq('estado', 'aprobado');
 
   const contenedor = document.getElementById('contenedor-aprobados');
@@ -3509,38 +3673,21 @@ function buildWhatsAppLink(rawPhone, presetMsg = '') {
 }
 
 async function fetchTodosLosOcupados() {
-  const pageSize = 1000;
-  let from = 0;
-  let todos = [];
+  if (!SITE_ID) return [];
 
-  const { count, error: countErr } = await supabase
+  const { data, error } = await supabase
     .from('cartones')
-    .select('numero', { count: 'exact', head: true });
+    .select('numero')
+    .eq('site_id', SITE_ID)
+    .gte('numero', 1)
+    .lte('numero', totalCartones);
 
-  if (countErr) {
-    console.error('Error contando cartones:', countErr);
+  if (error) {
+    console.error('Error cargando cartones ocupados:', error);
     return [];
   }
 
-  const total = count || 0;
-  while (from < total) {
-    const to = Math.min(from + pageSize - 1, total - 1);
-    const { data, error } = await supabase
-      .from('cartones')
-      .select('numero')
-      .order('numero', { ascending: true })
-      .range(from, to);
-
-    if (error) {
-      console.error('Error paginando cartones:', error);
-      break;
-    }
-
-    todos = todos.concat(data || []);
-    from += pageSize;
-  }
-
-  return todos.map(r => Number(r.numero));
+  return (data || []).map(c => Number(c.numero));
 }
 
 function restringirSolo4Digitos(input) {
@@ -3581,6 +3728,7 @@ function editarReferencia(td) {
     const { error } = await supabase
       .from('inscripciones')
       .update({ referencia4dig: val })
+    .eq('site_id', SITE_ID)
       .eq('id', id);
 
     if (error) {
@@ -3622,6 +3770,7 @@ async function fetchAprobadosBasico() {
   const { data, error } = await supabase
     .from('inscripciones')
     .select('id,nombre,cedula,telefono,cartones,referencia4dig')
+  .eq('site_id', SITE_ID)
     .eq('estado','aprobado');
   if (error) {
     console.error('Error cargando aprobados:', error);
@@ -4116,6 +4265,7 @@ async function cargarTopCompradores() {
   const { data, error } = await supabase
     .from('inscripciones')
     .select('nombre, cedula, telefono, cartones, estado')
+  .eq('site_id', SITE_ID)
     .in('estado', ['aprobado']);
 
   const cont = document.getElementById('listaTopCompradores');
@@ -4428,10 +4578,11 @@ if (seleccionAleatoriaEnProceso) return;
   }
 
   const { data, error } = await supabase.rpc('rpc_reservar_cartones_aleatorios', {
-    _cantidad: faltan,
-    _cedula: String(usuario.cedula || '').trim(),
-    _partida_id: null
-  });
+  _site_id: SITE_ID,
+  _cantidad: faltan,
+  _cedula: String(usuario.cedula || '').trim(),
+  _partida_id: null
+});
 
   if (error) {
     console.error(error);
