@@ -172,11 +172,11 @@ async function logoutAdminSilencioso() {
 
   try {
     if (email && deviceId) {
-      await fetch('https://moizrhkexrocanhkggyb.supabase.co/functions/v1/admin-auth', {
+      await fetch('https://zxtgaovreqzcpzdvmmcx.supabase.co/functions/v1/admin-auth', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4dGdhb3ZyZXF6Y3B6ZHZtbWN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NzUwOTUsImV4cCI6MjA5NzE1MTA5NX0.aUqskDkosOTXmWOm0q0RacgAnQezSxVD2wGB6CXOB3g'
         },
         body: JSON.stringify({ action: 'logout', email, deviceId, sessionToken })
       });
@@ -214,12 +214,12 @@ async function logoutAdmin() {
     console.log('🔄 Enviando logout al servidor...');
     
     const response = await fetch(
-      'https://moizrhkexrocanhkggyb.supabase.co/functions/v1/admin-auth',
+      'https://zxtgaovreqzcpzdvmmcx.supabase.co/functions/v1/admin-auth',
       {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4dGdhb3ZyZXF6Y3B6ZHZtbWN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NzUwOTUsImV4cCI6MjA5NzE1MTA5NX0.aUqskDkosOTXmWOm0q0RacgAnQezSxVD2wGB6CXOB3g'
         },
         body: JSON.stringify({
           action: 'logout',
@@ -336,13 +336,13 @@ const deviceId =
 
   try {
     const response = await fetch(
-      'https://moizrhkexrocanhkggyb.supabase.co/functions/v1/verify-session',
+      'https://zxtgaovreqzcpzdvmmcx.supabase.co/functions/v1/verify-session',
       {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8',
-          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4dGdhb3ZyZXF6Y3B6ZHZtbWN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NzUwOTUsImV4cCI6MjA5NzE1MTA5NX0.aUqskDkosOTXmWOm0q0RacgAnQezSxVD2wGB6CXOB3g',
+          'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4dGdhb3ZyZXF6Y3B6ZHZtbWN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NzUwOTUsImV4cCI6MjA5NzE1MTA5NX0.aUqskDkosOTXmWOm0q0RacgAnQezSxVD2wGB6CXOB3g'
         },
         body: JSON.stringify({ sessionToken, deviceId })
       }
@@ -438,12 +438,12 @@ async function loginAdmin() {
     errorDiv.textContent = '🔐 Verificando email y contraseña...';
     
     const response = await fetch(
-      'https://moizrhkexrocanhkggyb.supabase.co/functions/v1/admin-auth',
+      'https://zxtgaovreqzcpzdvmmcx.supabase.co/functions/v1/admin-auth',
       {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4dGdhb3ZyZXF6Y3B6ZHZtbWN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NzUwOTUsImV4cCI6MjA5NzE1MTA5NX0.aUqskDkosOTXmWOm0q0RacgAnQezSxVD2wGB6CXOB3g'
         },
         body: JSON.stringify({ 
           email: email.toLowerCase().trim(), 
@@ -666,12 +666,12 @@ async function verificarOTP() {
     console.log('🔄 Creando sesión única después de OTP...');
     
     const response = await fetch(
-      'https://moizrhkexrocanhkggyb.supabase.co/functions/v1/admin-auth',
+      'https://zxtgaovreqzcpzdvmmcx.supabase.co/functions/v1/admin-auth',
       {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4dGdhb3ZyZXF6Y3B6ZHZtbWN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NzUwOTUsImV4cCI6MjA5NzE1MTA5NX0.aUqskDkosOTXmWOm0q0RacgAnQezSxVD2wGB6CXOB3g'
         },
         body: JSON.stringify({ 
           email: email.toLowerCase().trim(), 
@@ -749,12 +749,12 @@ localStorage.removeItem('session_expires');
 async function crearSesionUnicaOTP(email, deviceId) {
   try {
     const response = await fetch(
-      'https://moizrhkexrocanhkggyb.supabase.co/functions/v1/admin-auth',
+      'https://zxtgaovreqzcpzdvmmcx.supabase.co/functions/v1/admin-auth',
       {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4dGdhb3ZyZXF6Y3B6ZHZtbWN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NzUwOTUsImV4cCI6MjA5NzE1MTA5NX0.aUqskDkosOTXmWOm0q0RacgAnQezSxVD2wGB6CXOB3g'
         },
         body: JSON.stringify({ 
           email: email.toLowerCase().trim(), 
@@ -943,12 +943,12 @@ async function forzarCerrarSesionRemota() {
     
     // Por ahora, usamos un enfoque simple: limpiar la tabla
     const response = await fetch(
-      'https://moizrhkexrocanhkggyb.supabase.co/functions/v1/update-session',
+      'https://zxtgaovreqzcpzdvmmcx.supabase.co/functions/v1/update-session',
       {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im1vaXpyaGtleHJvY2FuaGtnZ3liIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjgzMDUsImV4cCI6MjA5Njk0NDMwNX0.BPB0poZoy_B9Pw411QVO8-79Fp1Pyscy0GMztA7ocs8'
+          'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4dGdhb3ZyZXF6Y3B6ZHZtbWN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NzUwOTUsImV4cCI6MjA5NzE1MTA5NX0.aUqskDkosOTXmWOm0q0RacgAnQezSxVD2wGB6CXOB3g'
         },
         body: JSON.stringify({ 
           action: "force_logout_all"
