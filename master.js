@@ -433,10 +433,12 @@ async function masterGuardarEdicion() {
 }
 
 function masterConfigurarEventos() {
+ 
   $('btnMasterLogin')?.addEventListener('click', masterLogin);
   $('btnMasterLogout')?.addEventListener('click', masterLogout);
   $('btnMasterRecargar')?.addEventListener('click', masterCargarSitios);
   $('btnMasterCrearSitio')?.addEventListener('click', masterCrearSitio);
+  $('btnMasterCrearAdmin')?.addEventListener('click', masterCrearAdminSitio);
   $('btnMasterGuardarEdicion')?.addEventListener('click', masterGuardarEdicion);
   $('btnMasterCancelarEdicion')?.addEventListener('click', masterCerrarEditor);
 
@@ -458,7 +460,73 @@ function masterConfigurarEventos() {
     $('masterSlugSitio').value = masterNormalizarSlug($('masterSlugSitio').value);
   });
 }
+async function masterCrearAdminSitio() {
+  const estado = document.getElementById('masterEstadoCrearAdmin');
 
+  try {
+    const siteId = Number(document.getElementById('masterAdminSiteId')?.value || 0);
+    const email = document.getElementById('masterAdminEmail')?.value.trim().toLowerCase();
+    const password = document.getElementById('masterAdminPassword')?.value.trim();
+
+    if (!siteId) {
+      alert('Coloca el ID del sitio.');
+      return;
+    }
+
+    if (!email || !email.includes('@')) {
+      alert('Coloca un correo válido.');
+      return;
+    }
+
+    if (!password || password.length < 6) {
+      alert('La contraseña debe tener mínimo 6 caracteres.');
+      return;
+    }
+
+    if (estado) {
+      estado.innerHTML = '<p style="color:blue;">Creando administrador...</p>';
+    }
+
+    const { data, error } = await supabase.functions.invoke('master-create-admin', {
+      body: {
+        site_id: siteId,
+        email: email,
+        password: password,
+        rol: 'admin'
+      }
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    if (data?.error) {
+      throw new Error(data.error);
+    }
+
+    if (estado) {
+      estado.innerHTML = `
+        <p style="color:green;">
+          ✅ ${data?.mensaje || 'Administrador creado correctamente.'}
+        </p>
+      `;
+    }
+
+    document.getElementById('masterAdminEmail').value = '';
+    document.getElementById('masterAdminPassword').value = '';
+
+  } catch (error) {
+    console.error('Error creando admin:', error);
+
+    if (estado) {
+      estado.innerHTML = `
+        <p style="color:red;">
+          Error creando admin: ${error.message || error}
+        </p>
+      `;
+    }
+  }
+}
 // Exponer funciones usadas por botones inline
 window.masterCambiarEstadoSitio = masterCambiarEstadoSitio;
 window.masterAbrirEditor = masterAbrirEditor;
