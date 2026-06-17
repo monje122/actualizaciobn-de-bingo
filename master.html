@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Panel Master - Golden Prime</title>
+  <link rel="stylesheet" href="styles.css">
+
+  <style>
+    body {
+      min-height: 100vh;
+      background: #f5f6fa;
+      color: #111;
+      font-family: Arial, sans-serif;
+    }
+
+    .oculto {
+      display: none !important;
+    }
+
+    .master-page {
+      width: min(1200px, 94%);
+      margin: 30px auto;
+    }
+
+    .master-card,
+    .master-section {
+      background: #fff;
+      border-radius: 14px;
+      padding: 22px;
+      margin-bottom: 22px;
+      box-shadow: 0 6px 20px rgba(0,0,0,.08);
+    }
+
+    .master-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 15px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .master-header h1 {
+      margin: 0;
+    }
+
+    .master-actions {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .master-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 14px;
+    }
+
+    .master-grid input,
+    .master-grid select {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+    }
+
+    .master-btn {
+      border: none;
+      border-radius: 8px;
+      padding: 11px 16px;
+      cursor: pointer;
+      font-weight: 700;
+      background: #020A35;
+      color: #fff;
+    }
+
+    .master-btn:hover {
+      opacity: .9;
+    }
+
+    .master-btn.secondary {
+      background: #6c757d;
+    }
+
+    .master-btn.success {
+      background: #198754;
+    }
+
+    .master-btn.warning {
+      background: #f59f00;
+      color: #111;
+    }
+
+    .master-btn.danger {
+      background: #dc3545;
+    }
+
+    .master-status {
+      margin-top: 12px;
+      font-weight: 700;
+      white-space: pre-line;
+    }
+
+    .master-status.success {
+      color: #198754;
+    }
+
+    .master-status.error {
+      color: #dc3545;
+    }
+
+    .master-status.info {
+      color: #0d6efd;
+    }
+
+    .master-table-wrap {
+      overflow-x: auto;
+      width: 100%;
+    }
+
+    .master-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 850px;
+    }
+
+    .master-table th,
+    .master-table td {
+      border-bottom: 1px solid #e5e5e5;
+      padding: 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    .master-table th {
+      background: #020A35;
+      color: #fff;
+    }
+
+    .site-active {
+      color: #198754;
+      font-weight: 700;
+    }
+
+    .site-paused {
+      color: #dc3545;
+      font-weight: 700;
+    }
+
+    code {
+      background: #f1f1f1;
+      padding: 3px 6px;
+      border-radius: 6px;
+    }
+
+    .login-box {
+      max-width: 430px;
+      margin: 70px auto;
+    }
+
+    .login-box input {
+      width: 100%;
+      box-sizing: border-box;
+      padding: 13px;
+      margin: 8px 0;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 15px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="overlay-carga" style="
+    position: fixed;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.85);
+    z-index: 999999;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    color: #000;
+    font-size: 24px;
+    font-weight: bold;
+  ">
+    ⏳ Cargando...
+  </div>
+
+  <main class="master-page">
+
+    <!-- LOGIN MASTER -->
+    <section id="master-login" class="master-card login-box oculto">
+      <h1>🧩 Panel Master</h1>
+      <p>Acceso solo para administradores master.</p>
+
+      <input type="email" id="masterEmail" placeholder="Correo master">
+      <input type="password" id="masterPassword" placeholder="Contraseña">
+
+      <button id="btnMasterLogin" class="master-btn">🔐 Iniciar sesión</button>
+      <a href="index.html" class="master-btn secondary" style="display:inline-block;text-decoration:none;margin-top:10px;">
+        🏠 Volver al inicio
+      </a>
+
+      <div id="masterLoginEstado" class="master-status"></div>
+    </section>
+
+    <!-- DASHBOARD MASTER -->
+    <section id="master-dashboard" class="oculto">
+      <div class="master-header">
+        <div>
+          <h1>🧩 Panel Master</h1>
+          <p>Administración general de sitios/clientes.</p>
+        </div>
+
+        <div class="master-actions">
+          <span>👤 <strong id="masterEmailDisplay"></strong></span>
+          <button id="btnMasterRecargar" class="master-btn secondary">🔄 Actualizar</button>
+          <button id="btnMasterLogout" class="master-btn danger">🔓 Cerrar sesión</button>
+        </div>
+      </div>
+
+      <!-- CREAR SITIO -->
+      <section class="master-section">
+        <h2>➕ Crear nuevo sitio</h2>
+
+        <div class="master-grid">
+          <input type="text" id="masterNombreSitio" placeholder="Nombre del sitio">
+          <input type="text" id="masterSlugSitio" placeholder="Slug, ejemplo: bingoganga">
+          <input type="text" id="masterTituloSitio" placeholder="Título público">
+
+          <input type="number" id="masterTotalCartones" placeholder="Total de cartones" min="1">
+          <input type="number" id="masterPrecioCarton" placeholder="Precio por cartón Bs" min="0" step="0.01">
+
+          <input type="text" id="masterLogoUrl" placeholder="Logo URL opcional">
+          <input type="text" id="masterColorPrincipal" placeholder="Color principal, ejemplo: #020A35">
+          <input type="text" id="masterWhatsappGrupo" placeholder="Grupo WhatsApp opcional">
+        </div>
+
+        <br>
+        <button id="btnMasterCrearSitio" class="master-btn success">💾 Crear sitio</button>
+
+        <div id="masterEstadoCrearSitio" class="master-status"></div>
+      </section>
+
+      <!-- EDITAR SITIO -->
+      <section id="masterEditorSitio" class="master-section oculto">
+        <h2>✏️ Editar sitio</h2>
+
+        <input type="hidden" id="masterEditId">
+
+        <div class="master-grid">
+          <input type="text" id="masterEditNombre" placeholder="Nombre">
+          <input type="text" id="masterEditTitulo" placeholder="Título público">
+          <input type="number" id="masterEditTotal" placeholder="Total cartones" min="1">
+          <input type="number" id="masterEditPrecio" placeholder="Precio Bs" min="0" step="0.01">
+
+          <input type="text" id="masterEditLogoUrl" placeholder="Logo URL">
+          <input type="text" id="masterEditColorPrincipal" placeholder="Color principal">
+          <input type="text" id="masterEditWhatsappGrupo" placeholder="Grupo WhatsApp">
+
+          <select id="masterEditActivo">
+            <option value="true">Activo</option>
+            <option value="false">Pausado</option>
+          </select>
+        </div>
+
+        <br>
+        <button id="btnMasterGuardarEdicion" class="master-btn success">💾 Guardar cambios</button>
+        <button id="btnMasterCancelarEdicion" class="master-btn secondary">Cancelar</button>
+
+        <div id="masterEstadoEditarSitio" class="master-status"></div>
+      </section>
+
+      <!-- LISTA SITIOS -->
+      <section class="master-section">
+        <h2>🌐 Sitios registrados</h2>
+        <div id="masterListaSitios" class="master-table-wrap">
+          <p>Cargando sitios...</p>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <script>
+    const supabaseUrl = 'https://zxtgaovreqzcpzdvmmcx.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4dGdhb3ZyZXF6Y3B6ZHZtbWN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NzUwOTUsImV4cCI6MjA5NzE1MTA5NX0.aUqskDkosOTXmWOm0q0RacgAnQezSxVD2wGB6CXOB3g';
+
+    window.supabase = supabase.createClient(supabaseUrl, supabaseKey);
+  </script>
+
+  <script src="master.js"></script>
+</body>
+</html>
