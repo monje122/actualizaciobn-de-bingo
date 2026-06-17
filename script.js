@@ -1,4 +1,4 @@
-// ==================== PANEL MASTER ===================
+// ==================== PANEL MASTER ==================
 var supabase = window.supabase;
 
 const masterState = {
