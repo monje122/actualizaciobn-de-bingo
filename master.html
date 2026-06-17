@@ -222,7 +222,32 @@
           <button id="btnMasterLogout" class="master-btn danger">🔓 Cerrar sesión</button>
         </div>
       </div>
+<hr>
 
+<h2>Crear administrador para un sitio</h2>
+
+<div class="master-grid">
+  <label>
+    ID del sitio
+    <input type="number" id="masterAdminSiteId" placeholder="Ej: 1">
+  </label>
+
+  <label>
+    Correo del admin
+    <input type="email" id="masterAdminEmail" placeholder="admincliente@gmail.com">
+  </label>
+
+  <label>
+    Contraseña
+    <input type="password" id="masterAdminPassword" placeholder="Mínimo 6 caracteres">
+  </label>
+</div>
+
+<button id="btnMasterCrearAdmin" class="master-btn success">
+  Crear admin del sitio
+</button>
+
+<div id="masterEstadoCrearAdmin"></div>
       <!-- CREAR SITIO -->
       <section class="master-section">
         <h2>➕ Crear nuevo sitio</h2>
