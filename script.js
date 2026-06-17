@@ -127,6 +127,17 @@ if (botonAdmin) {
     }
   });
 }
+function sitioEstaVencido(sitio) {
+  if (!sitio?.fecha_vencimiento) return false;
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  const vence = new Date(`${sitio.fecha_vencimiento}T00:00:00`);
+  vence.setHours(0, 0, 0, 0);
+
+  return vence < hoy;
+}
 
 async function iniciarSitioActual() {
   SITE_SLUG = obtenerSlugSitio();
@@ -151,16 +162,21 @@ async function iniciarSitioActual() {
   }
 
   sitioActual = sitio;
-  SITE_ID = sitio.id;
+SITE_ID = sitio.id;
 
-  console.log('✅ Sitio cargado:', sitioActual);
+console.log('✅ Sitio cargado:', sitioActual);
 
-  aplicarDatosSitio(sitioActual);
+aplicarDatosSitio(sitioActual);
 
-  if (!sitioActual.activo) {
-    mostrarSitioPausado(sitioActual);
-    return false;
-  }
+if (sitioEstaVencido(sitioActual)) {
+  mostrarSitioPausado(sitioActual);
+  return false;
+}
+
+if (!sitioActual.activo) {
+  mostrarSitioPausado(sitioActual);
+  return false;
+}
 
   return true;
 }
