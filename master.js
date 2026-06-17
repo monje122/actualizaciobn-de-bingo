@@ -3,7 +3,8 @@ var supabase = window.supabase;
 
 const masterState = {
   user: null,
-  sitios: []
+  sitios: [],
+  admins: []
 };
 
 function $(id) {
@@ -99,7 +100,7 @@ async function masterVerificarAcceso() {
 
     masterMostrarDashboard();
     await masterCargarSitios();
-
+    await masterCargarAdminsSitios();
     return true;
 
   } catch (error) {
@@ -433,10 +434,11 @@ async function masterGuardarEdicion() {
 }
 
 function masterConfigurarEventos() {
- 
+
   $('btnMasterLogin')?.addEventListener('click', masterLogin);
   $('btnMasterLogout')?.addEventListener('click', masterLogout);
   $('btnMasterRecargar')?.addEventListener('click', masterCargarSitios);
+  $('btnMasterRecargarAdmins')?.addEventListener('click', masterCargarAdminsSitios);
   $('btnMasterCrearSitio')?.addEventListener('click', masterCrearSitio);
   $('btnMasterCrearAdmin')?.addEventListener('click', masterCrearAdminSitio);
   $('btnMasterGuardarEdicion')?.addEventListener('click', masterGuardarEdicion);
@@ -514,7 +516,7 @@ async function masterCrearAdminSitio() {
 
     document.getElementById('masterAdminEmail').value = '';
     document.getElementById('masterAdminPassword').value = '';
-
+await masterCargarAdminsSitios();
   } catch (error) {
     console.error('Error creando admin:', error);
 
@@ -527,9 +529,144 @@ async function masterCrearAdminSitio() {
     }
   }
 }
+async function masterCargarAdminsSitios() {
+  const contenedor = document.getElementById('masterListaAdmins');
+  if (!contenedor) return;
+
+  contenedor.innerHTML = '<p>Cargando administradores...</p>';
+
+  try {
+    const { data, error } = await supabase
+      .from('sitio_admins')
+      .select('*')
+      .order('id', { ascending: false });
+
+    if (error) throw error;
+
+    masterState.admins = data || [];
+
+    if (!masterState.admins.length) {
+      contenedor.innerHTML = '<p>No hay administradores asignados todavía.</p>';
+      return;
+    }
+
+    const filas = masterState.admins.map(admin => {
+      const sitio = masterState.sitios.find(s => Number(s.id) === Number(admin.site_id));
+      const activo = admin.activo !== false;
+
+      return `
+        <tr>
+          <td>${masterEscapeHTML(admin.id)}</td>
+          <td>
+            <strong>${masterEscapeHTML(sitio?.nombre || 'Sitio no encontrado')}</strong><br>
+            <small>ID: ${masterEscapeHTML(admin.site_id)} | ${masterEscapeHTML(sitio?.slug || '')}</small>
+          </td>
+          <td>${masterEscapeHTML(admin.email || '')}</td>
+          <td>${masterEscapeHTML(admin.rol || 'admin')}</td>
+          <td>
+            <span class="${activo ? 'site-active' : 'site-paused'}">
+              ${activo ? 'Activo' : 'Pausado'}
+            </span>
+          </td>
+          <td>
+            <button class="master-btn ${activo ? 'warning' : 'success'}"
+                    onclick="masterCambiarEstadoAdminSitio(${Number(admin.id)}, ${activo ? 'false' : 'true'})">
+              ${activo ? '⏸️ Pausar' : '▶️ Activar'}
+            </button>
+
+            <button class="master-btn danger"
+                    onclick="masterEliminarAdminSitio(${Number(admin.id)})">
+              🗑️ Eliminar
+            </button>
+          </td>
+        </tr>
+      `;
+    }).join('');
+
+    contenedor.innerHTML = `
+      <table class="master-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Sitio</th>
+            <th>Correo</th>
+            <th>Rol</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody>${filas}</tbody>
+      </table>
+    `;
+
+  } catch (error) {
+    console.error('Error cargando admins:', error);
+    contenedor.innerHTML = `
+      <p style="color:red;">
+        Error cargando admins: ${masterEscapeHTML(error.message)}
+      </p>
+    `;
+  }
+}
+
+async function masterCambiarEstadoAdminSitio(adminId, nuevoEstado) {
+  const activo = nuevoEstado === true || nuevoEstado === 'true';
+
+  const admin = masterState.admins.find(a => Number(a.id) === Number(adminId));
+
+  const confirmar = confirm(
+    activo
+      ? `¿Activar el admin ${admin?.email || ''}?`
+      : `¿Pausar el admin ${admin?.email || ''}?`
+  );
+
+  if (!confirmar) return;
+
+  try {
+    const { error } = await supabase
+      .from('sitio_admins')
+      .update({ activo })
+      .eq('id', adminId);
+
+    if (error) throw error;
+
+    await masterCargarAdminsSitios();
+
+  } catch (error) {
+    console.error('Error cambiando estado del admin:', error);
+    alert('Error cambiando estado del admin: ' + error.message);
+  }
+}
+
+async function masterEliminarAdminSitio(adminId) {
+  const admin = masterState.admins.find(a => Number(a.id) === Number(adminId));
+
+  const confirmar = confirm(
+    `¿Eliminar este admin del sitio?\n\n${admin?.email || ''}\n\nNo borra el usuario de Auth, solo le quita acceso a este sitio.`
+  );
+
+  if (!confirmar) return;
+
+  try {
+    const { error } = await supabase
+      .from('sitio_admins')
+      .delete()
+      .eq('id', adminId);
+
+    if (error) throw error;
+
+    await masterCargarAdminsSitios();
+
+  } catch (error) {
+    console.error('Error eliminando admin:', error);
+    alert('Error eliminando admin: ' + error.message);
+  }
+}
 // Exponer funciones usadas por botones inline
 window.masterCambiarEstadoSitio = masterCambiarEstadoSitio;
 window.masterAbrirEditor = masterAbrirEditor;
+window.masterCambiarEstadoAdminSitio = masterCambiarEstadoAdminSitio;
+window.masterEliminarAdminSitio = masterEliminarAdminSitio;
 
 document.addEventListener('DOMContentLoaded', async () => {
   masterConfigurarEventos();
