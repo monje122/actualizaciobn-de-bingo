@@ -160,7 +160,46 @@ async function masterLogout() {
   masterState.sitios = [];
   masterMostrarLogin();
 }
+function masterFechaHoyISO() {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  return hoy.toISOString().slice(0, 10);
+}
 
+function masterCalcularFechaVencimiento(meses) {
+  const fecha = new Date();
+  fecha.setHours(0, 0, 0, 0);
+  fecha.setMonth(fecha.getMonth() + Number(meses || 1));
+  return fecha.toISOString().slice(0, 10);
+}
+
+function masterDiasRestantes(fechaVencimiento) {
+  if (!fechaVencimiento) return 0;
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  const vence = new Date(`${fechaVencimiento}T00:00:00`);
+  vence.setHours(0, 0, 0, 0);
+
+  const diff = Math.ceil((vence - hoy) / 86400000);
+  return Math.max(diff, 0);
+}
+
+function masterTextoVencimiento(sitio) {
+  const fecha = sitio.fecha_vencimiento || '';
+  const dias = masterDiasRestantes(fecha);
+
+  if (!fecha) {
+    return '<span class="site-paused">Sin fecha</span>';
+  }
+
+  if (dias <= 0) {
+    return `<span class="site-paused">Vencido<br><small>${masterEscapeHTML(fecha)}</small></span>`;
+  }
+
+  return `<span class="site-active">${dias} días<br><small>Vence: ${masterEscapeHTML(fecha)}</small></span>`;
+}
 async function masterCrearSitio() {
   const nombre = $('masterNombreSitio')?.value.trim();
   const slugManual = $('masterSlugSitio')?.value.trim();
@@ -170,7 +209,9 @@ async function masterCrearSitio() {
   const logoUrl = $('masterLogoUrl')?.value.trim();
   const colorPrincipal = $('masterColorPrincipal')?.value.trim();
   const whatsappGrupo = $('masterWhatsappGrupo')?.value.trim();
-
+const mesesServicio = parseInt($('masterMesesServicio')?.value || '1', 10);
+const fechaInicio = masterFechaHoyISO();
+const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
   const slug = masterNormalizarSlug(slugManual || nombre);
 
   if (!nombre || !slug) {
@@ -191,14 +232,17 @@ async function masterCrearSitio() {
   masterSetEstado('masterEstadoCrearSitio', 'Creando sitio...', 'info');
 
   const nuevoSitio = {
-    nombre,
-    slug,
-    titulo_publico: titulo || nombre,
-    total_cartones: total,
-    cartones_visibles: total,
-    precio_carton_bs: precio,
-    activo: true
-  };
+  nombre,
+  slug,
+  titulo_publico: titulo || nombre,
+  total_cartones: total,
+  cartones_visibles: total,
+  precio_carton_bs: precio,
+  activo: true,
+  fecha_inicio: fechaInicio,
+  fecha_vencimiento: fechaVencimiento,
+  meses_servicio: mesesServicio
+};
 
   if (logoUrl) nuevoSitio.logo_url = logoUrl;
   if (colorPrincipal) nuevoSitio.color_principal = colorPrincipal;
@@ -273,11 +317,14 @@ async function masterCargarSitios() {
           <td>${masterEscapeHTML(sitio.total_cartones || sitio.cartones_visibles || 0)}</td>
           <td>${Number(sitio.precio_carton_bs || 0).toFixed(2)} Bs</td>
           <td>
-            <span class="${activo ? 'site-active' : 'site-paused'}">
-              ${activo ? 'Activo' : 'Pausado'}
-            </span>
-          </td>
-          <td>
+  <span class="${activo ? 'site-active' : 'site-paused'}">
+    ${activo ? 'Activo' : 'Pausado'}
+  </span>
+</td>
+<td>
+  ${masterTextoVencimiento(sitio)}
+</td>
+<td>
             <button class="master-btn ${activo ? 'warning' : 'success'}"
                     onclick="masterCambiarEstadoSitio(${Number(sitio.id)}, ${activo ? 'false' : 'true'})">
               ${activo ? '⏸️ Pausar' : '▶️ Activar'}
@@ -301,6 +348,7 @@ async function masterCargarSitios() {
             <th>Cartones</th>
             <th>Precio</th>
             <th>Estado</th>
+            <th>Vencimiento</th>
             <th>Acciones</th>
           </tr>
         </thead>
@@ -442,6 +490,7 @@ function masterConfigurarEventos() {
   $('btnMasterCrearSitio')?.addEventListener('click', masterCrearSitio);
   $('btnMasterCrearAdmin')?.addEventListener('click', masterCrearAdminSitio);
   $('btnMasterGuardarEdicion')?.addEventListener('click', masterGuardarEdicion);
+  $('btnMasterRenovarSitio')?.addEventListener('click', masterRenovarSitio);
   $('btnMasterCancelarEdicion')?.addEventListener('click', masterCerrarEditor);
 
   $('masterPassword')?.addEventListener('keydown', (e) => {
@@ -660,6 +709,49 @@ async function masterEliminarAdminSitio(adminId) {
   } catch (error) {
     console.error('Error eliminando admin:', error);
     alert('Error eliminando admin: ' + error.message);
+  }
+}
+async function masterRenovarSitio() {
+  const siteId = parseInt($('masterEditId')?.value, 10);
+  const meses = parseInt($('masterEditMesesRenovar')?.value || '1', 10);
+
+  if (!Number.isFinite(siteId)) {
+    alert('Primero abre un sitio para editar.');
+    return;
+  }
+
+  if (![1, 3, 6, 12].includes(meses)) {
+    alert('Selecciona 1, 3, 6 o 12 meses.');
+    return;
+  }
+
+  const confirmar = confirm(`¿Renovar este sitio por ${meses} mes(es)?`);
+
+  if (!confirmar) return;
+
+  try {
+    masterSetEstado('masterEstadoEditarSitio', 'Renovando sitio...', 'info');
+
+    const { data, error } = await supabase.rpc('rpc_master_renovar_sitio', {
+      _site_id: siteId,
+      _meses: meses
+    });
+
+    if (error) throw error;
+
+    const resultado = Array.isArray(data) ? data[0] : data;
+
+    masterSetEstado(
+      'masterEstadoEditarSitio',
+      `✅ Sitio renovado.\nVence: ${resultado?.fecha_vencimiento || ''}\nDías restantes: ${resultado?.dias_restantes ?? ''}`,
+      'success'
+    );
+
+    await masterCargarSitios();
+
+  } catch (error) {
+    console.error('Error renovando sitio:', error);
+    masterSetEstado('masterEstadoEditarSitio', 'Error renovando sitio: ' + error.message, 'error');
   }
 }
 // Exponer funciones usadas por botones inline
