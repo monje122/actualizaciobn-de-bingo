@@ -248,61 +248,28 @@
 <!-- Panel admin -->
 <section id="admin-login" class="oculto">
   <h2>🔐 Inicio de Sesión Administrador</h2>
-  
-  <!-- Campos de login -->
+
   <div id="login-fields">
- <input type="email" id="admin-email" placeholder="Correo electrónico">
+    <input type="email" id="admin-email" placeholder="Correo electrónico">
     <input type="password" id="admin-password" placeholder="Contraseña">
     <button onclick="loginAdmin()">Iniciar Sesión</button>
     <button onclick="mostrarVentana('bienvenida')">Inicio</button>
   </div>
-  
-  <!-- Contenedor OTP (inicialmente oculto) -->
-  <div id="otp-container" style="display: none; margin-top: 20px; padding: 20px; border: 1px solid #ddd; border-radius: 8px; background: #f08b8b;">
-    <h3>📧 Verificación en 2 Pasos</h3>
-    <p>Se envió un código a: <strong><span id="otp-email-display"></span></strong></p>
-    
-    <div style="margin: 15px 0;">
-      <label for="otp-code">Código de 6 dígitos:</label><br>
-      <input type="text" 
-             id="otp-code" 
-             maxlength="6" 
-             placeholder="123456" 
-             style="letter-spacing: 10px; text-align: center; font-size: 24px; width: 200px; padding: 10px; margin: 10px 0;"
-             oninput="this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6)">
-    </div>
-    
-    <div style="margin-top: 20px; display: flex; gap: 10px; flex-wrap: wrap;">
-      <button onclick="verificarOTP()" class="btn-primary" style="padding: 12px 24px; background: #4CAF50; color: white; border: none; border-radius: 5px; cursor: pointer;">
-        ✅ Verificar Código
-      </button>
-      <button onclick="reenviarOTP()" class="btn-secondary" style="padding: 12px 24px; background: #f0f0f0; border: 1px solid #ccc; border-radius: 5px; cursor: pointer;">
-        🔄 Reenviar código
-      </button>
-      <button onclick="cancelarOTP()" class="btn-secondary" style="padding: 12px 24px; background: #f0f0f0; border: 1px solid #ccc; border-radius: 5px; cursor: pointer;">
-        ↩️ Cancelar
-      </button>
-    </div>
-    
-    <p style="margin-top: 15px; font-size: 12px; color: #666;">
-      ⏰ El código expira en 10 minutos
-    </p>
-  </div>
-  
-  <!-- Mensajes de error/éxito -->
+
   <div id="admin-error" style="margin-top: 15px; padding: 10px; border-radius: 5px;"></div>
-  
-  </div>
 </section>
 
 <!-- Panel admin (sólo visible después de login) -->
-<!-- Reemplaza todo el <section id="admin-panel"> existente por esto: -->
-
 <section id="admin-panel" class="oculto">
   <div class="admin-header">
     <h2>👑 Panel de Administración</h2>
     <div class="admin-user-bar">
       <span>👤 <span id="admin-email-display"></span></span>
+
+      <button id="btnMasterPanel" class="btn-admin" onclick="window.location.href='master.html'">
+        🧩 Panel Master
+      </button>
+
       <button id="logoutBtn" class="btn-logout">🔓 Cerrar Sesión</button>
     </div>
   </div>
@@ -643,7 +610,6 @@
     <button onclick="mostrarVentana('bienvenida')" class="btn-home">🏠 Volver al Inicio</button>
   </div>
 </section>
- <!-- Ventana aprobados -->
 
 
 <section id="lista-aprobados" class="oculto">
