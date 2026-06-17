@@ -270,6 +270,12 @@
 
           <input type="number" id="masterTotalCartones" placeholder="Total de cartones" min="1">
           <input type="number" id="masterPrecioCarton" placeholder="Precio por cartón Bs" min="0" step="0.01">
+          <select id="masterMesesServicio">
+  <option value="1">1 mes</option>
+  <option value="3">3 meses</option>
+  <option value="6">6 meses</option>
+  <option value="12">12 meses</option>
+</select>
 
           <input type="text" id="masterLogoUrl" placeholder="Logo URL opcional">
           <input type="text" id="masterColorPrincipal" placeholder="Color principal, ejemplo: #020A35">
@@ -302,10 +308,18 @@
             <option value="true">Activo</option>
             <option value="false">Pausado</option>
           </select>
+          <select id="masterEditMesesRenovar">
+  <option value="1">Renovar 1 mes</option>
+  <option value="3">Renovar 3 meses</option>
+  <option value="6">Renovar 6 meses</option>
+  <option value="12">Renovar 12 meses</option>
+</select>
+          
         </div>
 
         <br>
         <button id="btnMasterGuardarEdicion" class="master-btn success">💾 Guardar cambios</button>
+        <button id="btnMasterRenovarSitio" class="master-btn warning">📅 Renovar sitio</button>
         <button id="btnMasterCancelarEdicion" class="master-btn secondary">Cancelar</button>
 
         <div id="masterEstadoEditarSitio" class="master-status"></div>
