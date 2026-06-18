@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>GP- Juegos en línea y diversión</title>
-   <link rel="icon" type="image/png" href="https://static.vecteezy.com/system/resources/thumbnails/006/852/733/small/elegant-white-overlap-shade-background-with-line-golden-elements-realistic-luxury-paper-cut-style-3d-modern-concept-free-vector.jpg">
+  <title>BingoAndino7- Juegos en línea y diversión</title>
+   <link rel="icon" type="image/png" href="https://dbkixcpwirjwjvjintkr.supabase.co/storage/v1/object/public/1/bingo-andino75.png">
    <!-- ✅ Metaetiquetas SEO -->
-  <meta name="description" content="Disfruta de los mejores juegos de bingo en línea. Juega, gana y diviértete con GP." />
+  <meta name="description" content="Disfruta de los mejores juegos de bingo en línea. Juega, gana y diviértete con BingoAndino75." />
   <meta name="keywords" content="bingo, juegos, en línea, ganar dinero, entretenimiento, GOLDEM GP, venezuela" />
-  <meta name="author" content="GP" />
+  <meta name="author" content="BingoAndino75" />
 
   <!-- ✅ Open Graph (para redes sociales) -->
-  <meta property="og:title" content="GP" />
+  <meta property="og:title" content="BingoAndino75P" />
   <meta property="og:description" content="Juegos de bingo en línea con premios y diversión asegurada." />
-  <meta property="og:url" content="https://GP/" />
+  <meta property="og:url" content="https://BingoAndino75/" />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="https://static.vecteezy.com/system/resources/thumbnails/006/852/733/small/elegant-white-overlap-shade-background-with-line-golden-elements-realistic-luxury-paper-cut-style-3d-modern-concept-free-vector.jpg" />
+  <meta property="og:image" content="https://i.postimg.cc/wj0b7wG6/bingo-andino75.png" />
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -62,16 +62,16 @@
 
  <!-- Redes sociales - visible solo en la pantalla de inicio -->
 <div id="redes-sociales">
-  <a href="https://wa.me/" target="_blank" rel="noopener noreferrer" title="WhatsApp">
+  <a href="https://wa.me/584247221608" target="_blank" rel="noopener noreferrer" title="WhatsApp">
     <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" alt="WhatsApp" width="40" />
   </a>
-  <a href="https://www.youtube.com/" target="_blank" rel="noopener noreferrer" title="YouTube">
+  <a href="https://www.youtube.com/@bingoandinoenvivo?si=T2WvRgkNQwo_Yt-c" target="_blank" rel="noopener noreferrer" title="YouTube">
     <img src="https://cdn-icons-png.flaticon.com/512/1384/1384060.png" alt="YouTube" width="40" />
   </a>
-  <a href="https://www.facebook.com/" target="_blank" rel="noopener noreferrer" title="Facebook">
+  <a href="https://www.facebook.com/profile.php?id=61576936027458" target="_blank" rel="noopener noreferrer" title="Facebook">
   <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" width="40" height="40" />
 </a>
-  <a href="https://www.instagram.com/" rel="noopener noreferrer" title="Instagram">
+  <a href="https://www.instagram.com/bingoandino75?utm_source=ig_web_button_share_sheet&igsh=ZDNlZDc0MzIxNw==" rel="noopener noreferrer" title="Instagram">
     <img src="https://cdn-icons-png.flaticon.com/512/1384/1384063.png" alt="Instagram" width="40" />
   </a>
   
@@ -266,7 +266,10 @@
     <div class="admin-user-bar">
       <span>👤 <span id="admin-email-display"></span></span>
 
-      
+      <button id="btnMasterPanel" class="btn-admin" onclick="window.location.href='master.html'">
+        🧩 Panel Master
+      </button>
+
       <button id="logoutBtn" class="btn-logout">🔓 Cerrar Sesión</button>
     </div>
   </div>
@@ -539,6 +542,52 @@
   <!-- ─── TAB 5: CONFIGURACIÓN ─── -->
   <div id="tab-config" class="tab-content">
     <div class="panel-section">
+      <div class="panel-section">
+  <h3>🎨 Colores de la página</h3>
+  <p>Estos colores solo afectan este sitio.</p>
+
+  <div class="config-grid colores-admin-grid">
+    <label>
+      Fondo de la página
+      <input type="color" id="colorFondoSitio" value="#ffffff">
+    </label>
+
+    <label>
+      Color de botones
+      <input type="color" id="colorBotonesSitio" value="#020A35">
+    </label>
+<label>
+  Letras de botones
+  <input type="color" id="colorTextoBotonesSitio" value="#ffffff">
+</label>
+    <label>
+      Color de letras
+      <input type="color" id="colorTextoSitio" value="#000000">
+    </label>
+
+    <label>
+      Color principal
+      <input type="color" id="colorPrincipalSitio" value="#020A35">
+    </label>
+
+    <label>
+      Color secundario
+      <input type="color" id="colorSecundarioSitio" value="#FFA500">
+    </label>
+  </div>
+
+  <br>
+
+  <button id="btnGuardarColoresSitio" class="btn-admin btn-success">
+    💾 Guardar colores
+  </button>
+
+  <button id="btnResetColoresSitio" class="btn-admin btn-warning">
+    🔄 Restaurar colores
+  </button>
+
+  <p id="estadoColoresSitio" class="status-msg"></p>
+</div>
       <div class="section-header">
         <h3>🔗 Enlaces y Redes</h3>
       </div>
