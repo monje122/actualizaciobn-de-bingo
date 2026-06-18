@@ -1466,24 +1466,24 @@ async function obtenerMontoTotalRecaudado() {
 async function contarCartonesVendidos() {
   await obtenerTotalCartones();
 
-  const { count, error } = await supabase
-  .from('cartones')
-  .select('numero', { count: 'exact', head: true })
-  .eq('site_id', SITE_ID)
-  .gte('numero', 1)
-  .lte('numero', totalCartones);
+  const { data, error } = await supabase.rpc('rpc_public_contar_cartones_ocupados', {
+    _site_id: SITE_ID,
+    _total: totalCartones
+  });
 
   if (error) {
-    console.error('Error al contar cartones:', error);
+    console.error('Error contando cartones ocupados por RPC:', error);
     return 0;
   }
-  
+
+  const totalVendidos = Number(data) || 0;
+
   const totalVendidosElement = document.getElementById('total-vendidos');
   if (totalVendidosElement) {
-    totalVendidosElement.textContent = count || 0;
+    totalVendidosElement.textContent = totalVendidos;
   }
-  
-  return count || 0;
+
+  return totalVendidos;
 }
 
 function renderizarBotonesPromociones() {
@@ -2155,48 +2155,39 @@ async function enviarComprobante() {
       return;
     }
 
-    // 2. Validar que no existan en otra inscripción pendiente/aprobada del mismo sitio
-    const { data: inscripcionesActivas, error: errorInscripciones } = await supabase
-      .from('inscripciones')
-      .select('id, nombre, cedula, cartones')
-      .eq('site_id', SITE_ID)
-      .in('estado', ['pendiente', 'aprobado']);
+   // 2. Validar por RPC que no existan en otra inscripción pendiente/aprobada del mismo sitio
+const { data: cartonesDuplicados, error: errorDuplicados } = await supabase.rpc(
+  'rpc_public_validar_cartones_inscripcion',
+  {
+    _site_id: SITE_ID,
+    _cartones: cartonesEnviar
+  }
+);
 
-    if (errorInscripciones) {
-      throw new Error('No se pudieron verificar cartones duplicados.');
-    }
+if (errorDuplicados) {
+  console.error('Error validando cartones duplicados:', errorDuplicados);
+  throw new Error('No se pudieron verificar cartones duplicados.');
+}
 
-    const duplicados = [];
+const duplicados = (cartonesDuplicados || [])
+  .map(item => Number(item.carton))
+  .filter(Number.isFinite);
 
-    (inscripcionesActivas || []).forEach(ins => {
-      const otrosCartones = (ins.cartones || []).map(n => Number(n));
+if (duplicados.length > 0) {
+  const numeros = [...new Set(duplicados)];
 
-      cartonesEnviar.forEach(n => {
-        if (otrosCartones.includes(n)) {
-          duplicados.push({
-            carton: n,
-            nombre: ins.nombre,
-            cedula: ins.cedula
-          });
-        }
-      });
-    });
+  await liberarReservasSeleccionadas(cedulaLimpia, cartonesEnviar);
 
-    if (duplicados.length > 0) {
-      const numeros = [...new Set(duplicados.map(d => d.carton))];
+  alert(
+    '⚠️ Estos cartones ya fueron tomados: ' +
+    numeros.join(', ') +
+    '\n\nElige otros cartones.'
+  );
 
-      await liberarReservasSeleccionadas(cedulaLimpia, cartonesEnviar);
-
-      alert(
-        '⚠️ Estos cartones ya fueron tomados: ' +
-        numeros.join(', ') +
-        '\n\nElige otros cartones.'
-      );
-
-      await cargarCartones();
-      mostrarVentana('cartones');
-      return;
-    }
+  await cargarCartones();
+  mostrarVentana('cartones');
+  return;
+}
 
     // 3. Guardar inscripción
     const { error: errorInsert } = await supabase
@@ -2266,18 +2257,40 @@ async function liberarReservasSeleccionadas(cedulaLimpia, cartones = usuario.car
 }
 // ==================== fUNCIONES DE USUARIO ====================
 async function consultarCartones() {
-  const cedula = document.getElementById('consulta-cedula').value.trim();
-
+  const cedula = document.getElementById('consulta-cedula')?.value.trim();
   const cont = document.getElementById('cartones-usuario');
+
+  if (!cont) return;
+
   cont.innerHTML = '';
 
-  const { data: todas } = await supabase
-    .from('inscripciones')
-    .select('*')
-  .eq('site_id', SITE_ID)
-    .eq('cedula', cedula);
+  if (!cedula) {
+    cont.innerHTML = `
+      <p style="text-align:center;color:#ff4444;">
+        Ingresa tu cédula para consultar.
+      </p>
+    `;
+    return;
+  }
 
-  if (!todas || todas.length === 0) {
+  const { data, error } = await supabase.rpc('rpc_public_consultar_compra', {
+    _site_id: SITE_ID,
+    _cedula: cedula
+  });
+
+  if (error) {
+    console.error('Error consultando compra:', error);
+    cont.innerHTML = `
+      <p style="text-align:center;color:#ff4444;">
+        Error consultando la compra.
+      </p>
+    `;
+    return;
+  }
+
+  const compras = data || [];
+
+  if (compras.length === 0) {
     cont.innerHTML = `
       <p style="text-align:center;color:#ff4444;">
         No se encontró ninguna compra registrada con esta cédula.
@@ -2286,59 +2299,51 @@ async function consultarCartones() {
     return;
   }
 
-  const tieneAprobada = todas.some(i => i.estado === 'aprobado');
-  const tienePendiente = todas.some(i => i.estado === 'pendiente');
-  const tieneRechazada = todas.some(i => i.estado === 'rechazado');
-  
-  const mensaje = document.createElement('div');
-  mensaje.style.textAlign = 'center';
-  mensaje.style.marginBottom = '15px';
-  mensaje.style.fontWeight = 'bold';
+  const tieneAprobada = compras.some(i => i.estado === 'aprobado');
+  const tienePendiente = compras.some(i => i.estado === 'pendiente');
+  const tieneRechazada = compras.some(i => i.estado === 'rechazado');
 
-  if (tieneAprobada && tienePendiente && tieneRechazada) {
-  mensaje.innerHTML =
-    '✅ Tienes compras aprobadas.<br>⏳ También tienes compras pendientes de aprobación.<br>❌ También tienes compras rechazadas(consulta con soporte).';
-}
- else if (tieneAprobada && tieneRechazada) {
-  mensaje.innerHTML =
-    '✅ Tienes compras aprobadas.<br>❌ También tienes compras rechazadas, consulta a soporte.';
-}
-else if (tieneAprobada && tienePendiente) {
-  mensaje.innerHTML =
-    '✅ Tienes compras aprobadas.<br>⏳ También tienes compras pendientes de aprobación.';
-}
-else if (tieneRechazada && tienePendiente) {
-  mensaje.innerHTML =
-    '❌ Tienes compras rechazadas.<br>⏳ También tienes compras pendientes de aprobación.';
-}
-else if (tieneAprobada) {
-  mensaje.innerHTML =
-    '✅ Tu compra ha sido aprobada.';
-}
-else if (tieneRechazada) {
-  mensaje.innerHTML =
-    '❌ Tu compra fue rechazada.';
-}
-else {
-  mensaje.innerHTML =
-    '⏳ Tu compra está pendiente de aprobación.';
-}
+  let mensaje = '';
 
-  cont.appendChild(mensaje);
-  mensaje.classList.add('estado-consulta');
+  if (tieneAprobada) {
+    mensaje += '✅ Tu compra aprobada aparece abajo.<br>';
+  }
 
-  // Mostrar cartones aunque esté pendiente
-  todas.forEach(item => {
-    (item.cartones || []).forEach(num => {
-      const img = document.createElement('img');
-    img.src = urlCartonWebP(num);
-img.loading = 'lazy';
-img.alt = `Cartón ${num}`;
-      img.classList.add('carton-consulta-img');
-      img.style.margin = '5px';
-      cont.appendChild(img);
+  if (tienePendiente) {
+    mensaje += '⏳ Tienes una compra pendiente de aprobación.<br>';
+  }
+
+  if (tieneRechazada) {
+    mensaje += '❌ Tienes una compra rechazada. Consulta con soporte.<br>';
+  }
+
+  const aprobadas = compras.filter(i => i.estado === 'aprobado');
+  const cartones = aprobadas.flatMap(i => Array.isArray(i.cartones) ? i.cartones : []);
+
+  cont.innerHTML = `
+    <div style="text-align:center;font-weight:bold;margin-bottom:15px;">
+      ${mensaje}
+    </div>
+  `;
+
+  if (cartones.length > 0) {
+    const box = document.createElement('div');
+    box.style.display = 'flex';
+    box.style.flexWrap = 'wrap';
+    box.style.justifyContent = 'center';
+    box.style.gap = '10px';
+
+    cartones.forEach(numero => {
+      const item = document.createElement('div');
+      item.className = 'carton';
+      item.textContent = numero;
+      item.style.cursor = 'default';
+      item.style.pointerEvents = 'none';
+      box.appendChild(item);
     });
-  });
+
+    cont.appendChild(box);
+  }
 }
 
 async function elegirMasCartones() {
@@ -3077,56 +3082,53 @@ function mostrarSeccion(id) {
 }
 
 async function cargarListaAprobadosSeccion() {
-  const { data, error } = await supabase
-    .from('inscripciones')
-    .select('*')
-  .eq('site_id', SITE_ID)
-    .eq('estado', 'aprobado');
+  const { data, error } = await supabase.rpc('rpc_public_lista_aprobados', {
+    _site_id: SITE_ID
+  });
 
-  const contenedor = document.getElementById('contenedor-aprobados');
+  const contenedor =
+    document.getElementById('contenedor-aprobados') ||
+    document.getElementById('listaAprobados');
+
+  if (!contenedor) return;
+
   contenedor.innerHTML = '';
 
-  if (error || !data.length) {
-    contenedor.innerHTML = '<p>No hay aprobados aún.</p>';
+  if (error) {
+    console.error('Error cargando lista pública:', error);
+    contenedor.innerHTML = '<p>Error cargando lista de aprobados.</p>';
+    return;
+  }
+
+  const lista = data || [];
+
+  if (lista.length === 0) {
+    contenedor.innerHTML = '<p>No hay compras aprobadas todavía.</p>';
     return;
   }
 
   const tabla = document.createElement('table');
-  tabla.style.width = '100%';
-  tabla.style.borderCollapse = 'collapse';
+
   tabla.innerHTML = `
     <thead>
       <tr>
-        <th>Cartón</th>
         <th>Nombre</th>
-        <th>Cédula</th>
+        <th>Cartones</th>
       </tr>
     </thead>
     <tbody></tbody>
   `;
 
   const tbody = tabla.querySelector('tbody');
-  let filas = [];
 
-  data.forEach(item => {
-    item.cartones.forEach(carton => {
-      filas.push({
-        carton,
-        nombre: item.nombre,
-        cedula: item.cedula
-      });
-    });
-  });
-
-  filas.sort((a, b) => a.carton - b.carton);
-
-  filas.forEach(item => {
+  lista.forEach(item => {
     const tr = document.createElement('tr');
+
     tr.innerHTML = `
-      <td>${item.carton}</td>
-      <td>${item.nombre}</td>
-      <td>${'*'.repeat(Math.max(0, String(item.cedula || '').length - 4))}${String(item.cedula || '').slice(-4)}</td>
+      <td>${item.nombre || 'Sin nombre'}</td>
+      <td>${Array.isArray(item.cartones) ? item.cartones.join(', ') : ''}</td>
     `;
+
     tbody.appendChild(tr);
   });
 
@@ -3531,19 +3533,19 @@ function buildWhatsAppLink(rawPhone, presetMsg = '') {
 async function fetchTodosLosOcupados() {
   if (!SITE_ID) return [];
 
-  const { data, error } = await supabase
-    .from('cartones')
-    .select('numero')
-    .eq('site_id', SITE_ID)
-    .gte('numero', 1)
-    .lte('numero', totalCartones);
+  const { data, error } = await supabase.rpc('rpc_public_cartones_ocupados', {
+    _site_id: SITE_ID,
+    _total: totalCartones
+  });
 
   if (error) {
-    console.error('Error cargando cartones ocupados:', error);
+    console.error('Error cargando cartones ocupados por RPC:', error);
     return [];
   }
 
-  return (data || []).map(c => Number(c.numero));
+  return (data || [])
+    .map(c => Number(c.numero))
+    .filter(Number.isFinite);
 }
 
 function restringirSolo4Digitos(input) {
@@ -4230,59 +4232,42 @@ async function liberarReservaPorTiempo() {
   }
 }
 async function cargarTopCompradores() {
-  const { data, error } = await supabase
-    .from('inscripciones')
-    .select('nombre, cedula, telefono, cartones, estado')
-  .eq('site_id', SITE_ID)
-    .in('estado', ['aprobado']);
-
   const cont = document.getElementById('listaTopCompradores');
+  if (!cont) return;
+
   cont.innerHTML = '';
 
+  const { data, error } = await supabase.rpc('rpc_public_top_compradores', {
+    _site_id: SITE_ID,
+    _limite: 10
+  });
+
   if (error) {
-    console.error(error);
+    console.error('Error cargando top compradores:', error);
     cont.innerHTML = '<p>Error cargando top compradores.</p>';
     return;
   }
 
-  const ranking = {};
-
-  (data || []).forEach(item => {
-    const cedula = item.cedula || 'sin-cedula';
-    const cantidad = Array.isArray(item.cartones) ? item.cartones.length : 0;
-
-    if (!ranking[cedula]) {
-      ranking[cedula] = {
-        nombre: item.nombre || 'Sin nombre',
-        cedula,
-        telefono: item.telefono || '',
-        total: 0
-      };
-    }
-
-    ranking[cedula].total += cantidad;
-  });
-
-  const top = Object.values(ranking)
-    .sort((a, b) => b.total - a.total)
-    .slice(0, 5);
+  const top = data || [];
 
   if (!top.length) {
-    cont.innerHTML = '<p>No hay compradores todavía.</p>';
+    cont.innerHTML = '<p>Aún no hay compradores aprobados.</p>';
     return;
   }
 
-  cont.innerHTML = `
-    <ol class="top-compradores-lista">
-      ${top.map((p, i) => `
-        <li>
-          <strong>#${i + 1} ${p.nombre}</strong><br>
-          Cédula: ****${String(p.cedula || '').slice(-4)}<br>
-          Cartones comprados: <strong>${p.total}</strong>
-        </li>
-      `).join('')}
-    </ol>
-  `;
+  const ol = document.createElement('ol');
+  ol.className = 'top-compradores-lista';
+
+  top.forEach((item, index) => {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <strong>#${index + 1} ${item.nombre || 'Sin nombre'}</strong><br>
+      ${item.total_cartones || 0} cartones
+    `;
+    ol.appendChild(li);
+  });
+
+  cont.appendChild(ol);
 }
 
 let canalTopCompradores = null;
