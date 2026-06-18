@@ -28,6 +28,8 @@ let detectorIniciado = false;
 // Variables de sesión
 let adminSession = null;
 let sesionActiva = false;
+let inactivityTimer = null;
+const SESSION_TIMEOUT = 30 * 60 * 1000;
 
 const ultimoEstadoProcesado = new Map();
 const estadoEnProceso = new Set();
@@ -402,11 +404,13 @@ function aplicarColoresPersonalizados(colores = {}) {
   const colorBotones = colores.color_botones || '#020A35';
   const colorTexto = colores.color_texto || '#000000';
   const colorPrincipal = colores.color_principal || '#020A35';
+  const colorTextoBotones = colores.color_texto_botones || '#ffffff';
   const colorSecundario = colores.color_secundario || '#FFA500';
 
   document.documentElement.style.setProperty('--site-bg', colorFondo);
   document.documentElement.style.setProperty('--site-buttons', colorBotones);
   document.documentElement.style.setProperty('--site-text', colorTexto);
+  document.documentElement.style.setProperty('--site-button-text', colorTextoBotones);
   document.documentElement.style.setProperty('--site-primary', colorPrincipal);
   document.documentElement.style.setProperty('--site-secondary', colorSecundario);
 
@@ -420,6 +424,7 @@ async function cargarColoresSitio() {
     color_botones: await getConfigValue('color_botones', sitioActual?.color_botones || '#020A35'),
     color_texto: await getConfigValue('color_texto', sitioActual?.color_texto || '#000000'),
     color_principal: await getConfigValue('color_principal', sitioActual?.color_principal || '#020A35'),
+    color_texto_botones: await getConfigValue('color_texto_botones', sitioActual?.color_texto_botones || '#ffffff'),
     color_secundario: await getConfigValue('color_secundario', sitioActual?.color_secundario || '#FFA500')
   };
 
@@ -427,12 +432,14 @@ async function cargarColoresSitio() {
 
   const fondo = document.getElementById('colorFondoSitio');
   const botones = document.getElementById('colorBotonesSitio');
+  const textoBotones = document.getElementById('colorTextoBotonesSitio');
   const texto = document.getElementById('colorTextoSitio');
   const principal = document.getElementById('colorPrincipalSitio');
   const secundario = document.getElementById('colorSecundarioSitio');
 
   if (fondo) fondo.value = colores.color_fondo;
   if (botones) botones.value = colores.color_botones;
+  if (textoBotones) textoBotones.value = colores.color_texto_botones;
   if (texto) texto.value = colores.color_texto;
   if (principal) principal.value = colores.color_principal;
   if (secundario) secundario.value = colores.color_secundario;
@@ -442,6 +449,7 @@ async function guardarColoresSitio() {
   const estado = document.getElementById('estadoColoresSitio');
 
   const colores = {
+   color_texto_botones: document.getElementById('colorTextoBotonesSitio')?.value || '#ffffff',
     color_fondo: document.getElementById('colorFondoSitio')?.value || '#ffffff',
     color_botones: document.getElementById('colorBotonesSitio')?.value || '#020A35',
     color_texto: document.getElementById('colorTextoSitio')?.value || '#000000',
@@ -489,6 +497,7 @@ async function resetearColoresSitio() {
     color_fondo: '#ffffff',
     color_botones: '#020A35',
     color_texto: '#000000',
+    color_texto_botones: '#ffffff',
     color_principal: '#020A35',
     color_secundario: '#FFA500'
   };
@@ -511,6 +520,7 @@ function activarVistaPreviaColores() {
   const ids = [
     'colorFondoSitio',
     'colorBotonesSitio',
+    'colorTextoBotonesSitio',
     'colorTextoSitio',
     'colorPrincipalSitio',
     'colorSecundarioSitio'
@@ -523,6 +533,7 @@ function activarVistaPreviaColores() {
 
     input.addEventListener('input', () => {
       aplicarColoresPersonalizados({
+        color_texto_botones: document.getElementById('colorTextoBotonesSitio')?.value || '#ffffff',
         color_fondo: document.getElementById('colorFondoSitio')?.value || '#ffffff',
         color_botones: document.getElementById('colorBotonesSitio')?.value || '#020A35',
         color_texto: document.getElementById('colorTextoSitio')?.value || '#000000',
@@ -764,16 +775,21 @@ function cancelarLogin() {
 }
 
 
-// Función para actualizar actividad de sesión
+// Función para actualizr actividad de sesión
 function actualizarActividadSesion() {
   if (!sesionActiva) return;
   console.log('👀 Actividad detectada');
 }
 // Timer de inactividad
 function resetInactivityTimer() {
-  clearTimeout(inactivityTimer);
+  if (inactivityTimer) {
+    clearTimeout(inactivityTimer);
+    inactivityTimer = null;
+  }
+
   if (sesionActiva) {
     console.log('⏰ Reiniciando timer de inactividad (30 minutos)');
+
     inactivityTimer = setTimeout(async () => {
       if (sesionActiva) {
         console.log('⏰ Sesión expirada por inactividad');
@@ -1367,6 +1383,8 @@ if (!sitioOk) {
   document.getElementById('verListaBtn')?.addEventListener('click', verListaAprobados);
   document.getElementById('guardarModoCartonesBtn')?.addEventListener('click', guardarModoCartones);
   document.getElementById('modoCartonesSelect')?.addEventListener('change', cambiarModoCartones);
+  document.getElementById('btnGuardarColoresSitio')?.addEventListener('click', guardarColoresSitio);
+document.getElementById('btnResetColoresSitio')?.addEventListener('click', resetearColoresSitio);
   activarVistaPreviaColores();
   // Cargar likde WhatsApp
     sistemaListo = true;
