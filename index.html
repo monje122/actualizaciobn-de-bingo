@@ -543,6 +543,89 @@
   <div id="tab-config" class="tab-content">
     <div class="panel-section">
       <div class="panel-section">
+  <h3>🌐 Redes sociales del sitio</h3>
+  <p>Estos enlaces aparecerán en la página pública del cliente.</p>
+
+  <div class="config-grid redes-admin-grid">
+
+    <label>
+      WhatsApp principal
+      <input type="text" id="configWhatsapp" placeholder="Ej: 584121234567">
+    </label>
+
+    <label>
+      Grupo de WhatsApp
+      <input type="text" id="configWhatsappGrupo" placeholder="https://chat.whatsapp.com/...">
+    </label>
+
+    <label>
+      Instagram
+      <input type="text" id="configInstagram" placeholder="https://instagram.com/usuario">
+    </label>
+
+    <label>
+      Facebook
+      <input type="text" id="configFacebook" placeholder="https://facebook.com/usuario">
+    </label>
+
+    <label>
+      YouTube / En vivo
+      <input type="text" id="configYoutube" placeholder="https://youtube.com/...">
+    </label>
+
+    <label>
+      TikTok
+      <input type="text" id="configTiktok" placeholder="https://tiktok.com/@usuario">
+    </label>
+
+  </div>
+
+  <button type="button" id="btnGuardarRedesSitio" class="btn-admin btn-success">
+    💾 Guardar redes sociales
+  </button>
+
+  <p id="estadoRedesSitio" class="status-msg"></p>
+</div>
+      <div class="panel-section">
+  <h3>💳 Datos de pago móvil</h3>
+  <p>Estos datos serán los que verá el comprador para pagar.</p>
+
+  <div class="config-grid pago-admin-grid">
+
+    <label>
+      Banco
+      <input type="text" id="configPagoBanco" placeholder="Ej: Banco de Venezuela">
+    </label>
+
+    <label>
+      Código del banco
+      <input type="text" id="configPagoBancoCodigo" placeholder="Ej: 0102">
+    </label>
+
+    <label>
+      Teléfono pago móvil
+      <input type="text" id="configPagoTelefono" placeholder="Ej: 04141234567">
+    </label>
+
+    <label>
+      Cédula / RIF
+      <input type="text" id="configPagoCedula" placeholder="Ej: V12345678">
+    </label>
+
+    <label>
+      Titular
+      <input type="text" id="configPagoTitular" placeholder="Nombre del titular">
+    </label>
+
+  </div>
+
+  <button type="button" id="btnGuardarPagoSitio" class="btn-admin btn-success">
+    💾 Guardar datos de pago
+  </button>
+
+  <p id="estadoPagoSitio" class="status-msg"></p>
+</div>
+      <div class="panel-section">
   <h3>🖼️ Imágenes del sitio</h3>
   <p>Estas imágenes solo afectan esta página.</p>
 
