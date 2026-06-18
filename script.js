@@ -632,22 +632,27 @@ async function subirImagenSitio(inputId, clave, nombreBase) {
     return;
   }
 
+  let urlVieja = '';
+
   try {
     if (estado) {
       estado.textContent = 'Subiendo imagen...';
       estado.style.color = 'blue';
     }
 
+    // Buscar imagen vieja antes de cambiarla
+    urlVieja = await getConfigValue(clave, sitioActual?.[clave] || '');
+
     const imagenWebP = await convertirImagenAWebP(file, 0.85, 1600);
 
     const nombreLimpio = limpiarNombreArchivo(nombreBase || file.name).replace(/\.[^.]+$/, '');
-    const ruta = `${SITE_SLUG}/${nombreLimpio}-${Date.now()}.webp`;
+    const rutaNueva = `${SITE_SLUG}/${nombreLimpio}-${Date.now()}.webp`;
 
     const { error: errorUpload } = await supabase.storage
       .from('imagenes')
-      .upload(ruta, imagenWebP, {
+      .upload(rutaNueva, imagenWebP, {
         contentType: 'image/webp',
-        upsert: true,
+        upsert: false,
         cacheControl: '31536000'
       });
 
@@ -657,21 +662,42 @@ async function subirImagenSitio(inputId, clave, nombreBase) {
 
     const { data: publicData } = supabase.storage
       .from('imagenes')
-      .getPublicUrl(ruta);
+      .getPublicUrl(rutaNueva);
 
-    const urlPublica = publicData.publicUrl;
+    const urlNueva = publicData.publicUrl;
 
-    const ok = await setConfigValue(clave, urlPublica);
+    const ok = await setConfigValue(clave, urlNueva);
 
     if (!ok) {
+      // Si no se pudo guardar la URL nueva, borra la imagen recién subida
+      await supabase.storage.from('imagenes').remove([rutaNueva]);
       throw new Error('La imagen subió, pero no se pudo guardar en configuración.');
     }
 
     if (sitioActual) {
-      sitioActual[clave] = urlPublica;
+      sitioActual[clave] = urlNueva;
     }
 
-    aplicarImagenSitio(clave, urlPublica);
+    aplicarImagenSitio(clave, urlNueva);
+
+    // Borrar imagen vieja después de confirmar que la nueva quedó guardada
+    const rutaVieja = obtenerRutaStorageDesdeUrl(urlVieja, 'imagenes');
+
+    if (
+      rutaVieja &&
+      rutaVieja !== rutaNueva &&
+      rutaVieja.startsWith(`${SITE_SLUG}/`)
+    ) {
+      const { error: errorDelete } = await supabase.storage
+        .from('imagenes')
+        .remove([rutaVieja]);
+
+      if (errorDelete) {
+        console.warn('La imagen nueva se guardó, pero no se pudo borrar la vieja:', errorDelete);
+      } else {
+        console.log('🗑️ Imagen vieja borrada:', rutaVieja);
+      }
+    }
 
     if (estado) {
       estado.textContent = '✅ Imagen guardada correctamente.';
@@ -689,7 +715,6 @@ async function subirImagenSitio(inputId, clave, nombreBase) {
     }
   }
 }
-
 async function guardarLogoSitio() {
   await subirImagenSitio('inputLogoSitio', 'logo_url', 'logo');
 }
@@ -4771,7 +4796,23 @@ function cambiarTab(tabId) {
   document.getElementById(tabId).classList.add('active');
   event.target.classList.add('active');
 }
+function obtenerRutaStorageDesdeUrl(url, bucket = 'imagenes') {
+  if (!url) return null;
 
+  try {
+    const texto = String(url);
+    const marcador = `/storage/v1/object/public/${bucket}/`;
+    const index = texto.indexOf(marcador);
+
+    if (index === -1) return null;
+
+    const ruta = texto.substring(index + marcador.length);
+    return decodeURIComponent(ruta);
+  } catch (error) {
+    console.warn('No se pudo obtener ruta de imagen vieja:', error);
+    return null;
+  }
+}
 
 // ==================== EXPORTAR FUNCIONES ====================
 window.mostrarVentana = mostrarVentana;
