@@ -3180,3 +3180,47 @@ textarea:focus,
   background: #ffffff !important;
   color: #111111 !important;
 }
+/* ==================== IMÁGENES ADMIN DEL SITIO ==================== */
+
+.imagenes-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 20px;
+}
+
+.imagenes-admin-grid label {
+  background: #ffffff;
+  color: #111111;
+  border: 1px solid #dddddd;
+  border-radius: 12px;
+  padding: 15px;
+  font-weight: 700;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.imagenes-admin-grid input[type="file"] {
+  background: #ffffff !important;
+  color: #111111 !important;
+  border: 1px solid #dddddd !important;
+  padding: 10px !important;
+  border-radius: 8px !important;
+}
+
+.preview-imagen-admin {
+  display: none;
+  width: 100%;
+  max-height: 160px;
+  object-fit: contain;
+  background: #f8f9fa;
+  border: 1px solid #dddddd;
+  border-radius: 10px;
+  padding: 8px;
+}
+
+.favicon-preview {
+  max-width: 80px;
+  height: 80px;
+  margin: 0 auto;
+}
