@@ -29,8 +29,8 @@ body {
   font-family: 'Poppins', 'Segoe UI', Arial, sans-serif;
   margin: 0;
   padding: 0;
-  background: linear-gradient(135deg, #020A35 0%, #1a237e 100%);
-  color: var(--white);
+  background: l;
+  color:var(--white) ;
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
@@ -43,7 +43,7 @@ body::before {
   left: 0;
   width: 100%;
   height: 100%;
-  background-image: url('https://static.vecteezy.com/system/resources/thumbnails/006/852/733/small/elegant-white-overlap-shade-background-with-line-golden-elements-realistic-luxury-paper-cut-style-3d-modern-concept-free-vector.jpg');
+  background-image: url('');
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
@@ -2618,4 +2618,187 @@ h3 {
 .admin-header,
 .pago-box {
   border-color: var(--site-primary);
+}
+/* ==================== COLORES PERSONALIZADOS POR SITIO ==================== */
+
+body {
+  background-color: var(--site-bg, #ffffff);
+  color: var(--site-text, #000000);
+}
+
+body p,
+body label,
+body span,
+body small,
+body input,
+body select,
+body textarea {
+  color: var(--site-text, #000000);
+}
+
+body h1,
+body h2,
+body h3 {
+  color: var(--site-primary, #020A35);
+}
+
+body button:not(.btn-danger):not(.btn-warning):not(.btn-logout):not(.danger):not(.warning),
+body .btn,
+body .btn-admin:not(.btn-danger):not(.btn-warning):not(.btn-logout),
+body .btn-primary {
+  background-color: var(--site-buttons, #020A35);
+  color: #ffffff;
+}
+
+.colores-admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 15px;
+  align-items: end;
+}
+
+.colores-admin-grid label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-weight: bold;
+}
+
+.colores-admin-grid input[type="color"] {
+  width: 100%;
+  height: 45px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  cursor: pointer;
+  padding: 3px;
+}
+/* ==================== COLORES DEL SITIO COMPLETO ==================== */
+
+body {
+  background-color: var(--site-bg, #ffffff) !important;
+  color: var(--site-text, #000000) !important;
+}
+
+body section,
+body .contenedor,
+body .card,
+body .box,
+body .panel,
+body .ventana {
+  color: var(--site-text, #000000);
+}
+
+body p,
+body label,
+body span,
+body small,
+body li,
+body div,
+body input,
+body select,
+body textarea {
+  color: var(--site-text, #000000);
+}
+
+body h1,
+body h2,
+body h3,
+body h4 {
+  color: var(--site-primary, #020A35);
+}
+
+/* Botones de afuera del panel admin */
+body button,
+body .btn,
+body .boton,
+body .boton-principal,
+body .btn-principal,
+body .btn-primary,
+body .btn-comprar,
+body .btn-cartones,
+body .btn-continuar,
+body .btn-verificar,
+body .btn-whatsapp,
+body a.btn,
+body a.boton,
+body #btnWhatsapp,
+body #boton-admin-oculto {
+  background-color: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
+  border-color: var(--site-buttons, #020A35) !important;
+}
+
+/* Letras internas de botones */
+body button *,
+body .btn *,
+body .boton *,
+body a.btn *,
+body a.boton * {
+  color: var(--site-button-text, #ffffff) !important;
+}
+
+/* Mantener botones peligrosos en rojo */
+body .btn-danger,
+body .danger,
+body button.danger,
+body button.btn-danger {
+  background-color: #dc3545 !important;
+  color: #ffffff !important;
+  border-color: #dc3545 !important;
+}
+
+/* Mantener botones warning en amarillo */
+body .btn-warning,
+body .warning,
+body button.warning,
+body button.btn-warning {
+  background-color: #f59f00 !important;
+  color: #111111 !important;
+  border-color: #f59f00 !important;
+}
+/* ==================== BOTONES PRINCIPALES DE AFUERA ==================== */
+
+#bienvenida button,
+#bienvenida .btn,
+#bienvenida .boton,
+#bienvenida .boton-principal,
+#bienvenida .btn-principal,
+#bienvenida a,
+#cantidad button,
+#cartones button,
+#pago button,
+#consulta button,
+#lista-aprobados button,
+#top-compradores button,
+#historial-ganadores button,
+button[onclick*="mostrarVentana"],
+button[onclick*="guardarDatosInscripcion"],
+button[onclick*="consultarCartones"],
+button[onclick*="verListaAprobados"],
+button[onclick*="cargarTopCompradores"] {
+  background: var(--site-buttons, #020A35) !important;
+  background-color: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
+  border-color: var(--site-buttons, #020A35) !important;
+}
+
+/* Letras dentro de esos botones */
+#bienvenida button *,
+#bienvenida .btn *,
+#bienvenida .boton *,
+#bienvenida a *,
+button[onclick*="mostrarVentana"] *,
+button[onclick*="guardarDatosInscripcion"] * {
+  color: var(--site-button-text, #ffffff) !important;
+}
+
+/* Hover de esos botes */
+#bienvenida button:hover,
+#bienvenida .btn:hover,
+#bienvenida .boton:hover,
+#bienvenida a:hover,
+button[onclick*="mostrarVentana"]:hover {
+  background: var(--site-primary, #020A35) !important;
+  background-color: var(--site-primary, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
 }
