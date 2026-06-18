@@ -397,6 +397,141 @@ async function setConfigValue(clave, value) {
 
   return data === true;
 }
+function aplicarColoresPersonalizados(colores = {}) {
+  const colorFondo = colores.color_fondo || '#ffffff';
+  const colorBotones = colores.color_botones || '#020A35';
+  const colorTexto = colores.color_texto || '#000000';
+  const colorPrincipal = colores.color_principal || '#020A35';
+  const colorSecundario = colores.color_secundario || '#FFA500';
+
+  document.documentElement.style.setProperty('--site-bg', colorFondo);
+  document.documentElement.style.setProperty('--site-buttons', colorBotones);
+  document.documentElement.style.setProperty('--site-text', colorTexto);
+  document.documentElement.style.setProperty('--site-primary', colorPrincipal);
+  document.documentElement.style.setProperty('--site-secondary', colorSecundario);
+
+  document.body.style.backgroundColor = colorFondo;
+  document.body.style.color = colorTexto;
+}
+
+async function cargarColoresSitio() {
+  const colores = {
+    color_fondo: await getConfigValue('color_fondo', sitioActual?.color_fondo || '#ffffff'),
+    color_botones: await getConfigValue('color_botones', sitioActual?.color_botones || '#020A35'),
+    color_texto: await getConfigValue('color_texto', sitioActual?.color_texto || '#000000'),
+    color_principal: await getConfigValue('color_principal', sitioActual?.color_principal || '#020A35'),
+    color_secundario: await getConfigValue('color_secundario', sitioActual?.color_secundario || '#FFA500')
+  };
+
+  aplicarColoresPersonalizados(colores);
+
+  const fondo = document.getElementById('colorFondoSitio');
+  const botones = document.getElementById('colorBotonesSitio');
+  const texto = document.getElementById('colorTextoSitio');
+  const principal = document.getElementById('colorPrincipalSitio');
+  const secundario = document.getElementById('colorSecundarioSitio');
+
+  if (fondo) fondo.value = colores.color_fondo;
+  if (botones) botones.value = colores.color_botones;
+  if (texto) texto.value = colores.color_texto;
+  if (principal) principal.value = colores.color_principal;
+  if (secundario) secundario.value = colores.color_secundario;
+}
+
+async function guardarColoresSitio() {
+  const estado = document.getElementById('estadoColoresSitio');
+
+  const colores = {
+    color_fondo: document.getElementById('colorFondoSitio')?.value || '#ffffff',
+    color_botones: document.getElementById('colorBotonesSitio')?.value || '#020A35',
+    color_texto: document.getElementById('colorTextoSitio')?.value || '#000000',
+    color_principal: document.getElementById('colorPrincipalSitio')?.value || '#020A35',
+    color_secundario: document.getElementById('colorSecundarioSitio')?.value || '#FFA500'
+  };
+
+  try {
+    if (estado) {
+      estado.textContent = 'Guardando colores...';
+      estado.style.color = 'blue';
+    }
+
+    for (const [clave, valor] of Object.entries(colores)) {
+      const ok = await setConfigValue(clave, valor);
+
+      if (!ok) {
+        throw new Error(`No se pudo guardar ${clave}`);
+      }
+    }
+
+    aplicarColoresPersonalizados(colores);
+
+    if (estado) {
+      estado.textContent = '✅ Colores guardados correctamente.';
+      estado.style.color = 'green';
+    }
+
+  } catch (error) {
+    console.error('Error guardando colores:', error);
+
+    if (estado) {
+      estado.textContent = 'Error guardando colores: ' + error.message;
+      estado.style.color = 'red';
+    }
+  }
+}
+
+async function resetearColoresSitio() {
+  const confirmar = confirm('¿Restaurar los colores por defecto?');
+
+  if (!confirmar) return;
+
+  const colores = {
+    color_fondo: '#ffffff',
+    color_botones: '#020A35',
+    color_texto: '#000000',
+    color_principal: '#020A35',
+    color_secundario: '#FFA500'
+  };
+
+  for (const [clave, valor] of Object.entries(colores)) {
+    await setConfigValue(clave, valor);
+  }
+
+  aplicarColoresPersonalizados(colores);
+  await cargarColoresSitio();
+
+  const estado = document.getElementById('estadoColoresSitio');
+  if (estado) {
+    estado.textContent = '✅ Colores restaurados.';
+    estado.style.color = 'green';
+  }
+}
+
+function activarVistaPreviaColores() {
+  const ids = [
+    'colorFondoSitio',
+    'colorBotonesSitio',
+    'colorTextoSitio',
+    'colorPrincipalSitio',
+    'colorSecundarioSitio'
+  ];
+
+  ids.forEach(id => {
+    const input = document.getElementById(id);
+
+    if (!input) return;
+
+    input.addEventListener('input', () => {
+      aplicarColoresPersonalizados({
+        color_fondo: document.getElementById('colorFondoSitio')?.value || '#ffffff',
+        color_botones: document.getElementById('colorBotonesSitio')?.value || '#020A35',
+        color_texto: document.getElementById('colorTextoSitio')?.value || '#000000',
+        color_principal: document.getElementById('colorPrincipalSitio')?.value || '#020A35',
+        color_secundario: document.getElementById('colorSecundarioSitio')?.value || '#FFA500'
+      });
+    });
+  });
+}
 // ==================== SESIÓN ADMIN CON SUPABASE AUTH ====================
 // Función para cerrar sesión
  async function cerrarSesionAdmin() {
@@ -1209,7 +1344,8 @@ if (!sitioOk) {
     cargarImagenPremiosInicio(),
     cargarPrecioPorCarton(),
     cargarConfiguracionModoCartones(),
-    cargarPromocionesConfig()
+    cargarPromocionesConfig(),
+    cargarColoresSitio()
   ]);
 
   await verificarSesionInicial();
@@ -1231,7 +1367,7 @@ if (!sitioOk) {
   document.getElementById('verListaBtn')?.addEventListener('click', verListaAprobados);
   document.getElementById('guardarModoCartonesBtn')?.addEventListener('click', guardarModoCartones);
   document.getElementById('modoCartonesSelect')?.addEventListener('change', cambiarModoCartones);
-  
+  activarVistaPreviaColores();
   // Cargar likde WhatsApp
     sistemaListo = true;
   // Mostrar términos
@@ -4477,5 +4613,7 @@ window.ordenarPorReferencia = ordenarPorReferencia;
 window.activarCohetes = activarCohetes;
 window.mostrarSeccion = mostrarSeccion;
 window.recuperarPasswordAdmin = recuperarPasswordAdmin;
+window.guardarColoresSitio = guardarColoresSitio;
+window.resetearColoresSitio = resetearColoresSitio;
 
 console.log('✅ Sistema configurado correctamente');
