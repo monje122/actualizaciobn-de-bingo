@@ -128,15 +128,29 @@ if (botonAdmin) {
   });
 }
 function sitioEstaVencido(sitio) {
-  if (!sitio?.fecha_vencimiento) return false;
+  if (!sitio) return true;
 
-  const hoy = new Date();
-  hoy.setHours(0, 0, 0, 0);
+  if (sitio.activo === false) return true;
 
-  const vence = new Date(`${sitio.fecha_vencimiento}T00:00:00`);
-  vence.setHours(0, 0, 0, 0);
+  if (
+    sitio.dias_restantes !== null &&
+    sitio.dias_restantes !== undefined &&
+    sitio.dias_restantes !== ''
+  ) {
+    return Number(sitio.dias_restantes) <= 0;
+  }
 
-  return vence < hoy;
+  if (sitio.fecha_vencimiento) {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    const vence = new Date(`${sitio.fecha_vencimiento}T00:00:00`);
+    vence.setHours(0, 0, 0, 0);
+
+    return vence < hoy;
+  }
+
+  return false;
 }
 
 async function iniciarSitioActual() {
