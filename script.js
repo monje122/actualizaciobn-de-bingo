@@ -544,7 +544,167 @@ function activarVistaPreviaColores() {
   });
 }
 // ==================== SESIÓN ADMIN CON SUPABASE AUTH ====================
+// ==================== IMÁGENES PERSONALIZADAS POR SITIO ====================
+
+function aplicarImagenSitio(clave, url) {
+  if (!url) return;
+
+  if (clave === 'logo_url') {
+    const logo = document.querySelector('#bienvenida .logo');
+    if (logo) {
+      logo.src = url;
+      logo.alt = sitioActual?.nombre || 'Logo';
+    }
+
+    const preview = document.getElementById('previewLogoSitio');
+    if (preview) {
+      preview.src = url;
+      preview.style.display = 'block';
+    }
+  }
+
+  if (clave === 'imagen_premio_url') {
+    const imgPremio = document.getElementById('imagenPremiosInicio');
+    if (imgPremio) {
+      imgPremio.src = url;
+      imgPremio.classList.remove('oculto');
+    }
+
+    const preview = document.getElementById('previewPremioSitio');
+    if (preview) {
+      preview.src = url;
+      preview.style.display = 'block';
+    }
+  }
+
+  if (clave === 'imagen_carton_url') {
+    const preview = document.getElementById('previewCartonSitio');
+    if (preview) {
+      preview.src = url;
+      preview.style.display = 'block';
+    }
+
+    const cartonPreview = document.getElementById('imagenCartonPreview');
+    if (cartonPreview) {
+      cartonPreview.src = url;
+    }
+  }
+
+  if (clave === 'favicon_url') {
+    let favicon = document.querySelector('link[rel="icon"]');
+
+    if (!favicon) {
+      favicon = document.createElement('link');
+      favicon.rel = 'icon';
+      document.head.appendChild(favicon);
+    }
+
+    favicon.href = url;
+
+    const preview = document.getElementById('previewFaviconSitio');
+    if (preview) {
+      preview.src = url;
+      preview.style.display = 'block';
+    }
+  }
+}
+
+async function cargarImagenesSitio() {
+  const imagenes = {
+    logo_url: await getConfigValue('logo_url', sitioActual?.logo_url || ''),
+    imagen_premio_url: await getConfigValue('imagen_premio_url', sitioActual?.imagen_premio_url || ''),
+    
+    favicon_url: await getConfigValue('favicon_url', sitioActual?.favicon_url || '')
+  };
+
+  Object.entries(imagenes).forEach(([clave, url]) => {
+    if (url) aplicarImagenSitio(clave, url);
+  });
+}
+
+async function subirImagenSitio(inputId, clave, nombreBase) {
+  const estado = document.getElementById('estadoImagenesSitio');
+  const input = document.getElementById(inputId);
+  const file = input?.files?.[0];
+
+  if (!file) {
+    alert('Selecciona una imagen primero.');
+    return;
+  }
+
+  try {
+    if (estado) {
+      estado.textContent = 'Subiendo imagen...';
+      estado.style.color = 'blue';
+    }
+
+    const imagenWebP = await convertirImagenAWebP(file, 0.85, 1600);
+
+    const nombreLimpio = limpiarNombreArchivo(nombreBase || file.name).replace(/\.[^.]+$/, '');
+    const ruta = `${SITE_SLUG}/${nombreLimpio}-${Date.now()}.webp`;
+
+    const { error: errorUpload } = await supabase.storage
+      .from('imagenes')
+      .upload(ruta, imagenWebP, {
+        contentType: 'image/webp',
+        upsert: true,
+        cacheControl: '31536000'
+      });
+
+    if (errorUpload) {
+      throw new Error('Error subiendo imagen: ' + errorUpload.message);
+    }
+
+    const { data: publicData } = supabase.storage
+      .from('imagenes')
+      .getPublicUrl(ruta);
+
+    const urlPublica = publicData.publicUrl;
+
+    const ok = await setConfigValue(clave, urlPublica);
+
+    if (!ok) {
+      throw new Error('La imagen subió, pero no se pudo guardar en configuración.');
+    }
+
+    if (sitioActual) {
+      sitioActual[clave] = urlPublica;
+    }
+
+    aplicarImagenSitio(clave, urlPublica);
+
+    if (estado) {
+      estado.textContent = '✅ Imagen guardada correctamente.';
+      estado.style.color = 'green';
+    }
+
+    input.value = '';
+
+  } catch (error) {
+    console.error('Error guardando imagen:', error);
+
+    if (estado) {
+      estado.textContent = 'Error guardando imagen: ' + error.message;
+      estado.style.color = 'red';
+    }
+  }
+}
+
+async function guardarLogoSitio() {
+  await subirImagenSitio('inputLogoSitio', 'logo_url', 'logo');
+}
+
+async function guardarPremioSitio() {
+  await subirImagenSitio('inputPremioSitio', 'imagen_premio_url', 'premio');
+}
+
+
+
+async function guardarFaviconSitio() {
+  await subirImagenSitio('inputFaviconSitio', 'favicon_url', 'favicon');
+}
 // Función para cerrar sesión
+
  async function cerrarSesionAdmin() {
   // Cierre “silencioso” para expiración / sesión inválida
   // No pedir confirmación, solo cerrar.
@@ -1361,6 +1521,7 @@ if (!sitioOk) {
     cargarPrecioPorCarton(),
     cargarConfiguracionModoCartones(),
     cargarPromocionesConfig(),
+    cargarImagenesSitio(),
     cargarColoresSitio()
   ]);
 
@@ -1384,6 +1545,10 @@ if (!sitioOk) {
   document.getElementById('guardarModoCartonesBtn')?.addEventListener('click', guardarModoCartones);
   document.getElementById('modoCartonesSelect')?.addEventListener('change', cambiarModoCartones);
   document.getElementById('btnGuardarColoresSitio')?.addEventListener('click', guardarColoresSitio);
+  document.getElementById('btnGuardarLogoSitio')?.addEventListener('click', guardarLogoSitio);
+document.getElementById('btnGuardarPremioSitio')?.addEventListener('click', guardarPremioSitio);
+
+document.getElementById('btnGuardarFaviconSitio')?.addEventListener('click', guardarFaviconSitio);
 document.getElementById('btnResetColoresSitio')?.addEventListener('click', resetearColoresSitio);
   activarVistaPreviaColores();
   // Cargar likde WhatsApp
@@ -4633,5 +4798,7 @@ window.mostrarSeccion = mostrarSeccion;
 window.recuperarPasswordAdmin = recuperarPasswordAdmin;
 window.guardarColoresSitio = guardarColoresSitio;
 window.resetearColoresSitio = resetearColoresSitio;
-
+window.guardarLogoSitio = guardarLogoSitio;
+window.guardarPremioSitio = guardarPremioSitio;
+window.guardarFaviconSitio = guardarFaviconSitio;
 console.log('✅ Sistema configurado correctamente');
