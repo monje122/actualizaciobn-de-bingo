@@ -26,14 +26,16 @@
 }
 
 body {
+
   font-family: 'Poppins', 'Segoe UI', Arial, sans-serif;
   margin: 0;
   padding: 0;
-  background: l;
-  color:var(--white) ;
+  background: var(--site-bg, #ffffff);
+  color: var(--site-text, #000000);
   min-height: 100vh;
   position: relative;
   overflow-x: hidden;
+
 }
 
 body::before {
@@ -96,7 +98,9 @@ input, button, .btn, select, textarea {
   border: 2px solid transparent;
   transition: var(--transition);
   font-family: inherit;
-}
+
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 
 input, select, textarea {
   background: rgba(255, 255, 255, 0.95);
@@ -113,8 +117,8 @@ input:focus, select:focus, textarea:focus {
 
 /* Botones */
 button, .btn {
-  background: linear-gradient(135deg, var(--secondary), #ffb347);
-  color: var(--dark);
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
   border: none;
   cursor: pointer;
   font-weight: 600;
@@ -124,19 +128,24 @@ button, .btn {
 }
 
 button:hover, .btn:hover {
-  background: linear-gradient(135deg, #ffb347, var(--secondary-light));
+  background: var(--site-buttons, #020A35) !important;
   transform: translateY(-2px);
   box-shadow: var(--shadow-lg);
-}
+
+  color: var(--site-button-text, #ffffff) !important;}
 
 button:active, .btn:active {
   transform: translateY(0);
-}
+
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 
 button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
-}
+
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 
 /* Botón fijo inferior */
 .btn-fijo {
@@ -144,8 +153,8 @@ button:disabled {
   bottom: 25px;
   left: 50%;
   transform: translateX(-50%);
-  background: linear-gradient(135deg, var(--secondary), #ffb347);
-  color: var(--dark);
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
   border: none;
   padding: 16px 30px;
   font-size: 18px;
@@ -166,7 +175,9 @@ button:disabled {
 
 .btn-fijo:hover {
   transform: translateX(-50%) translateY(-2px);
-}
+
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 
 /* Cartones */
 #contenedor-cartones {
@@ -332,35 +343,42 @@ button:disabled {
   font-size: 20px;
   cursor: pointer;
   border: none;
-  background: transparent;
+  background: var(--site-buttons, #020A35) !important;
   padding: 8px 12px;
   border-radius: 8px;
   transition: var(--transition);
-}
+
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-aprobar { 
-  color: var(--success);
-}
+  color: var(--site-button-text, #ffffff) !important;
+
+  background: var(--site-buttons, #020A35) !important;}
 .btn-aprobar:hover { 
-  background: rgba(6, 214, 160, 0.2);
+  background: var(--site-buttons, #020A35) !important;
   transform: scale(1.2);
-}
+
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-rechazar { 
-  color: var(--danger);
-}
+  color: var(--site-button-text, #ffffff) !important;
+
+  background: var(--site-buttons, #020A35) !important;}
 .btn-rechazar:hover { 
-  background: rgba(239, 71, 111, 0.2);
+  background: var(--site-buttons, #020A35) !important;
   transform: scale(1.2);
-}
+
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-eliminar { 
-  color: var(--warning);
-}
+  color: var(--site-button-text, #ffffff) !important;
+
+  background: var(--site-buttons, #020A35) !important;}
 .btn-eliminar:hover { 
-  background: rgba(255, 209, 102, 0.2);
+  background: var(--site-buttons, #020A35) !important;
   transform: scale(1.2);
-}
+
+  color: var(--site-button-text, #ffffff) !important;}
 
 /* Selector de cantidad */
 .selector-cantidad {
@@ -382,8 +400,8 @@ button:disabled {
   font-weight: bold;
   padding: 0;
   border-radius: 50%;
-  background: linear-gradient(135deg, var(--secondary), #ffb347);
-  color: var(--dark);
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
   margin: 0;
   display: flex;
   align-items: center;
@@ -409,26 +427,30 @@ button:disabled {
   gap: 20px;
   z-index: 99;
   padding: 12px 25px;
-  background: linear-gradient(135deg, var(--secondary), #ffb347);
+  background: var(--site-buttons, #020A35) !important;
   border-radius: 50px;
   box-shadow: var(--shadow-lg);
   animation: slideUp 0.5s ease;
-}
+
+  color: var(--site-button-text, #ffffff) !important;}
 
 #redes-sociales a {
-  color: var(--dark);
+  color: var(--site-button-text, #ffffff) !important;
   font-size: 24px;
   transition: var(--transition);
-}
+
+  background: var(--site-buttons, #020A35) !important;}
 
 #redes-sociales a:hover {
   transform: translateY(-5px) scale(1.2);
-}
+
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 
 /* Botón WhatsApp */
 #btnWhatsapp {
-  background: linear-gradient(135deg, #25d366, #128C7E);
-  color: var(--white);
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
   padding: 14px 25px;
   border-radius: 50px;
   text-decoration: none;
@@ -446,11 +468,15 @@ button:disabled {
 #btnWhatsapp:hover {
   transform: translateY(-3px) scale(1.05);
   box-shadow: 0 8px 20px rgba(37, 211, 102, 0.4);
-}
+
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 
 #btnWhatsapp i, #btnWhatsapp svg {
   font-size: 24px;
-}
+
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 
 /* Estados circulares */
 .estado-circulo {
@@ -482,8 +508,8 @@ button:disabled {
 }
 
 .btn-promo {
-  background: linear-gradient(135deg, #00b894, #00a085);
-  color: var(--white);
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
   border: none;
   border-radius: 16px;
   padding: 20px 15px;
@@ -507,37 +533,46 @@ button:disabled {
   left: -100%;
   width: 100%;
   height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  background: var(--site-buttons, #020A35) !important;
   transition: left 0.5s;
-}
+
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-promo:hover::before {
   left: 100%;
-}
+
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-promo:hover {
   transform: translateY(-5px);
   box-shadow: 0 8px 20px rgba(0, 184, 148, 0.4);
   filter: brightness(1.1);
-}
+
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-promo.seleccionado {
-  background: linear-gradient(135deg, #e17055, #d63031);
+  background: var(--site-buttons, #020A35) !important;
   border: 3px solid var(--secondary);
   transform: scale(1.02);
-}
+
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-promo.desactivado {
-  background: #bdc3c7;
+  background: var(--site-buttons, #020A35) !important;
   cursor: not-allowed;
   opacity: 0.6;
   filter: grayscale(1);
-}
+
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-promo.desactivado:hover {
   transform: none;
   box-shadow: var(--shadow);
-}
+
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 
 /* Admin cards */
 .promo-admin-card {
@@ -586,19 +621,21 @@ button:disabled {
   border: none;
   cursor: pointer;
   transition: var(--transition);
-}
+
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 
 .celda-ref .btn-guardar { 
-  background: linear-gradient(135deg, #28a745, #218838);
-  color: #fff; 
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important; 
 }
 .celda-ref .btn-cancelar { 
-  background: linear-gradient(135deg, #6c757d, #5a6268);
-  color: #fff; 
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important; 
 }
 .celda-ref .btn-edit-ref { 
-  color: var(--secondary);
-  background: none;
+  color: var(--site-button-text, #ffffff) !important;
+  background: var(--site-buttons, #020A35) !important;
   font-size: 16px;
 }
 
@@ -620,16 +657,22 @@ button:disabled {
     padding: 14px 25px;
     font-size: 16px;
     bottom: 15px;
-  }
+  
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
   
   #redes-sociales {
     padding: 10px 20px;
     bottom: 15px;
-  }
+  
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
   
   #redes-sociales a {
     font-size: 20px;
-  }
+  
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
   
   .grid-promociones {
     grid-template-columns: 1fr;
@@ -658,7 +701,9 @@ button:disabled {
     width: 40px;
     height: 40px;
     font-size: 20px;
-  }
+  
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 }
 
 /* Utilidades */
@@ -700,7 +745,9 @@ button:disabled {
   
   .carton, button, #redes-sociales, .btn-fijo {
     display: none !important;
-  }
+  
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 }
 
 /* Scrollbar personalizada */
@@ -773,8 +820,8 @@ button:disabled {
 .tab-btn {
   padding: 12px 24px;
   border: none;
-  background: transparent;
-  color: #666;
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
@@ -785,14 +832,14 @@ button:disabled {
 }
 
 .tab-btn:hover {
-  color: #3498db;
-  background: #f0f8ff;
+  color: var(--site-button-text, #ffffff) !important;
+  background: var(--site-buttons, #020A35) !important;
 }
 
 .tab-btn.active {
-  color: #3498db;
+  color: var(--site-button-text, #ffffff) !important;
   border-bottom-color: #3498db;
-  background: #fff;
+  background: var(--site-buttons, #020A35) !important;
 }
 
 /* Contenido de pestañas */
@@ -940,7 +987,9 @@ button:disabled {
   display: flex;
   flex-wrap: wrap;
   gap: 10px;
-}
+
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-admin, .btn-primary, .btn-secondary, .btn-danger, .btn-warning, .btn-success, .btn-fun, .btn-sort {
   padding: 10px 20px;
@@ -953,92 +1002,103 @@ button:disabled {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-}
+
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-primary {
-  background: #3498db;
-  color: white;
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
 }
 
 .btn-primary:hover {
-  background: #2980b9;
+  background: var(--site-buttons, #020A35) !important;
   transform: translateY(-1px);
-}
+
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-secondary {
-  background: #ecf0f1;
-  color: #555;
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
   border: 1px solid #ddd;
 }
 
 .btn-secondary:hover {
-  background: #dfe6e9;
-}
+  background: var(--site-buttons, #020A35) !important;
+
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-danger {
-  background: #e74c3c;
-  color: white;
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
 }
 
 .btn-danger:hover {
-  background: #c0392b;
-}
+  background: var(--site-buttons, #020A35) !important;
+
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-warning {
-  background: #f39c12;
-  color: white;
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
 }
 
 .btn-warning:hover {
-  background: #e67e22;
-}
+  background: var(--site-buttons, #020A35) !important;
+
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-success {
-  background: #27ae60;
-  color: white;
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
 }
 
 .btn-success:hover {
-  background: #229954;
-}
+  background: var(--site-buttons, #020A35) !important;
+
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-fun {
-  background: linear-gradient(45deg, #f093fb 0%, #f5576c 100%);
-  color: white;
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
 }
 
 .btn-admin {
-  background: #f8f9fa;
-  color: #555;
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
   border: 1px solid #dee2e6;
 }
 
 .btn-admin:hover {
-  background: #e9ecef;
-}
+  background: var(--site-buttons, #020A35) !important;
+
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-sort {
   padding: 6px 14px;
   font-size: 12px;
-  background: #fff;
+  background: var(--site-buttons, #020A35) !important;
   border: 1px solid #ddd;
-  color: #666;
+  color: var(--site-button-text, #ffffff) !important;
 }
 
 .btn-sort:hover {
-  background: #f0f0f0;
-}
+  background: var(--site-buttons, #020A35) !important;
+
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-large {
   padding: 14px 32px;
   font-size: 16px;
   margin-top: 15px;
-}
+
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-home {
   padding: 12px 30px;
-  background: #34495e;
-  color: white;
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
   border: none;
   border-radius: 8px;
   font-size: 14px;
@@ -1046,13 +1106,14 @@ button:disabled {
 }
 
 .btn-home:hover {
-  background: #2c3e50;
-}
+  background: var(--site-buttons, #020A35) !important;
+
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-logout {
   padding: 8px 18px;
-  background: #e74c3c;
-  color: white;
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
   border: none;
   border-radius: 6px;
   font-size: 13px;
@@ -1328,12 +1389,16 @@ input:checked + .toggle-slider:before {
   
   .btn-group {
     flex-direction: column;
-  }
+  
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
   
   .btn-group button {
     width: 100%;
     justify-content: center;
-  }
+  
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 }
 /* ════════════════════════════════════════════════════════
    FIX DEFINITIVO: TEXTO VISIBLE EN TABLA ADMIN
@@ -1401,25 +1466,29 @@ input:checked + .toggle-slider:before {
 
 /* Botones de acción */
 #admin-panel #tabla-comprobantes .btn-accion {
-  background: transparent !important;
+  background: var(--site-buttons, #020A35) !important;
   border: none !important;
   font-size: 20px !important;
   cursor: pointer !important;
   padding: 6px 10px !important;
   margin: 2px !important;
-}
+
+  color: var(--site-button-text, #ffffff) !important;}
 
 #admin-panel #tabla-comprobantes .btn-aprobar {
-  color: #27ae60 !important;
-}
+  color: var(--site-button-text, #ffffff) !important;
+
+  background: var(--site-buttons, #020A35) !important;}
 
 #admin-panel #tabla-comprobantes .btn-rechazar {
-  color: #e74c3c !important;
-}
+  color: var(--site-button-text, #ffffff) !important;
+
+  background: var(--site-buttons, #020A35) !important;}
 
 #admin-panel #tabla-comprobantes .btn-eliminar {
-  color: #f39c12 !important;
-}
+  color: var(--site-button-text, #ffffff) !important;
+
+  background: var(--site-buttons, #020A35) !important;}
 
 /* Círculo de estado */
 #admin-panel .estado-circulo {
@@ -1460,21 +1529,24 @@ input:checked + .toggle-slider:before {
 
 /* Botones mini */
 #admin-panel .btn-mini {
-  color: #fff !important;
+  color: var(--site-button-text, #ffffff) !important;
   padding: 6px 12px !important;
   border-radius: 6px !important;
   border: none !important;
   font-size: 12px !important;
   cursor: pointer !important;
-}
+
+  background: var(--site-buttons, #020A35) !important;}
 
 #admin-panel .btn-mini.btn-guardar {
-  background: #27ae60 !important;
-}
+  background: var(--site-buttons, #020A35) !important;
+
+  color: var(--site-button-text, #ffffff) !important;}
 
 #admin-panel .btn-mini.btn-cancelar {
-  background: #95a5a6 !important;
-}
+  background: var(--site-buttons, #020A35) !important;
+
+  color: var(--site-button-text, #ffffff) !important;}
 
 /* Texto de referencia */
 #admin-panel .ref-text {
@@ -1485,8 +1557,8 @@ input:checked + .toggle-slider:before {
 
 /* Botón editar referencia */
 #admin-panel .btn-edit-ref {
-  color: #3498db !important;
-  background: none !important;
+  color: var(--site-button-text, #ffffff) !important;
+  background: var(--site-buttons, #020A35) !important;
   border: none !important;
   font-size: 16px !important;
   cursor: pointer !important;
@@ -1650,8 +1722,8 @@ input:checked + .toggle-slider:before {
   display: block !important;
   max-width: 300px !important;
   margin: 25px auto 0 !important;
-  background: linear-gradient(135deg, #FFA500, #ffb347) !important;
-  color: #1a1a2e !important;
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
   font-weight: 700 !important;
   font-size: 16px !important;
   padding: 14px 30px !important;
@@ -1665,7 +1737,9 @@ input:checked + .toggle-slider:before {
 #lista-aprobados button:hover {
   transform: translateY(-3px) scale(1.02) !important;
   box-shadow: 0 8px 25px rgba(255, 165, 0, 0.6) !important;
-}
+
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 /* ════════════════════════════════════════════════════════
    FIX: CONTENEDOR CON FONDO CLARO PARA HISTORIAL DE GANADORES
    ════════════════════════════════════════════════════════ */
@@ -1747,8 +1821,8 @@ input:checked + .toggle-slider:before {
   width: 100% !important;
   max-width: 320px !important;
   margin: 25px auto !important;
-  background: linear-gradient(135deg, #FFA500, #ffb347) !important;
-  color: #1a1a2e !important;
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
   font-weight: 800 !important;
   font-size: 16px !important;
   padding: 15px 30px !important;
@@ -1786,7 +1860,9 @@ input:checked + .toggle-slider:before {
   #ganadores button {
     max-width: 90vw !important;
     font-size: 15px !important;
-  }
+  
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 }
 /* ════════════════════════════════════════════════════════
    SECCIÓN DE PAGO MÓVIL - DISEÑO MODERNO
@@ -2002,8 +2078,8 @@ input:checked + .toggle-slider:before {
 
 .btn-copiar {
   padding: 8px 14px !important;
-  background: linear-gradient(135deg, #FFA500, #ffb347) !important;
-  color: #1a1a2e !important;
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
   border: none !important;
   border-radius: 8px !important;
   font-size: 12px !important;
@@ -2016,11 +2092,13 @@ input:checked + .toggle-slider:before {
 .btn-copiar:hover {
   transform: scale(1.05) !important;
   box-shadow: 0 4px 12px rgba(255, 165, 0, 0.4) !important;
-}
+
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-copiar.copiado {
-  background: #27ae60 !important;
-  color: white !important;
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
 }
 
 /* Instrucciones */
@@ -2196,8 +2274,8 @@ input:checked + .toggle-slider:before {
 .btn-pagar {
   width: 100% !important;
   padding: 18px 30px !important;
-  background: linear-gradient(135deg, #27ae60, #229954) !important;
-  color: white !important;
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
   border: none !important;
   border-radius: 12px !important;
   font-size: 18px !important;
@@ -2215,15 +2293,21 @@ input:checked + .toggle-slider:before {
 .btn-pagar:hover {
   transform: translateY(-3px) !important;
   box-shadow: 0 12px 30px rgba(39, 174, 96, 0.5) !important;
-}
+
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-pagar:active {
   transform: translateY(0) !important;
-}
+
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-icon {
   font-size: 24px !important;
-}
+
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 
 /* Footer */
 .pago-footer {
@@ -2235,8 +2319,8 @@ input:checked + .toggle-slider:before {
 .btn-volver {
   flex: 1 !important;
   padding: 14px 24px !important;
-  background: rgba(255, 255, 255, 0.1) !important;
-  color: white !important;
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
   border: 2px solid rgba(255, 255, 255, 0.3) !important;
   border-radius: 12px !important;
   font-size: 14px !important;
@@ -2247,14 +2331,15 @@ input:checked + .toggle-slider:before {
 }
 
 .btn-volver:hover {
-  background: rgba(255, 255, 255, 0.2) !important;
-  border-color: white !important;
-}
+  background: var(--site-buttons, #020A35) !important;
+  border-color: var(--site-buttons, #020A35) !important;
+
+  color: var(--site-button-text, #ffffff) !important;}
 
 .btn-cancelar {
   padding: 14px 24px !important;
-  background: transparent !important;
-  color: rgba(255, 255, 255, 0.6) !important;
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
   border: none !important;
   font-size: 14px !important;
   cursor: pointer !important;
@@ -2262,8 +2347,9 @@ input:checked + .toggle-slider:before {
 }
 
 .btn-cancelar:hover {
-  color: white !important;
-}
+  color: var(--site-button-text, #ffffff) !important;
+
+  background: var(--site-buttons, #020A35) !important;}
 
 /* Notificación de copiado */
 .toast-copiado {
@@ -2301,7 +2387,9 @@ input:checked + .toggle-slider:before {
   .btn-copiar {
     width: 100% !important;
     margin-top: 8px !important;
-  }
+  
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
   
   .pago-footer {
     flex-direction: column !important;
@@ -2460,7 +2548,9 @@ input:checked + .toggle-slider:before {
   padding: 7px 10px;
   border-radius: 10px;
   font-size: 14px;
-}
+
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;}
 
 .monto-destacado {
   background: linear-gradient(135deg, var(--secondary), #ffb347);
@@ -2563,8 +2653,8 @@ input:checked + .toggle-slider:before {
   height: 38px;
   border: none;
   border-radius: 50%;
-  background: #ffb300;
-  color: #fff;
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
   cursor: pointer;
   font-size: 18px; 
 }
@@ -2606,8 +2696,9 @@ button,
 .btn,
 .btn-primary,
 .btn-admin {
-  background-color: var(--site-buttons);
-}
+  background-color: var(--site-buttons, #020A35) !important;
+
+  color: var(--site-button-text, #ffffff) !important;}
 
 h1,
 h2,
@@ -2646,8 +2737,8 @@ body button:not(.btn-danger):not(.btn-warning):not(.btn-logout):not(.danger):not
 body .btn,
 body .btn-admin:not(.btn-danger):not(.btn-warning):not(.btn-logout),
 body .btn-primary {
-  background-color: var(--site-buttons, #020A35);
-  color: #ffffff;
+  background-color: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
 }
 
 .colores-admin-grid {
@@ -2735,16 +2826,17 @@ body .boton *,
 body a.btn *,
 body a.boton * {
   color: var(--site-button-text, #ffffff) !important;
-}
+
+  background: var(--site-buttons, #020A35) !important;}
 
 /* Mantener botones peligrosos en rojo */
 body .btn-danger,
 body .danger,
 body button.danger,
 body button.btn-danger {
-  background-color: #dc3545 !important;
-  color: #ffffff !important;
-  border-color: #dc3545 !important;
+  background-color: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
+  border-color: var(--site-buttons, #020A35) !important;
 }
 
 /* Mantener botones warning en amarillo */
@@ -2752,9 +2844,9 @@ body .btn-warning,
 body .warning,
 body button.warning,
 body button.btn-warning {
-  background-color: #f59f00 !important;
-  color: #111111 !important;
-  border-color: #f59f00 !important;
+  background-color: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
+  border-color: var(--site-buttons, #020A35) !important;
 }
 /* ==================== BOTONES PRINCIPALES DE AFUERA ==================== */
 
@@ -2790,7 +2882,8 @@ button[onclick*="cargarTopCompradores"] {
 button[onclick*="mostrarVentana"] *,
 button[onclick*="guardarDatosInscripcion"] * {
   color: var(--site-button-text, #ffffff) !important;
-}
+
+  background: var(--site-buttons, #020A35) !important;}
 
 /* Hover de esos botes */
 #bienvenida button:hover,
@@ -2798,7 +2891,292 @@ button[onclick*="guardarDatosInscripcion"] * {
 #bienvenida .boton:hover,
 #bienvenida a:hover,
 button[onclick*="mostrarVentana"]:hover {
-  background: var(--site-primary, #020A35) !important;
-  background-color: var(--site-primary, #020A35) !important;
+  background: var(--site-buttons, #020A35) !important;
+  background-color: var(--site-buttons, #020A35) !important;
   color: var(--site-button-text, #ffffff) !important;
+}
+
+/* =========================================================
+   CONTROL GLOBAL DE COLORES DEL CLIENTE
+   Todos los botones, links tipo botón y barra de redes usan
+   los colores configurados desde el panel admin.
+   ========================================================= */
+
+html,
+body {
+  background: var(--site-bg, #ffffff) !important;
+  color: var(--site-text, #000000) !important;
+}
+
+body,
+body p,
+body label,
+body span,
+body small,
+body li {
+  color: var(--site-text, #000000);
+}
+
+body h1,
+body h2,
+body h3,
+body h4 {
+  color: var(--site-primary, #020A35);
+}
+
+/* Botones generales */
+button,
+.btn,
+.boton,
+.boton-principal,
+.btn-principal,
+.btn-primary,
+.btn-secondary,
+.btn-admin,
+.btn-success,
+.btn-warning,
+.btn-danger,
+.btn-fun,
+.btn-sort,
+.btn-home,
+.btn-logout,
+.btn-fijo,
+.btn-promo,
+.btn-large,
+.btn-mini,
+.btn-copiar,
+.btn-copiar-mini,
+.btn-pagar,
+.btn-volver,
+.btn-cancelar,
+#btnWhatsapp,
+#btnCopiarAprobados,
+#boton-admin-oculto,
+button[onclick],
+input[type="button"],
+input[type="submit"],
+a.btn,
+a.boton,
+a.btn-primary,
+a.btn-secondary {
+  background: var(--site-buttons, #020A35) !important;
+  background-color: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
+  border-color: var(--site-buttons, #020A35) !important;
+}
+
+/* Hover de todos los botones */
+button:hover,
+.btn:hover,
+.boton:hover,
+.boton-principal:hover,
+.btn-principal:hover,
+.btn-primary:hover,
+.btn-secondary:hover,
+.btn-admin:hover,
+.btn-success:hover,
+.btn-warning:hover,
+.btn-danger:hover,
+.btn-fun:hover,
+.btn-sort:hover,
+.btn-home:hover,
+.btn-logout:hover,
+.btn-fijo:hover,
+.btn-promo:hover,
+.btn-large:hover,
+.btn-mini:hover,
+.btn-copiar:hover,
+.btn-copiar-mini:hover,
+.btn-pagar:hover,
+.btn-volver:hover,
+.btn-cancelar:hover,
+#btnWhatsapp:hover,
+#btnCopiarAprobados:hover,
+#boton-admin-oculto:hover,
+button[onclick]:hover,
+input[type="button"]:hover,
+input[type="submit"]:hover,
+a.btn:hover,
+a.boton:hover {
+  background: var(--site-primary, var(--site-buttons, #020A35)) !important;
+  background-color: var(--site-primary, var(--site-buttons, #020A35)) !important;
+  color: var(--site-button-text, #ffffff) !important;
+  border-color: var(--site-primary, var(--site-buttons, #020A35)) !important;
+}
+
+/* Letras e iconos dentro de botones */
+button *,
+.btn *,
+.boton *,
+.boton-principal *,
+.btn-principal *,
+.btn-primary *,
+.btn-secondary *,
+.btn-admin *,
+.btn-success *,
+.btn-warning *,
+.btn-danger *,
+.btn-fun *,
+.btn-sort *,
+.btn-home *,
+.btn-logout *,
+.btn-fijo *,
+.btn-promo *,
+.btn-large *,
+.btn-mini *,
+.btn-copiar *,
+.btn-copiar-mini *,
+.btn-pagar *,
+.btn-volver *,
+.btn-cancelar *,
+#btnWhatsapp *,
+#btnCopiarAprobados *,
+#boton-admin-oculto *,
+a.btn *,
+a.boton * {
+  color: var(--site-button-text, #ffffff) !important;
+}
+
+/* Botones principales por secciones */
+#bienvenida button,
+#bienvenida .btn,
+#bienvenida .boton,
+#cantidad button,
+#cartones button,
+#pago button,
+#consulta button,
+#lista-aprobados button,
+#ganadores button,
+#top-compradores button,
+#historial-ganadores button,
+#admin-panel button,
+#admin-panel .btn-admin,
+#admin-panel .btn-primary,
+#admin-panel .btn-secondary,
+#admin-panel .btn-success,
+#admin-panel .btn-warning,
+#admin-panel .btn-danger,
+#admin-panel .btn-mini,
+#admin-panel .btn-sort,
+#tabla-comprobantes button,
+#tabla-comprobantes .btn-accion {
+  background: var(--site-buttons, #020A35) !important;
+  background-color: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
+  border-color: var(--site-buttons, #020A35) !important;
+}
+
+/* Barra y botones de redes sociales */
+#redes-sociales {
+  background: var(--site-buttons, #020A35) !important;
+  background-color: var(--site-buttons, #020A35) !important;
+  border-color: var(--site-buttons, #020A35) !important;
+}
+
+#redes-sociales a,
+#redes-sociales a:visited,
+#redes-sociales a:hover,
+#redes-sociales i,
+#redes-sociales svg,
+#redes-sociales span {
+  color: var(--site-button-text, #ffffff) !important;
+}
+
+/* Si las redes están como imágenes, se mantienen visibles */
+#redes-sociales img {
+  background: transparent !important;
+}
+
+/* Botón de WhatsApp y grupo */
+#btnWhatsapp,
+a#btnWhatsapp {
+  background: var(--site-buttons, #020A35) !important;
+  background-color: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
+  border-color: var(--site-buttons, #020A35) !important;
+}
+
+/* Botones de copiar, pago y navegación */
+.btn-copiar,
+.btn-copiar-mini,
+.btn-pagar,
+.btn-volver,
+.btn-cancelar,
+#btnCopiarAprobados,
+#lista-aprobados button,
+#ganadores button {
+  background: var(--site-buttons, #020A35) !important;
+  background-color: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
+  border-color: var(--site-buttons, #020A35) !important;
+}
+
+/* Promociones también respetan el color del cliente */
+.btn-promo,
+.btn-promo.seleccionado {
+  background: var(--site-buttons, #020A35) !important;
+  background-color: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
+  border-color: var(--site-primary, #020A35) !important;
+}
+
+.btn-promo.desactivado {
+  background: #bdc3c7 !important;
+  background-color: #bdc3c7 !important;
+  color: #555555 !important;
+  border-color: #bdc3c7 !important;
+}
+
+/* Inputs tipo color del panel admin */
+.colores-admin-grid input[type="color"] {
+  background: transparent !important;
+  color: inherit !important;
+}
+/* ==================== CAMPOS DE ESCRITURA SIEMPRE BLANCOS ==================== */
+
+input:not([type="color"]),
+select,
+textarea,
+.promo-input,
+.ref-input,
+.input-row input,
+.input-row select,
+.form-grid input,
+.referencia-input input,
+.upload-input {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: #111111 !important;
+  border-color: #dcdcdc !important;
+}
+
+/* Placeholder dentro de inputs */
+input::placeholder,
+textarea::placeholder {
+  color: #777777 !important;
+  opacity: 1 !important;
+}
+
+/* Cuando el cliente está escribieo */
+input:not([type="color"]):focus,
+select:focus,
+textarea:focus,
+.promo-input:focus,
+.ref-input:focus {
+  background: #ffffff !important;
+  color: #111111 !important;
+  border-color: var(--site-buttons, #020A35) !important;
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.08) !important;
+}
+
+/* Labels y textos dentro de tarjetas blancas */
+.panel-section input,
+.panel-section select,
+.panel-section textarea,
+.pago-comprobante input,
+.pago-banco-card input,
+.registro-pago-ganador input,
+.datos-admin-pago input {
+  background: #ffffff !important;
+  color: #111111 !important;
 }
