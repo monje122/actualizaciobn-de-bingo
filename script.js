@@ -1547,7 +1547,9 @@ if (!sitioOk) {
     cargarConfiguracionModoCartones(),
     cargarPromocionesConfig(),
     cargarImagenesSitio(),
-    cargarColoresSitio()
+    cargarColoresSitio(),
+    cargarPagoMovilSitio(),
+    cargarRedesSitio()
   ]);
 
   await verificarSesionInicial();
@@ -1556,7 +1558,7 @@ if (!sitioOk) {
   
  
   // Event listes pefos
-  document.getElementById('guardarPromocionesBtn')?.addEventListener('click', guardarPromociones);
+ document.getElementById('guardarPromocionesBtn')?.addEventListener('click', guardarPromociones);
   document.getElementById('btnDupNombreAprobados')?.addEventListener('click', detectarDuplicadosAprobadosPorNombre);
   document.getElementById('btnDupReferenciaAprobados')?.addEventListener('click', detectarDuplicadosAprobadosPorReferencia);
   document.getElementById('btnDuplicados')?.addEventListener('click', detectarCartonesDuplicados);
@@ -1565,14 +1567,14 @@ if (!sitioOk) {
   document.getElementById('guardarPrecioBtn')?.addEventListener('click', guardarPrecioPorCarton);
   document.getElementById('cerrarVentasBtn')?.addEventListener('click', cerrarVentas);
   document.getElementById('abrirVentasBtn')?.addEventListener('click', abrirVentas);
-  document.getElementById('imprimirListaBtn')?.addEventListener('click', imprimirLista);
+ document.getElementById('btnGuardarPagoSitio')?.addEventListener('click', guardarPagoMovilSitio); document.getElementById('imprimirListaBtn')?.addEventListener('click', imprimirLista);
   document.getElementById('verListaBtn')?.addEventListener('click', verListaAprobados);
   document.getElementById('guardarModoCartonesBtn')?.addEventListener('click', guardarModoCartones);
   document.getElementById('modoCartonesSelect')?.addEventListener('change', cambiarModoCartones);
   document.getElementById('btnGuardarColoresSitio')?.addEventListener('click', guardarColoresSitio);
   document.getElementById('btnGuardarLogoSitio')?.addEventListener('click', guardarLogoSitio);
 document.getElementById('btnGuardarPremioSitio')?.addEventListener('click', guardarPremioSitio);
-
+document.getElementById('btnGuardarRedesSitio')?.addEventListener('click', guardarRedesSitio); 
 document.getElementById('btnGuardarFaviconSitio')?.addEventListener('click', guardarFaviconSitio);
 document.getElementById('btnResetColoresSitio')?.addEventListener('click', resetearColoresSitio);
   activarVistaPreviaColores();
@@ -4813,7 +4815,216 @@ function obtenerRutaStorageDesdeUrl(url, bucket = 'imagenes') {
     return null;
   }
 }
+// ==================== DATOS DE PAGO MÓVIL POR SITIO ====================
 
+function pintarTextoSiExiste(id, valor) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = valor || '';
+}
+
+function aplicarPagoMovilSitio(datos = {}) {
+  const banco = datos.pago_banco || '';
+  const bancoCodigo = datos.pago_banco_codigo || '';
+  const telefono = datos.pago_telefono_admin || datos.pago_telefono || '';
+  const cedula = datos.pago_cedula_admin || datos.pago_cedula || '';
+  const titular = datos.pago_titular || '';
+
+  // Donde se muestran los datos al comprador
+  pintarTextoSiExiste('adminPagoBanco', bancoCodigo || banco);
+  pintarTextoSiExiste('adminPagoTelefono', telefono);
+  pintarTextoSiExiste('adminPagoCedula', cedula);
+  pintarTextoSiExiste('adminPagoTitular', titular);
+
+  // Inputs del panel admin
+  const inputBanco = document.getElementById('configPagoBanco');
+  const inputBancoCodigo = document.getElementById('configPagoBancoCodigo');
+  const inputTelefono = document.getElementById('configPagoTelefono');
+  const inputCedula = document.getElementById('configPagoCedula');
+  const inputTitular = document.getElementById('configPagoTitular');
+
+  if (inputBanco) inputBanco.value = banco;
+  if (inputBancoCodigo) inputBancoCodigo.value = bancoCodigo;
+  if (inputTelefono) inputTelefono.value = telefono;
+  if (inputCedula) inputCedula.value = cedula;
+  if (inputTitular) inputTitular.value = titular;
+}
+
+async function cargarPagoMovilSitio() {
+  const datos = {
+    pago_banco: await getConfigValue('pago_banco', sitioActual?.pago_banco || ''),
+    pago_banco_codigo: await getConfigValue('pago_banco_codigo', sitioActual?.pago_banco_codigo || ''),
+    pago_telefono_admin: await getConfigValue('pago_telefono_admin', sitioActual?.pago_telefono || ''),
+    pago_cedula_admin: await getConfigValue('pago_cedula_admin', sitioActual?.pago_cedula || ''),
+    pago_titular: await getConfigValue('pago_titular', sitioActual?.pago_titular || '')
+  };
+
+  aplicarPagoMovilSitio(datos);
+}
+
+async function guardarPagoMovilSitio() {
+  const estado = document.getElementById('estadoPagoSitio');
+
+  const datos = {
+    pago_banco: document.getElementById('configPagoBanco')?.value.trim() || '',
+    pago_banco_codigo: document.getElementById('configPagoBancoCodigo')?.value.trim() || '',
+    pago_telefono_admin: document.getElementById('configPagoTelefono')?.value.trim() || '',
+    pago_cedula_admin: document.getElementById('configPagoCedula')?.value.trim() || '',
+    pago_titular: document.getElementById('configPagoTitular')?.value.trim() || ''
+  };
+
+  if (!datos.pago_banco && !datos.pago_banco_codigo) {
+    alert('Debes colocar el banco o el código del banco.');
+    return;
+  }
+
+  if (!datos.pago_telefono_admin) {
+    alert('Debes colocar el teléfono de pago móvil.');
+    return;
+  }
+
+  if (!datos.pago_cedula_admin) {
+    alert('Debes colocar la cédula o RIF.');
+    return;
+  }
+
+  try {
+    if (estado) {
+      estado.textContent = 'Guardando datos de pago...';
+      estado.style.color = 'blue';
+    }
+
+    for (const [clave, valor] of Object.entries(datos)) {
+      const ok = await setConfigValue(clave, valor);
+
+      if (!ok) {
+        throw new Error(`No se pudo guardar ${clave}`);
+      }
+    }
+
+    if (sitioActual) {
+      Object.assign(sitioActual, {
+        pago_banco: datos.pago_banco,
+        pago_banco_codigo: datos.pago_banco_codigo,
+        pago_telefono: datos.pago_telefono_admin,
+        pago_cedula: datos.pago_cedula_admin,
+        pago_titular: datos.pago_titular
+      });
+    }
+
+    aplicarPagoMovilSitio(datos);
+
+    if (estado) {
+      estado.textContent = '✅ Datos de pago guardados correctamente.';
+      estado.style.color = 'green';
+    }
+
+  } catch (error) {
+    console.error('Error guardando pago móvil:', error);
+
+    if (estado) {
+      estado.textContent = 'Error guardando pago móvil: ' + error.message;
+      estado.style.color = 'red';
+    }
+  }
+}
+// ==================== REDES SOCIALES POR SITIO ====================
+
+function normalizarUrlRedSocial(url) {
+  const valor = String(url || '').trim();
+
+  if (!valor) return '';
+
+  if (valor.startsWith('http://') || valor.startsWith('https://')) {
+    return valor;
+  }
+
+  return 'https://' + valor;
+}
+
+function aplicarInputsRedesSitio(datos = {}) {
+  const whatsapp = document.getElementById('configWhatsapp');
+  const whatsappGrupo = document.getElementById('configWhatsappGrupo');
+  const instagram = document.getElementById('configInstagram');
+  const facebook = document.getElementById('configFacebook');
+  const youtube = document.getElementById('configYoutube');
+  const tiktok = document.getElementById('configTiktok');
+
+  if (whatsapp) whatsapp.value = datos.whatsapp || '';
+  if (whatsappGrupo) whatsappGrupo.value = datos.whatsapp_grupo || '';
+  if (instagram) instagram.value = datos.instagram || '';
+  if (facebook) facebook.value = datos.facebook || '';
+  if (youtube) youtube.value = datos.youtube || '';
+  if (tiktok) tiktok.value = datos.tiktok || '';
+}
+
+async function cargarRedesSitio() {
+  const datos = {
+    whatsapp: await getConfigValue('whatsapp', sitioActual?.whatsapp || ''),
+    whatsapp_grupo: await getConfigValue('whatsapp_grupo', sitioActual?.whatsapp_grupo || ''),
+    instagram: await getConfigValue('instagram', sitioActual?.instagram || ''),
+    facebook: await getConfigValue('facebook', sitioActual?.facebook || ''),
+    youtube: await getConfigValue('youtube', sitioActual?.youtube || ''),
+    tiktok: await getConfigValue('tiktok', sitioActual?.tiktok || '')
+  };
+
+  aplicarInputsRedesSitio(datos);
+  aplicarRedesSitio(datos);
+}
+
+async function guardarRedesSitio() {
+  const estado = document.getElementById('estadoRedesSitio');
+
+  const whatsapp = document.getElementById('configWhatsapp')?.value.trim() || '';
+  const whatsappGrupo = document.getElementById('configWhatsappGrupo')?.value.trim() || '';
+  const instagram = document.getElementById('configInstagram')?.value.trim() || '';
+  const facebook = document.getElementById('configFacebook')?.value.trim() || '';
+  const youtube = document.getElementById('configYoutube')?.value.trim() || '';
+  const tiktok = document.getElementById('configTiktok')?.value.trim() || '';
+
+  const datos = {
+    whatsapp: whatsapp.replace(/\D/g, ''),
+    whatsapp_grupo: whatsappGrupo ? normalizarUrlRedSocial(whatsappGrupo) : '',
+    instagram: instagram ? normalizarUrlRedSocial(instagram) : '',
+    facebook: facebook ? normalizarUrlRedSocial(facebook) : '',
+    youtube: youtube ? normalizarUrlRedSocial(youtube) : '',
+    tiktok: tiktok ? normalizarUrlRedSocial(tiktok) : ''
+  };
+
+  try {
+    if (estado) {
+      estado.textContent = 'Guardando redes sociales...';
+      estado.style.color = 'blue';
+    }
+
+    for (const [clave, valor] of Object.entries(datos)) {
+      const ok = await setConfigValue(clave, valor);
+
+      if (!ok) {
+        throw new Error(`No se pudo guardar ${clave}`);
+      }
+    }
+
+    if (sitioActual) {
+      Object.assign(sitioActual, datos);
+    }
+
+    aplicarInputsRedesSitio(datos);
+    aplicarRedesSitio(datos);
+
+    if (estado) {
+      estado.textContent = '✅ Redes sociales guardadas correctamente.';
+      estado.style.color = 'green';
+    }
+
+  } catch (error) {
+    console.error('Error guardando redes sociales:', error);
+
+    if (estado) {
+      estado.textContent = 'Error guardando redes sociales: ' + error.message;
+      estado.style.color = 'red';
+    }
+  }
+}
 // ==================== EXPORTAR FUNCIONES ====================
 window.mostrarVentana = mostrarVentana;
 window.guardarDatosInscripcion = guardarDatosInscripcion;
@@ -4842,4 +5053,6 @@ window.resetearColoresSitio = resetearColoresSitio;
 window.guardarLogoSitio = guardarLogoSitio;
 window.guardarPremioSitio = guardarPremioSitio;
 window.guardarFaviconSitio = guardarFaviconSitio;
+window.guardarPagoMovilSitio = guardarPagoMovilSitio;
+window.guardarRedesSitio = guardarRedesSitio;
 console.log('✅ Sistema configurado correctamente');
