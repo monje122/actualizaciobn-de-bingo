@@ -540,6 +540,139 @@ function actualizarVencimientoPanelAdmin() {
   `;
 }
 
+
+// ==================== POLÍTICA DE PRIVACIDAD PÚBLICA ====================
+function escaparHTML(valor) {
+  return String(valor ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function textoPlanoAParrafos(valor) {
+  const texto = String(valor || '').trim();
+  if (!texto) return '';
+
+  return texto
+    .split(/\n{2,}/)
+    .map(parrafo => `<p>${escaparHTML(parrafo).replaceAll('\n', '<br>')}</p>`)
+    .join('');
+}
+
+async function cargarPoliticaPrivacidadSitio() {
+  const boton = document.getElementById('btnPoliticaPrivacidad');
+  const contenido = document.getElementById('contenidoPoliticaPrivacidad');
+
+  if (!boton || !contenido || !SITE_ID) return;
+
+  let info = null;
+
+  try {
+    const { data, error } = await supabase.rpc('rpc_public_get_privacidad_sitio', {
+      _site_id: SITE_ID
+    });
+
+    if (error) {
+      console.warn('No se pudo cargar privacidad por RPC, usando datos básicos:', error);
+    } else {
+      info = Array.isArray(data) ? data[0] : data;
+    }
+  } catch (error) {
+    console.warn('Error cargando política de privacidad:', error);
+  }
+
+  const nombreSitio = escaparHTML(info?.nombre || sitioActual?.nombre || SITE_SLUG || 'este bingo');
+  const organizador = escaparHTML(
+    info?.privacidad_organizador ||
+    sitioActual?.privacidad_organizador ||
+    sitioActual?.nombre ||
+    'Organizador del bingo'
+  );
+  const contacto = escaparHTML(
+    info?.privacidad_contacto ||
+    sitioActual?.privacidad_contacto ||
+    'Contacto no configurado'
+  );
+  const textoExtra = textoPlanoAParrafos(
+    info?.privacidad_texto ||
+    sitioActual?.privacidad_texto ||
+    ''
+  );
+
+  contenido.innerHTML = `
+    <p>
+      Esta Política de Privacidad explica cómo <strong>${nombreSitio}</strong>
+      recopila, usa y protege la información de los usuarios que participan en este bingo online.
+    </p>
+
+    <h3>1. Información que recopilamos</h3>
+    <p>
+      Para procesar la participación podemos solicitar nombre, teléfono, cédula,
+      referido, cartones seleccionados, comprobante de pago, referencia bancaria
+      y datos de pago móvil necesarios para validar la compra.
+    </p>
+
+    <h3>2. Uso de la información</h3>
+    <p>
+      La información se utiliza para registrar participantes, validar pagos,
+      asignar cartones, verificar compras, mostrar ganadores y administrar correctamente el juego.
+    </p>
+
+    <h3>3. Publicación de información</h3>
+    <p>
+      Algunas secciones pueden mostrar información limitada como nombre del participante,
+      cartones aprobados, lista de ganadores o resultados del juego. Los comprobantes,
+      teléfonos y datos sensibles solo deben ser revisados por administradores autorizados.
+    </p>
+
+    <h3>4. Comprobantes de pago</h3>
+    <p>
+      Los comprobantes enviados se usan exclusivamente para validar el pago de los cartones.
+      Estos comprobantes pueden contener información bancaria y deben ser tratados con confidencialidad.
+    </p>
+
+    <h3>5. Seguridad de los datos</h3>
+    <p>
+      El organizador toma medidas razonables para proteger la información y usarla solo
+      con fines relacionados con el bingo. Ningún sistema en internet es completamente infalible.
+    </p>
+
+    <h3>6. Servicios externos</h3>
+    <p>
+      La página puede incluir enlaces o integraciones con YouTube, WhatsApp, redes sociales
+      u otros servicios externos, los cuales pueden tener sus propias políticas de privacidad.
+    </p>
+
+    <h3>7. Derechos del usuario</h3>
+    <p>
+      El participante puede solicitar al organizador información sobre sus datos,
+      corrección de información incorrecta o eliminación cuando sea posible.
+    </p>
+
+    <div class="politica-contacto-box">
+      <p><strong>Organizador:</strong> ${organizador}</p>
+      <p><strong>Contacto:</strong> ${contacto}</p>
+    </div>
+
+    ${textoExtra ? `<h3>Información adicional</h3>${textoExtra}` : ''}
+  `;
+}
+
+function mostrarPoliticaPrivacidad() {
+  document.getElementById('modalPoliticaPrivacidad')?.classList.remove('oculto');
+}
+
+function cerrarPoliticaPrivacidad() {
+  document.getElementById('modalPoliticaPrivacidad')?.classList.add('oculto');
+}
+
+function abrirEnVivoSitio() {
+  const slug = encodeURIComponent(SITE_SLUG || obtenerSlugSitio() || 'golden');
+  window.open(`envivo.html?site=${slug}`, '_blank');
+}
+
 // ==================== FUNCIONES DE CONFIGURACIÓN ====================
 async function getConfigValue(clave, fallback = null) {
   if (!SITE_ID) {
@@ -1734,7 +1867,8 @@ if (!sitioOk) {
     cargarImagenesSitio(),
     cargarColoresSitio(),
     cargarPagoMovilSitio(),
-    cargarRedesSitio()
+    cargarRedesSitio(),
+    cargarPoliticaPrivacidadSitio()
   ]);
 
   await verificarSesionInicial();
@@ -5389,3 +5523,6 @@ window.guardarFaviconSitio = guardarFaviconSitio;
 window.guardarPagoMovilSitio = guardarPagoMovilSitio;
 window.guardarRedesSitio = guardarRedesSitio;
 console.log('✅ Sistema configurado correctamente');
+window.abrirEnVivoSitio = abrirEnVivoSitio;
+window.mostrarPoliticaPrivacidad = mostrarPoliticaPrivacidad;
+window.cerrarPoliticaPrivacidad = cerrarPoliticaPrivacidad;
