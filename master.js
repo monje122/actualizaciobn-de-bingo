@@ -1,6 +1,75 @@
 // ==================== PANEL MASTER ===================
 var supabase = window.supabase;
 
+// ==================== SEGURIDAD: LOGS SIN DATOS SENSIBLES ====================
+const SEGURIDAD_DEBUG = false;
+
+function sanitizarLogSeguro(valor) {
+  const ocultarTexto = (texto) => String(texto || '')
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[correo oculto]')
+    .replace(/eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+/g, '[jwt oculto]')
+    .replace(/(password|contraseña|clave|access_token|refresh_token|token|secret|service_role)\s*[:=]\s*[^,\s}]+/gi, '$1=[oculto]');
+
+  if (valor instanceof Error) {
+    return {
+      name: valor.name || 'Error',
+      message: ocultarTexto(valor.message || ''),
+      code: valor.code || undefined
+    };
+  }
+
+  if (typeof valor === 'string') {
+    return ocultarTexto(valor);
+  }
+
+  if (valor && typeof valor === 'object') {
+    try {
+      return JSON.parse(JSON.stringify(valor, (key, value) => {
+        const k = String(key || '').toLowerCase();
+        if (
+          k.includes('email') ||
+          k.includes('correo') ||
+          k.includes('password') ||
+          k.includes('contraseña') ||
+          k.includes('clave') ||
+          k.includes('token') ||
+          k.includes('secret') ||
+          k.includes('service_role')
+        ) {
+          return '[oculto]';
+        }
+
+        if (typeof value === 'string') {
+          return ocultarTexto(value);
+        }
+
+        return value;
+      }));
+    } catch {
+      return '[objeto protegido]';
+    }
+  }
+
+  return valor;
+}
+
+function logSeguro(...args) {
+  if (SEGURIDAD_DEBUG) {
+    console.log(...args.map(sanitizarLogSeguro));
+  }
+}
+
+function warnSeguro(...args) {
+  if (SEGURIDAD_DEBUG) {
+    console.warn(...args.map(sanitizarLogSeguro));
+  }
+}
+
+function errorSeguro(...args) {
+  console.error(...args.map(sanitizarLogSeguro));
+}
+
+
 const masterState = {
   user: null,
   sitios: [],
@@ -82,7 +151,7 @@ async function masterGetConfigSitio(siteId, clave, fallback = '') {
   });
 
   if (error) {
-    console.warn('No se pudo leer configuración:', clave, error);
+    warnSeguro('No se pudo leer configuración:', clave, error);
     return fallback;
   }
 
@@ -105,28 +174,29 @@ function masterMostrarDashboard() {
   if (overlay) overlay.style.display = 'none';
 
   if ($('masterEmailDisplay')) {
-    $('masterEmailDisplay').textContent = masterState.user?.email || '';
+    $('masterEmailDisplay').textContent = 'Master';
   }
 }
 
 async function masterVerificarAcceso() {
   try {
-    const { data: userData, error: userError } = await supabase.auth.getUser();
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession();
 
-    if (userError || !userData?.user) {
+    if (sessionError || !sessionData?.session) {
       masterState.user = null;
       masterMostrarLogin();
       return false;
     }
 
-    masterState.user = userData.user;
+    // No guardamos ni mostramos el correo autenticado en el panel.
+    masterState.user = { rol: 'master' };
 
     // Debe existir en Supabase:
     // public.es_master_admin() returns boolean
     const { data, error } = await supabase.rpc('es_master_admin');
 
     if (error) {
-      console.error('Error verificando master:', error);
+      errorSeguro('Error verificando master:', error);
       masterSetEstado(
         'masterLoginEstado',
         'No se pudo verificar si eres master. Revisa la función es_master_admin().',
@@ -150,7 +220,7 @@ async function masterVerificarAcceso() {
     return true;
 
   } catch (error) {
-    console.error('Error en masterVerificarAcceso:', error);
+    errorSeguro('Error en masterVerificarAcceso:', error);
     masterSetEstado('masterLoginEstado', 'Error verificando acceso master.', 'error');
     masterMostrarLogin();
     return false;
@@ -190,7 +260,7 @@ async function masterLogin() {
     await masterVerificarAcceso();
 
   } catch (error) {
-    console.error('Error login master:', error);
+    errorSeguro('Error login master:', error);
     masterSetEstado('masterLoginEstado', 'Error iniciando sesión.', 'error');
   } finally {
     if (btn) {
@@ -489,7 +559,7 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
     await masterCargarSitios();
 
   } catch (error) {
-    console.error('Error creando sitio:', error);
+    errorSeguro('Error creando sitio:', error);
     masterSetEstado('masterEstadoCrearSitio', 'Error creando sitio: ' + error.message, 'error');
   }
 }
@@ -589,7 +659,7 @@ async function masterCargarSitios() {
     `;
 
   } catch (error) {
-    console.error('Error cargando sitios:', error);
+    errorSeguro('Error cargando sitios:', error);
     contenedor.innerHTML = `<p style="color:red;">Error cargando sitios: ${masterEscapeHTML(error.message)}</p>`;
   }
 }
@@ -611,7 +681,7 @@ async function masterCambiarEstadoSitio(siteId, nuevoEstado) {
     await masterCargarSitios();
 
   } catch (error) {
-    console.error('Error cambiando estado:', error);
+    errorSeguro('Error cambiando estado:', error);
     alert('Error cambiando estado: ' + error.message);
   }
 }
@@ -753,7 +823,7 @@ async function masterGuardarEdicion() {
     await masterCargarSitios();
 
   } catch (error) {
-    console.error('Error guardando edición:', error);
+    errorSeguro('Error guardando edición:', error);
     masterSetEstado('masterEstadoEditarSitio', 'Error guardando cambios: ' + error.message, 'error');
   }
 }
@@ -847,7 +917,7 @@ async function masterCrearAdminSitio() {
     document.getElementById('masterAdminPassword').value = '';
 await masterCargarAdminsSitios();
   } catch (error) {
-    console.error('Error creando admin:', error);
+    errorSeguro('Error creando admin:', error);
 
     if (estado) {
       estado.innerHTML = `
@@ -866,9 +936,7 @@ async function masterCargarAdminsSitios() {
 
   try {
     const { data, error } = await supabase
-      .from('sitio_admins')
-      .select('*')
-      .order('id', { ascending: false });
+      .rpc('rpc_master_list_admins_sitios');
 
     if (error) throw error;
 
@@ -891,7 +959,7 @@ async function masterCargarAdminsSitios() {
             <strong>${masterEscapeHTML(sitio?.nombre || 'Sitio no encontrado')}</strong><br>
             <small>ID: ${masterEscapeHTML(admin.site_id)} | ${masterEscapeHTML(sitio?.slug || '')}</small>
           </td>
-          <td>${masterEscapeHTML(admin.email || '')}</td>
+          <td>${masterEscapeHTML(admin.email_mascara || '')}</td>
           <td>${masterEscapeHTML(admin.rol || 'admin')}</td>
           <td>
             <span class="${activo ? 'site-active' : 'site-paused'}">
@@ -919,7 +987,7 @@ async function masterCargarAdminsSitios() {
           <tr>
             <th>ID</th>
             <th>Sitio</th>
-            <th>Correo</th>
+            <th>Admin</th>
             <th>Rol</th>
             <th>Estado</th>
             <th>Acciones</th>
@@ -930,7 +998,7 @@ async function masterCargarAdminsSitios() {
     `;
 
   } catch (error) {
-    console.error('Error cargando admins:', error);
+    errorSeguro('Error cargando admins:', error);
     contenedor.innerHTML = `
       <p style="color:red;">
         Error cargando admins: ${masterEscapeHTML(error.message)}
@@ -946,24 +1014,25 @@ async function masterCambiarEstadoAdminSitio(adminId, nuevoEstado) {
 
   const confirmar = confirm(
     activo
-      ? `¿Activar el admin ${admin?.email || ''}?`
-      : `¿Pausar el admin ${admin?.email || ''}?`
+      ? `¿Activar el admin ${admin?.email_mascara || ''}?`
+      : `¿Pausar el admin ${admin?.email_mascara || ''}?`
   );
 
   if (!confirmar) return;
 
   try {
-    const { error } = await supabase
-      .from('sitio_admins')
-      .update({ activo })
-      .eq('id', adminId);
+    const { data, error } = await supabase.rpc('rpc_master_set_admin_activo', {
+      _admin_id: Number(adminId),
+      _activo: activo
+    });
 
     if (error) throw error;
+    if (data !== true) throw new Error('No se pudo actualizar el administrador.');
 
     await masterCargarAdminsSitios();
 
   } catch (error) {
-    console.error('Error cambiando estado del admin:', error);
+    errorSeguro('Error cambiando estado del admin:', error);
     alert('Error cambiando estado del admin: ' + error.message);
   }
 }
@@ -972,23 +1041,23 @@ async function masterEliminarAdminSitio(adminId) {
   const admin = masterState.admins.find(a => Number(a.id) === Number(adminId));
 
   const confirmar = confirm(
-    `¿Eliminar este admin del sitio?\n\n${admin?.email || ''}\n\nNo borra el usuario de Auth, solo le quita acceso a este sitio.`
+    `¿Eliminar este admin del sitio?\n\n${admin?.email_mascara || ''}\n\nNo borra el usuario de Auth, solo le quita acceso a este sitio.`
   );
 
   if (!confirmar) return;
 
   try {
-    const { error } = await supabase
-      .from('sitio_admins')
-      .delete()
-      .eq('id', adminId);
+    const { data, error } = await supabase.rpc('rpc_master_delete_admin_sitio', {
+      _admin_id: Number(adminId)
+    });
 
     if (error) throw error;
+    if (data !== true) throw new Error('No se pudo eliminar el administrador.');
 
     await masterCargarAdminsSitios();
 
   } catch (error) {
-    console.error('Error eliminando admin:', error);
+    errorSeguro('Error eliminando admin:', error);
     alert('Error eliminando admin: ' + error.message);
   }
 }
@@ -1044,7 +1113,7 @@ async function masterRenovarSitioRapido(siteId) {
     await masterCargarSitios();
 
   } catch (error) {
-    console.error('Error renovando sitio:', error);
+    errorSeguro('Error renovando sitio:', error);
     alert('Error renovando sitio: ' + (error.message || error));
   }
 }
@@ -1098,7 +1167,7 @@ async function masterEliminarSitio(siteId) {
     await masterCargarAdminsSitios();
 
   } catch (error) {
-    console.error('Error eliminando sitio:', error);
+    errorSeguro('Error eliminando sitio:', error);
     alert(
       'No se pudo eliminar el sitio: ' + (error.message || error) +
       '\n\nSi el sitio tiene inscripciones, admins, cartones o configuración, primero hay que crear una eliminación segura por SQL/RPC.'
@@ -1145,7 +1214,7 @@ async function masterRenovarSitio() {
     await masterCargarSitios();
 
   } catch (error) {
-    console.error('Error renovando sitio:', error);
+    errorSeguro('Error renovando sitio:', error);
     masterSetEstado('masterEstadoEditarSitio', 'Error renovando sitio: ' + error.message, 'error');
   }
 }
