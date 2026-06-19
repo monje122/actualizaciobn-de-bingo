@@ -211,8 +211,55 @@ async function iniciarSitioActual() {
   }
 
   aplicarDatosSitio(sitioActual);
-
+iniciarMonitorPausaSitio();
   return true;
+}
+let monitorPausaInterval = null;
+
+function iniciarMonitorPausaSitio() {
+  if (monitorPausaInterval) {
+    clearInterval(monitorPausaInterval);
+  }
+
+  monitorPausaInterval = setInterval(async () => {
+    await verificarPausaAutomaticaSitio();
+  }, 30000); // revisa cada 30 segundos
+}
+
+async function verificarPausaAutomaticaSitio() {
+  if (!SITE_SLUG || !SITE_ID) return;
+
+  try {
+    const { data, error } = await supabase.rpc('rpc_public_get_sitio', {
+      _slug: SITE_SLUG
+    });
+
+    if (error) {
+      console.warn('No se pudo verificar estado del sitio:', error);
+      return;
+    }
+
+    const sitio = Array.isArray(data) ? data[0] : data;
+
+    if (!sitio) {
+      clearInterval(monitorPausaInterval);
+      monitorPausaInterval = null;
+      mostrarSitioNoDisponible('Esta página ya no está disponible.');
+      return;
+    }
+
+    sitioActual = sitio;
+
+    if (sitioEstaVencido(sitioActual)) {
+      clearInterval(monitorPausaInterval);
+      monitorPausaInterval = null;
+      sistemaListo = false;
+      mostrarSitioPausado(sitioActual);
+    }
+
+  } catch (error) {
+    console.warn('Error verificando pausa automática:', error);
+  }
 }
 function aplicarDatosSitio(sitio) {
   if (!sitio) return;
