@@ -580,6 +580,13 @@
               <label>Grupo WhatsApp opcional
                 <input type="text" id="masterWhatsappGrupo" placeholder="Grupo WhatsApp opcional">
               </label>
+              <label style="display:flex;align-items:flex-start;gap:10px;line-height:1.35;">
+                <input type="checkbox" id="masterModoCartonSimple" style="width:auto;margin-top:3px;">
+                <span>
+                  Modo cartón simple<br>
+                  <small>No abre imagen al tocar cartón y deshabilita subir imágenes de cartones.</small>
+                </span>
+              </label>
             </div>
 
             <div class="master-form-actions">
@@ -681,6 +688,13 @@
                   <option value="false">Pausado</option>
                 </select>
               </label>
+              <label style="display:flex;align-items:flex-start;gap:10px;line-height:1.35;">
+                <input type="checkbox" id="masterEditModoCartonSimple" style="width:auto;margin-top:3px;">
+                <span>
+                  Modo cartón simple<br>
+                  <small>No abre imagen al tocar cartón y deshabilita subir imágenes de cartones.</small>
+                </span>
+              </label>
               <label>Renovación
                 <select id="masterEditMesesRenovar">
                   <option value="1">Renovar 1 mes</option>
@@ -732,6 +746,6 @@
     window.supabase = supabase.createClient(supabaseUrl, supabaseKey);
   </script>
 
-  <script src="master.js?v=5"></script>
+  <script src="master.js"></script>
 </body>
 </html>
