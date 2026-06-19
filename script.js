@@ -22,6 +22,7 @@ let precioPorCarton = 0;
 let cantidadPermitida = 0;
 let promocionSeleccionada = null;
 let modoCartones = "libre";
+let modoCartonSimple = false;
 let cantidadFijaCartones = 1;
 let detectorIniciado = false;
 
@@ -1612,6 +1613,7 @@ if (!sitioOk) {
     cargarImagenPremiosInicio(),
     cargarPrecioPorCarton(),
     cargarConfiguracionModoCartones(),
+    cargarModoCartonSimple(),
     cargarPromocionesConfig(),
     cargarImagenesSitio(),
     cargarColoresSitio(),
@@ -1663,6 +1665,60 @@ async function obtenerTotalCartones() {
   const valor = await getConfigValue('cartones_visibles', String(fallback));
 
   totalCartones = parseInt(valor, 10) || 0;
+}
+
+async function cargarModoCartonSimple() {
+  try {
+    const { data, error } = await supabase.rpc('rpc_public_modo_carton_simple', {
+      _site_id: SITE_ID
+    });
+
+    if (error) {
+      console.warn('No se pudo leer modo cartón simple por RPC pública:', error);
+      const valorFallback = await getConfigValue('modo_carton_simple', 'false');
+      modoCartonSimple = isTrue(valorFallback);
+    } else {
+      modoCartonSimple = data === true || data === 'true';
+    }
+
+    aplicarModoCartonSimpleAdmin();
+  } catch (error) {
+    console.warn('Error cargando modo cartón simple:', error);
+    modoCartonSimple = false;
+    aplicarModoCartonSimpleAdmin();
+  }
+}
+
+function aplicarModoCartonSimpleAdmin() {
+  const input = document.getElementById('cartonImageInput');
+  const btnSubir = document.querySelector('button[onclick*="subirCartones"]');
+  const btnBorrar = document.querySelector('button[onclick*="borrarCartones"]');
+  const seccionImagenes = input?.closest('.panel-section');
+  const status = document.getElementById('uploadStatus');
+
+  if (input) input.disabled = modoCartonSimple;
+  if (btnSubir) btnSubir.disabled = modoCartonSimple;
+  if (btnBorrar) btnBorrar.disabled = modoCartonSimple;
+
+  if (seccionImagenes) {
+    seccionImagenes.style.display = modoCartonSimple ? 'none' : '';
+  }
+
+  if (status && modoCartonSimple) {
+    status.innerHTML = '<p style="color:#666;">Modo cartón simple activo: no se usan imágenes de cartones.</p>';
+  }
+}
+
+function asignarClickCartonLibre(carton, numero) {
+  if (!carton) return;
+
+  carton.onclick = async () => {
+    if (modoCartonSimple) {
+      await toggleCarton(numero, carton);
+    } else {
+      abrirModalCarton(numero, carton);
+    }
+  };
 }
 
 async function cargarPrecioPorCarton() {
@@ -1933,7 +1989,7 @@ async function cargarCartones() {
     if (ocupadosSet.has(i)) {
       carton.classList.add('ocupado');
     } else {
-      carton.onclick = () => abrirModalCarton(i, carton);
+      asignarClickCartonLibre(carton, i);
     }
 
     contenedor.appendChild(carton);
@@ -1992,7 +2048,7 @@ const { data: liberado, error: errorLiberar } = await supabase.rpc('rpc_liberar_
       const n = Number(c.textContent);
       if (!cartonesOcupados.map(Number).includes(n) && !usuario.cartones.map(Number).includes(n)) {
         c.classList.remove('bloqueado');
-        c.onclick = () => abrirModalCarton(n, c);
+        asignarClickCartonLibre(c, n);
       }
     });
 
@@ -2931,6 +2987,11 @@ let cartonSeleccionadoTemporal = null;
 let cartonElementoTemporal = null;
 
 function abrirModalCarton(numero, elemento) {
+  if (modoCartonSimple) {
+    toggleCarton(numero, elemento);
+    return;
+  }
+
   cartonSeleccionadoTemporal = numero;
   cartonElementoTemporal = elemento;
   const img = document.getElementById('imagen-carton-modal');
@@ -3933,6 +3994,11 @@ function urlCartonWebP(numero) {
 }
 
 async function subirCartones() {
+  if (modoCartonSimple) {
+    alert('Este sitio está en modo cartón simple. No se usan imágenes de cartones.');
+    return;
+  }
+
   const input = document.getElementById('cartonImageInput');
   const files = Array.from(input?.files || []);
   const status = document.getElementById('uploadStatus');
@@ -4010,6 +4076,11 @@ async function subirCartones() {
   }, 7000);
 }
 async function borrarCartones() {
+  if (modoCartonSimple) {
+    alert('Este sitio está en modo cartón simple. No se usan imágenes de cartones.');
+    return;
+  }
+
   if (!SITE_ID || !SITE_SLUG) {
     alert("Error: sitio no identificado.");
     return;
