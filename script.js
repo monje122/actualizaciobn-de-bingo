@@ -23,6 +23,9 @@ let cantidadPermitida = 0;
 let promocionSeleccionada = null;
 let modoCartones = "libre";
 let modoCartonSimple = false;
+let mostrarEnVivoSitio = true;
+let mostrarTopCompradoresSitio = true;
+let planTipoSitio = 'basico';
 let cantidadFijaCartones = 1;
 let detectorIniciado = false;
 
@@ -1726,6 +1729,7 @@ if (!sitioOk) {
     cargarPrecioPorCarton(),
     cargarConfiguracionModoCartones(),
     cargarModoCartonSimple(),
+    cargarOpcionesMasterSitio(),
     cargarPromocionesConfig(),
     cargarImagenesSitio(),
     cargarColoresSitio(),
@@ -1818,6 +1822,72 @@ function aplicarModoCartonSimpleAdmin() {
 
   if (status && modoCartonSimple) {
     status.innerHTML = '<p style="color:#666;">Modo cartón simple activo: no se usan imágenes de cartones.</p>';
+  }
+}
+
+
+async function cargarOpcionesMasterSitio() {
+  if (!SITE_ID) return;
+
+  try {
+    const { data, error } = await supabase.rpc('rpc_public_config_funciones', {
+      _site_id: SITE_ID
+    });
+
+    if (error) {
+      console.warn('No se pudieron cargar opciones master del sitio:', error);
+      aplicarOpcionesMasterSitio();
+      return;
+    }
+
+    const cfg = Array.isArray(data) ? data[0] : data;
+
+    if (cfg) {
+      planTipoSitio = cfg.plan_tipo || 'basico';
+      mostrarEnVivoSitio = cfg.mostrar_en_vivo !== false;
+      mostrarTopCompradoresSitio = cfg.mostrar_top_compradores !== false;
+    }
+
+    aplicarOpcionesMasterSitio();
+  } catch (error) {
+    console.warn('Error cargando opciones master:', error);
+    aplicarOpcionesMasterSitio();
+  }
+}
+
+function aplicarOpcionesMasterSitio() {
+  const botones = Array.from(document.querySelectorAll('button, a'));
+
+  botones.forEach(el => {
+    const texto = String(el.textContent || '').toLowerCase();
+    const onclick = String(el.getAttribute('onclick') || '').toLowerCase();
+    const href = String(el.getAttribute('href') || '').toLowerCase();
+
+    const esEnVivo =
+      texto.includes('ver en vivo') ||
+      texto.includes('en vivo') ||
+      onclick.includes('envivo.html') ||
+      href.includes('envivo.html');
+
+    const esTop =
+      texto.includes('top compradores') ||
+      onclick.includes('top-compradores') ||
+      href.includes('top-compradores');
+
+    if (esEnVivo) {
+      el.style.display = mostrarEnVivoSitio ? '' : 'none';
+      if ('disabled' in el) el.disabled = !mostrarEnVivoSitio;
+    }
+
+    if (esTop) {
+      el.style.display = mostrarTopCompradoresSitio ? '' : 'none';
+      if ('disabled' in el) el.disabled = !mostrarTopCompradoresSitio;
+    }
+  });
+
+  const seccionTop = document.getElementById('top-compradores');
+  if (seccionTop && !mostrarTopCompradoresSitio) {
+    seccionTop.classList.add('oculto');
   }
 }
 
@@ -1957,6 +2027,11 @@ async function mostrarVentana(id) {
   if (!sistemaListo) return;
 
   if (id === 'top-compradores') {
+    if (!mostrarTopCompradoresSitio) {
+      alert('El Top de compradores está deshabilitado para este sitio.');
+      return;
+    }
+
     await cargarTopCompradores();
     activarTopCompradoresRealtime();
   }
