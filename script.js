@@ -427,6 +427,116 @@ function mostrarSitioPausado(sitio) {
     </section>
   `;
 }
+function calcularDiasRestantesAdmin(sitio) {
+  if (!sitio) return null;
+
+  if (
+    sitio.dias_restantes !== null &&
+    sitio.dias_restantes !== undefined &&
+    sitio.dias_restantes !== ''
+  ) {
+    const dias = Number(sitio.dias_restantes);
+    return Number.isFinite(dias) ? Math.max(0, dias) : null;
+  }
+
+  const fechaValor = sitio.vence_en || sitio.fecha_vencimiento;
+  if (!fechaValor) return null;
+
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+
+  const vence = String(fechaValor).includes('T')
+    ? new Date(fechaValor)
+    : new Date(`${fechaValor}T00:00:00`);
+
+  if (isNaN(vence.getTime())) return null;
+
+  vence.setHours(0, 0, 0, 0);
+  return Math.max(0, Math.ceil((vence - hoy) / 86400000));
+}
+
+function obtenerFechaVencimientoAdmin(sitio) {
+  if (!sitio) return '';
+
+  const fechaValor = sitio.vence_en || sitio.fecha_vencimiento || '';
+  if (!fechaValor) return '';
+
+  try {
+    const fecha = String(fechaValor).includes('T')
+      ? new Date(fechaValor)
+      : new Date(`${fechaValor}T00:00:00`);
+
+    if (isNaN(fecha.getTime())) return String(fechaValor).slice(0, 10);
+
+    return fecha.toLocaleDateString('es-VE', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+  } catch (error) {
+    return String(fechaValor).slice(0, 10);
+  }
+}
+
+function actualizarVencimientoPanelAdmin() {
+  const panel = document.getElementById('admin-panel');
+  if (!panel || !sitioActual) return;
+
+  let box = document.getElementById('adminVencimientoSitio');
+
+  if (!box) {
+    box = document.createElement('div');
+    box.id = 'adminVencimientoSitio';
+    box.style.margin = '12px 0';
+    box.style.padding = '12px 14px';
+    box.style.borderRadius = '10px';
+    box.style.background = '#fff7e6';
+    box.style.border = '1px solid #ffbf69';
+    box.style.color = '#111';
+    box.style.fontWeight = '700';
+    box.style.textAlign = 'center';
+    box.style.lineHeight = '1.45';
+
+    const logoutBtn = document.getElementById('logoutBtn');
+
+    if (logoutBtn && logoutBtn.parentNode) {
+      logoutBtn.insertAdjacentElement('afterend', box);
+    } else {
+      panel.insertBefore(box, panel.firstChild);
+    }
+  }
+
+  const dias = calcularDiasRestantesAdmin(sitioActual);
+  const fecha = obtenerFechaVencimientoAdmin(sitioActual);
+  const nombreSitio = sitioActual.nombre || SITE_SLUG || 'este sitio';
+
+  let estadoTexto = '';
+  let colorFondo = '#fff7e6';
+  let colorBorde = '#ffbf69';
+
+  if (dias === null) {
+    estadoTexto = 'Sin fecha de vencimiento configurada';
+  } else if (dias <= 0) {
+    estadoTexto = 'Servicio vencido';
+    colorFondo = '#ffe5e5';
+    colorBorde = '#ff6b6b';
+  } else if (dias <= 3) {
+    estadoTexto = `Faltan ${dias} día${dias === 1 ? '' : 's'} para vencer`;
+    colorFondo = '#fff0f0';
+    colorBorde = '#ff8787';
+  } else {
+    estadoTexto = `Faltan ${dias} día${dias === 1 ? '' : 's'} para vencer`;
+  }
+
+  box.style.background = colorFondo;
+  box.style.borderColor = colorBorde;
+
+  box.innerHTML = `
+    📅 <strong>Vencimiento del sitio:</strong> ${nombreSitio}<br>
+    ${estadoTexto}${fecha ? `<br><small>Fecha de vencimiento: ${fecha}</small>` : ''}
+  `;
+}
+
 // ==================== FUNCIONES DE CONFIGURACIÓN ====================
 async function getConfigValue(clave, fallback = null) {
   if (!SITE_ID) {
@@ -1002,6 +1112,8 @@ async function loginAdmin() {
 
       const emailDisplay = document.getElementById('admin-email-display');
       if (emailDisplay) emailDisplay.textContent = permiso.email;
+
+      actualizarVencimientoPanelAdmin();
 
       iniciarDetectorActividad();
       resetInactivityTimer();
@@ -4236,6 +4348,8 @@ async function entrarAdmin() {
 
   const emailDisplay = document.getElementById('admin-email-display');
   if (emailDisplay) emailDisplay.textContent = permiso.email;
+
+  actualizarVencimientoPanelAdmin();
 
   iniciarDetectorActividad();
   resetInactivityTimer();
