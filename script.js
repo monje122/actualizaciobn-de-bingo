@@ -307,7 +307,10 @@ function aplicarDatosSitio(sitio) {
   document.body.style.color = sitio.color_texto || '';
 
   // Total de cartones y precio desde sitios
-  totalCartones = parseInt(sitio.total_cartones || sitio.cartones_visibles || 0, 10) || 0;
+ totalCartones = parseInt(
+  sitio.cartones_visibles || sitio.total_cartones || sitio.limite_cartones || 0,
+  10
+) || 0;
   precioPorCarton = parseFloat(sitio.precio_carton_bs || 0) || 0;
 
   // Pago móvil
@@ -1651,8 +1654,13 @@ document.getElementById('btnResetColoresSitio')?.addEventListener('click', reset
 });
 
 async function obtenerTotalCartones() {
-  const fallback = sitioActual?.total_cartones || sitioActual?.cartones_visibles || '0';
-  const valor = await getConfigValue('total_cartones', String(fallback));
+  const fallback =
+    sitioActual?.cartones_visibles ||
+    sitioActual?.total_cartones ||
+    sitioActual?.limite_cartones ||
+    '0';
+
+  const valor = await getConfigValue('cartones_visibles', String(fallback));
 
   totalCartones = parseInt(valor, 10) || 0;
 }
@@ -2959,7 +2967,7 @@ async function guardarNuevoTotal() {
   const input = document.getElementById("nuevoTotalCartones");
   const estado = document.getElementById("estadoTotalCartones");
 
-  const nuevoTotal = parseInt(input.value, 10);
+  const nuevoTotal = parseInt(input?.value, 10);
 
   if (isNaN(nuevoTotal) || nuevoTotal < 1) {
     if (estado) estado.textContent = "Número inválido.";
@@ -2971,24 +2979,40 @@ async function guardarNuevoTotal() {
     return;
   }
 
-  const ok = await setConfigValue('total_cartones', String(nuevoTotal));
+  try {
+    if (estado) estado.textContent = "Guardando cartones visibles...";
 
-  if (!ok) {
-    if (estado) estado.textContent = "Error al actualizar.";
-    return;
+    const { data, error } = await supabase.rpc('rpc_set_cartones_visibles_sitio', {
+      _site_id: SITE_ID,
+      _cartones_visibles: nuevoTotal
+    });
+
+    if (error) {
+      throw error;
+    }
+
+    if (data !== true) {
+      throw new Error('No se pudo actualizar.');
+    }
+
+    totalCartones = nuevoTotal;
+
+    if (sitioActual) {
+      sitioActual.cartones_visibles = nuevoTotal;
+    }
+
+    if (estado) estado.textContent = "✅ Cartones visibles actualizados.";
+
+    await cargarCartones();
+    await contarCartonesVendidos();
+
+  } catch (error) {
+    console.error('Error guardando cartones visibles:', error);
+
+    if (estado) {
+      estado.textContent = error.message || "Error al actualizar.";
+    }
   }
-
-  totalCartones = nuevoTotal;
-
-  if (sitioActual) {
-    sitioActual.total_cartones = nuevoTotal;
-    sitioActual.cartones_visibles = nuevoTotal;
-  }
-
-  if (estado) estado.textContent = "¡Total actualizado!";
-
-  await cargarCartones();
-  await contarCartonesVendidos();
 }
 async function cargarPromocionesConfig() {
   try {
