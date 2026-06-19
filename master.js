@@ -235,8 +235,16 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
   nombre,
   slug,
   titulo_publico: titulo || nombre,
+
+  // Tope máximo colocado por el master
+  limite_cartones: total,
+
+  // Se mantiene para compatibilidad con código anterior
   total_cartones: total,
+
+  // Al crear, los visibles empiezan igual al tope
   cartones_visibles: total,
+
   precio_carton_bs: precio,
   activo: true,
   fecha_inicio: fechaInicio,
@@ -314,7 +322,10 @@ async function masterCargarSitios() {
             <code>${masterEscapeHTML(sitio.slug || '')}</code><br>
             <a href="${url}" target="_blank" rel="noopener">Abrir sitio</a>
           </td>
-          <td>${masterEscapeHTML(sitio.total_cartones || sitio.cartones_visibles || 0)}</td>
+          <td>
+            <strong>Tope:</strong> ${masterEscapeHTML(sitio.limite_cartones || sitio.total_cartones || 0)}<br>
+            <small>Visible: ${masterEscapeHTML(sitio.cartones_visibles || 0)}</small>
+          </td>
           <td>${Number(sitio.precio_carton_bs || 0).toFixed(2)} Bs</td>
           <td>
   <span class="${activo ? 'site-active' : 'site-paused'}">
@@ -397,7 +408,7 @@ function masterAbrirEditor(siteId) {
   $('masterEditId').value = sitio.id;
   $('masterEditNombre').value = sitio.nombre || '';
   $('masterEditTitulo').value = sitio.titulo_publico || sitio.nombre || '';
-  $('masterEditTotal').value = sitio.total_cartones || sitio.cartones_visibles || 0;
+  $('masterEditTotal').value = sitio.limite_cartones || sitio.total_cartones || sitio.cartones_visibles || 0;
   $('masterEditPrecio').value = sitio.precio_carton_bs || 0;
   $('masterEditLogoUrl').value = sitio.logo_url || '';
   $('masterEditColorPrincipal').value = sitio.color_principal || '';
@@ -440,7 +451,7 @@ async function masterGuardarEdicion() {
   }
 
   if (!Number.isFinite(total) || total < 1) {
-    masterSetEstado('masterEstadoEditarSitio', 'Total de cartones inválido.', 'error');
+    masterSetEstado('masterEstadoEditarSitio', 'Límite de cartones inválido.', 'error');
     return;
   }
 
@@ -451,25 +462,33 @@ async function masterGuardarEdicion() {
 
   masterSetEstado('masterEstadoEditarSitio', 'Guardando cambios...', 'info');
 
-  const cambios = {
-    nombre,
-    titulo_publico: titulo || nombre,
-    total_cartones: total,
-    cartones_visibles: total,
-    precio_carton_bs: precio,
-    activo,
-    logo_url: logoUrl || null,
-    color_principal: colorPrincipal || null,
-    whatsapp_grupo: whatsappGrupo || null
-  };
-
   try {
-    const { error } = await supabase
+    // 1) Guardar datos generales del sitio
+    const cambios = {
+      nombre,
+      titulo_publico: titulo || nombre,
+      precio_carton_bs: precio,
+      activo,
+      logo_url: logoUrl || null,
+      color_principal: colorPrincipal || null,
+      whatsapp_grupo: whatsappGrupo || null
+    };
+
+    const { error: errorUpdate } = await supabase
       .from('sitios')
       .update(cambios)
       .eq('id', siteId);
 
-    if (error) throw error;
+    if (errorUpdate) throw errorUpdate;
+
+    // 2) Guardar el tope máximo usando la RPC master
+    // Esta RPC actualiza limite_cartones, total_cartones y ajusta cartones_visibles si pasa del tope.
+    const { error: errorLimite } = await supabase.rpc('rpc_master_set_limite_cartones', {
+      _site_id: siteId,
+      _limite_cartones: total
+    });
+
+    if (errorLimite) throw errorLimite;
 
     masterSetEstado('masterEstadoEditarSitio', '✅ Cambios guardados.', 'success');
 
