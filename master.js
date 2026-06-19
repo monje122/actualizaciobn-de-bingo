@@ -392,6 +392,9 @@ async function masterCrearSitio() {
   const logoUrl = $('masterLogoUrl')?.value.trim();
   const colorPrincipal = $('masterColorPrincipal')?.value.trim();
   const whatsappGrupo = $('masterWhatsappGrupo')?.value.trim();
+  const privacidadOrganizador = $('masterPrivacidadOrganizador')?.value.trim();
+  const privacidadContacto = $('masterPrivacidadContacto')?.value.trim();
+  const privacidadTexto = $('masterPrivacidadTexto')?.value.trim();
   const planTipo = $('masterPlanSitio')?.value || 'basico';
   const modoCartonSimple = $('masterModoCartonSimple')?.checked === true;
   const mostrarEnVivo = $('masterMostrarEnVivo')?.checked !== false;
@@ -425,6 +428,9 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
   plan_tipo: planTipo,
   mostrar_en_vivo: mostrarEnVivo,
   mostrar_top_compradores: mostrarTopCompradores,
+  privacidad_organizador: privacidadOrganizador || null,
+  privacidad_contacto: privacidadContacto || null,
+  privacidad_texto: privacidadTexto || null,
 
   // Tope máximo colocado por el master
   limite_cartones: total,
@@ -468,7 +474,8 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
     );
 
     ['masterNombreSitio', 'masterSlugSitio', 'masterTituloSitio', 'masterTotalCartones',
-     'masterPrecioCarton', 'masterLogoUrl', 'masterColorPrincipal', 'masterWhatsappGrupo'
+     'masterPrecioCarton', 'masterLogoUrl', 'masterColorPrincipal', 'masterWhatsappGrupo',
+     'masterPrivacidadOrganizador', 'masterPrivacidadContacto', 'masterPrivacidadTexto'
     ].forEach(id => {
       const el = $(id);
       if (el) el.value = '';
@@ -628,6 +635,9 @@ async function masterAbrirEditor(siteId) {
   $('masterEditLogoUrl').value = sitio.logo_url || '';
   $('masterEditColorPrincipal').value = sitio.color_principal || '';
   $('masterEditWhatsappGrupo').value = sitio.whatsapp_grupo || '';
+  if ($('masterEditPrivacidadOrganizador')) $('masterEditPrivacidadOrganizador').value = sitio.privacidad_organizador || '';
+  if ($('masterEditPrivacidadContacto')) $('masterEditPrivacidadContacto').value = sitio.privacidad_contacto || '';
+  if ($('masterEditPrivacidadTexto')) $('masterEditPrivacidadTexto').value = sitio.privacidad_texto || '';
   $('masterEditActivo').value = sitio.activo === false ? 'false' : 'true';
   if ($('masterEditMostrarEnVivo')) $('masterEditMostrarEnVivo').checked = sitio.mostrar_en_vivo !== false;
   if ($('masterEditMostrarTopCompradores')) $('masterEditMostrarTopCompradores').checked = sitio.mostrar_top_compradores !== false;
@@ -672,6 +682,9 @@ async function masterGuardarEdicion() {
   const logoUrl = $('masterEditLogoUrl')?.value.trim();
   const colorPrincipal = $('masterEditColorPrincipal')?.value.trim();
   const whatsappGrupo = $('masterEditWhatsappGrupo')?.value.trim();
+  const privacidadOrganizador = $('masterEditPrivacidadOrganizador')?.value.trim();
+  const privacidadContacto = $('masterEditPrivacidadContacto')?.value.trim();
+  const privacidadTexto = $('masterEditPrivacidadTexto')?.value.trim();
   const activo = $('masterEditActivo')?.value === 'true';
   const planTipo = $('masterEditPlanSitio')?.value || 'basico';
   const modoCartonSimple = $('masterEditModoCartonSimple')?.checked === true;
@@ -707,7 +720,10 @@ async function masterGuardarEdicion() {
       activo,
       logo_url: logoUrl || null,
       color_principal: colorPrincipal || null,
-      whatsapp_grupo: whatsappGrupo || null
+      whatsapp_grupo: whatsappGrupo || null,
+      privacidad_organizador: privacidadOrganizador || null,
+      privacidad_contacto: privacidadContacto || null,
+      privacidad_texto: privacidadTexto || null
     };
 
     const { error: errorUpdate } = await supabase
@@ -718,7 +734,7 @@ async function masterGuardarEdicion() {
     if (errorUpdate) throw errorUpdate;
 
     // 2) Guardar el tope máximo usando la RPC master
-    // Esta RPC actualiza limite_cartones, total_cartones y ajusta cartones_visibles si pasa del tope.
+    // Esta RPC actualiza limite_cartones y ajusta cartones_visibles si pasa del tope.
     const { error: errorLimite } = await supabase.rpc('rpc_master_set_limite_cartones', {
       _site_id: siteId,
       _limite_cartones: total
