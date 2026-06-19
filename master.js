@@ -43,6 +43,37 @@ function masterUrlSitio(slug) {
   return `${window.location.origin}${basePath}?site=${encodeURIComponent(slug)}`;
 }
 
+function masterIsTrue(valor) {
+  return valor === true || valor === 'true' || valor === 1 || valor === '1';
+}
+
+async function masterSetConfigSitio(siteId, clave, valor) {
+  const { data, error } = await supabase.rpc('rpc_set_config_sitio', {
+    _site_id: siteId,
+    _clave: clave,
+    _valor: String(valor)
+  });
+
+  if (error) throw error;
+  if (data !== true) throw new Error(`No se pudo guardar ${clave}`);
+  return true;
+}
+
+async function masterGetConfigSitio(siteId, clave, fallback = '') {
+  const { data, error } = await supabase.rpc('rpc_get_config_sitio', {
+    _site_id: siteId,
+    _clave: clave,
+    _fallback: fallback
+  });
+
+  if (error) {
+    console.warn('No se pudo leer configuración:', clave, error);
+    return fallback;
+  }
+
+  return data ?? fallback;
+}
+
 function masterMostrarLogin() {
   $('master-login')?.classList.remove('oculto');
   $('master-dashboard')?.classList.add('oculto');
@@ -298,6 +329,7 @@ async function masterCrearSitio() {
   const logoUrl = $('masterLogoUrl')?.value.trim();
   const colorPrincipal = $('masterColorPrincipal')?.value.trim();
   const whatsappGrupo = $('masterWhatsappGrupo')?.value.trim();
+  const modoCartonSimple = $('masterModoCartonSimple')?.checked === true;
 const mesesServicio = parseInt($('masterMesesServicio')?.value || '1', 10);
 const fechaInicio = masterFechaHoyISO();
 const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
@@ -354,6 +386,12 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
 
     if (error) throw error;
 
+    await masterSetConfigSitio(
+      data.id,
+      'modo_carton_simple',
+      modoCartonSimple ? 'true' : 'false'
+    );
+
     masterSetEstado(
       'masterEstadoCrearSitio',
       `✅ Sitio creado correctamente.\nLink: ${masterUrlSitio(data.slug)}`,
@@ -366,6 +404,10 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
       const el = $(id);
       if (el) el.value = '';
     });
+
+    if ($('masterModoCartonSimple')) {
+      $('masterModoCartonSimple').checked = false;
+    }
 
     await masterCargarSitios();
 
@@ -495,7 +537,7 @@ async function masterCambiarEstadoSitio(siteId, nuevoEstado) {
   }
 }
 
-function masterAbrirEditor(siteId) {
+async function masterAbrirEditor(siteId) {
   const sitio = masterState.sitios.find(s => Number(s.id) === Number(siteId));
 
   if (!sitio) {
@@ -514,6 +556,18 @@ function masterAbrirEditor(siteId) {
   $('masterEditColorPrincipal').value = sitio.color_principal || '';
   $('masterEditWhatsappGrupo').value = sitio.whatsapp_grupo || '';
   $('masterEditActivo').value = sitio.activo === false ? 'false' : 'true';
+
+  if ($('masterEditModoCartonSimple')) {
+    $('masterEditModoCartonSimple').checked = false;
+
+    const valorSimple = await masterGetConfigSitio(
+      sitio.id,
+      'modo_carton_simple',
+      'false'
+    );
+
+    $('masterEditModoCartonSimple').checked = masterIsTrue(valorSimple);
+  }
 
   masterSetEstado('masterEstadoEditarSitio', '');
 
@@ -544,6 +598,7 @@ async function masterGuardarEdicion() {
   const colorPrincipal = $('masterEditColorPrincipal')?.value.trim();
   const whatsappGrupo = $('masterEditWhatsappGrupo')?.value.trim();
   const activo = $('masterEditActivo')?.value === 'true';
+  const modoCartonSimple = $('masterEditModoCartonSimple')?.checked === true;
 
   if (!nombre) {
     masterSetEstado('masterEstadoEditarSitio', 'El nombre no puede estar vacío.', 'error');
@@ -589,6 +644,12 @@ async function masterGuardarEdicion() {
     });
 
     if (errorLimite) throw errorLimite;
+
+    await masterSetConfigSitio(
+      siteId,
+      'modo_carton_simple',
+      modoCartonSimple ? 'true' : 'false'
+    );
 
     masterSetEstado('masterEstadoEditarSitio', '✅ Cambios guardados.', 'success');
 
