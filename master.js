@@ -200,6 +200,95 @@ function masterTextoVencimiento(sitio) {
 
   return `<span class="site-active">${dias} días<br><small>Vence: ${masterEscapeHTML(fecha)}</small></span>`;
 }
+
+function masterMostrarPanelAccion(tipo) {
+  const contenedor = $('masterPanelAcciones');
+  const crearSitio = $('masterCrearSitioSection');
+  const crearAdmin = $('masterCrearAdminSection');
+
+  if (!contenedor || !crearSitio || !crearAdmin) return;
+
+  crearSitio.classList.add('oculto');
+  crearAdmin.classList.add('oculto');
+
+  if (tipo === 'crear-sitio') {
+    crearSitio.classList.remove('oculto');
+  }
+
+  if (tipo === 'crear-admin') {
+    crearAdmin.classList.remove('oculto');
+  }
+
+  contenedor.classList.remove('oculto');
+
+  requestAnimationFrame(() => {
+    contenedor.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+}
+
+function masterOcultarPanelAccion() {
+  $('masterCrearSitioSection')?.classList.add('oculto');
+  $('masterCrearAdminSection')?.classList.add('oculto');
+  $('masterPanelAcciones')?.classList.add('oculto');
+}
+
+function masterIrASeccion(id) {
+  const el = $(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function masterActualizarResumen() {
+  const contenedor = $('masterResumenCards');
+  if (!contenedor) return;
+
+  const sitios = masterState.sitios || [];
+  const totalSitios = sitios.length;
+  const activos = sitios.filter(s => s.activo !== false && masterDiasRestantes(s.fecha_vencimiento) > 0).length;
+  const pausados = sitios.filter(s => s.activo === false).length;
+  const vencidos = sitios.filter(s => masterDiasRestantes(s.fecha_vencimiento) <= 0).length;
+  const admins = masterState.admins?.length || 0;
+  const totalTopes = sitios.reduce((acc, s) => acc + Number(s.limite_cartones || s.total_cartones || 0), 0);
+
+  contenedor.innerHTML = `
+    <article class="master-kpi-card">
+      <span>🌐 Sitios</span>
+      <strong>${totalSitios}</strong>
+      <small>Total registrados</small>
+    </article>
+
+    <article class="master-kpi-card ok">
+      <span>✅ Activos</span>
+      <strong>${activos}</strong>
+      <small>Vendiendo o listos</small>
+    </article>
+
+    <article class="master-kpi-card warning">
+      <span>⏸️ Pausados</span>
+      <strong>${pausados}</strong>
+      <small>Detenidos por master</small>
+    </article>
+
+    <article class="master-kpi-card danger">
+      <span>⏳ Vencidos</span>
+      <strong>${vencidos}</strong>
+      <small>Sin días restantes</small>
+    </article>
+
+    <article class="master-kpi-card">
+      <span>🎟️ Tope total</span>
+      <strong>${totalTopes}</strong>
+      <small>Cartones permitidos</small>
+    </article>
+
+    <article class="master-kpi-card">
+      <span>👥 Admins</span>
+      <strong>${admins}</strong>
+      <small>Asignados</small>
+    </article>
+  `;
+}
+
 async function masterCrearSitio() {
   const nombre = $('masterNombreSitio')?.value.trim();
   const slugManual = $('masterSlugSitio')?.value.trim();
@@ -301,6 +390,7 @@ async function masterCargarSitios() {
     if (error) throw error;
 
     masterState.sitios = data || [];
+    masterActualizarResumen();
 
     if (!masterState.sitios.length) {
       contenedor.innerHTML = '<p>No hay sitios registrados.</p>';
@@ -336,14 +426,24 @@ async function masterCargarSitios() {
   ${masterTextoVencimiento(sitio)}
 </td>
 <td>
-            <button class="master-btn ${activo ? 'warning' : 'success'}"
-                    onclick="masterCambiarEstadoSitio(${Number(sitio.id)}, ${activo ? 'false' : 'true'})">
-              ${activo ? '⏸️ Pausar' : '▶️ Activar'}
-            </button>
+            <div class="master-row-actions">
+              <button class="master-btn ${activo ? 'warning' : 'success'}"
+                      onclick="masterCambiarEstadoSitio(${Number(sitio.id)}, ${activo ? 'false' : 'true'})">
+                ${activo ? '⏸️ Pausar' : '▶️ Activar'}
+              </button>
 
-            <button class="master-btn secondary" onclick="masterAbrirEditor(${Number(sitio.id)})">
-              ✏️ Editar
-            </button>
+              <button class="master-btn secondary" onclick="masterAbrirEditor(${Number(sitio.id)})">
+                ✏️ Editar
+              </button>
+
+              <button class="master-btn warning" onclick="masterRenovarSitioRapido(${Number(sitio.id)})">
+                📅 Renovar
+              </button>
+
+              <button class="master-btn danger" onclick="masterEliminarSitio(${Number(sitio.id)})">
+                🗑️ Eliminar
+              </button>
+            </div>
           </td>
         </tr>
       `;
@@ -506,6 +606,9 @@ function masterConfigurarEventos() {
   $('btnMasterLogout')?.addEventListener('click', masterLogout);
   $('btnMasterRecargar')?.addEventListener('click', masterCargarSitios);
   $('btnMasterRecargarAdmins')?.addEventListener('click', masterCargarAdminsSitios);
+  $('btnMasterVerSitios')?.addEventListener('click', () => masterIrASeccion('masterSitiosSection'));
+  $('btnMasterVerCrearSitio')?.addEventListener('click', () => masterMostrarPanelAccion('crear-sitio'));
+  $('btnMasterVerCrearAdmin')?.addEventListener('click', () => masterMostrarPanelAccion('crear-admin'));
   $('btnMasterCrearSitio')?.addEventListener('click', masterCrearSitio);
   $('btnMasterCrearAdmin')?.addEventListener('click', masterCrearAdminSitio);
   $('btnMasterGuardarEdicion')?.addEventListener('click', masterGuardarEdicion);
@@ -612,6 +715,7 @@ async function masterCargarAdminsSitios() {
     if (error) throw error;
 
     masterState.admins = data || [];
+    masterActualizarResumen();
 
     if (!masterState.admins.length) {
       contenedor.innerHTML = '<p>No hay administradores asignados todavía.</p>';
@@ -730,6 +834,120 @@ async function masterEliminarAdminSitio(adminId) {
     alert('Error eliminando admin: ' + error.message);
   }
 }
+
+function masterPedirMesesRenovacion(nombreSitio = '') {
+  const valor = prompt(
+    `¿Cuántos meses quieres renovar ${nombreSitio ? nombreSitio : 'este sitio'}?\n\nOpciones: 1, 3, 6 o 12`,
+    '1'
+  );
+
+  if (valor === null) return null;
+
+  const meses = parseInt(valor, 10);
+
+  if (![1, 3, 6, 12].includes(meses)) {
+    alert('Debes colocar 1, 3, 6 o 12 meses.');
+    return null;
+  }
+
+  return meses;
+}
+
+async function masterRenovarSitioRapido(siteId) {
+  const sitio = masterState.sitios.find(s => Number(s.id) === Number(siteId));
+
+  if (!sitio) {
+    alert('No se encontró el sitio. Recarga el panel.');
+    return;
+  }
+
+  const meses = masterPedirMesesRenovacion(sitio.nombre || sitio.slug || '');
+  if (!meses) return;
+
+  const confirmar = confirm(`¿Renovar ${sitio.nombre || sitio.slug || 'este sitio'} por ${meses} mes(es)?`);
+  if (!confirmar) return;
+
+  try {
+    const { data, error } = await supabase.rpc('rpc_master_renovar_sitio', {
+      _site_id: Number(siteId),
+      _meses: meses
+    });
+
+    if (error) throw error;
+
+    const resultado = Array.isArray(data) ? data[0] : data;
+
+    alert(
+      `✅ Sitio renovado correctamente.\n\n` +
+      `Vence: ${resultado?.fecha_vencimiento || ''}\n` +
+      `Días restantes: ${resultado?.dias_restantes ?? ''}`
+    );
+
+    await masterCargarSitios();
+
+  } catch (error) {
+    console.error('Error renovando sitio:', error);
+    alert('Error renovando sitio: ' + (error.message || error));
+  }
+}
+
+async function masterEliminarSitio(siteId) {
+  const sitio = masterState.sitios.find(s => Number(s.id) === Number(siteId));
+
+  if (!sitio) {
+    alert('No se encontró el sitio. Recarga el panel.');
+    return;
+  }
+
+  const slug = sitio.slug || '';
+  const nombre = sitio.nombre || slug || `ID ${siteId}`;
+
+  const confirmacion = prompt(
+    `⚠️ Vas a eliminar el sitio:\n\n${nombre}\nSlug: ${slug}\n\n` +
+    `Para confirmar escribe exactamente el slug del sitio:`
+  );
+
+  if (confirmacion === null) return;
+
+  if (String(confirmacion).trim().toLowerCase() !== String(slug).trim().toLowerCase()) {
+    alert('No se eliminó. El slug no coincide.');
+    return;
+  }
+
+  const confirmarFinal = confirm(
+    `Última confirmación:\n\n¿Eliminar definitivamente el sitio ${nombre}?\n\n` +
+    `Si tiene ventas, admins o datos relacionados, Supabase puede bloquear la eliminación.`
+  );
+
+  if (!confirmarFinal) return;
+
+  try {
+    const { error } = await supabase
+      .from('sitios')
+      .delete()
+      .eq('id', Number(siteId));
+
+    if (error) throw error;
+
+    alert('✅ Sitio eliminado correctamente.');
+
+    const editorId = parseInt($('masterEditId')?.value || '0', 10);
+    if (Number(editorId) === Number(siteId)) {
+      masterCerrarEditor();
+    }
+
+    await masterCargarSitios();
+    await masterCargarAdminsSitios();
+
+  } catch (error) {
+    console.error('Error eliminando sitio:', error);
+    alert(
+      'No se pudo eliminar el sitio: ' + (error.message || error) +
+      '\n\nSi el sitio tiene inscripciones, admins, cartones o configuración, primero hay que crear una eliminación segura por SQL/RPC.'
+    );
+  }
+}
+
 async function masterRenovarSitio() {
   const siteId = parseInt($('masterEditId')?.value, 10);
   const meses = parseInt($('masterEditMesesRenovar')?.value || '1', 10);
@@ -776,8 +994,11 @@ async function masterRenovarSitio() {
 // Exponer funciones usadas por botones inline
 window.masterCambiarEstadoSitio = masterCambiarEstadoSitio;
 window.masterAbrirEditor = masterAbrirEditor;
+window.masterRenovarSitioRapido = masterRenovarSitioRapido;
+window.masterEliminarSitio = masterEliminarSitio;
 window.masterCambiarEstadoAdminSitio = masterCambiarEstadoAdminSitio;
 window.masterEliminarAdminSitio = masterEliminarAdminSitio;
+window.masterOcultarPanelAccion = masterOcultarPanelAccion;
 
 document.addEventListener('DOMContentLoaded', async () => {
   masterConfigurarEventos();
