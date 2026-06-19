@@ -132,8 +132,20 @@ if (botonAdmin) {
 function sitioEstaVencido(sitio) {
   if (!sitio) return true;
 
-  if (sitio.activo === false) return true;
+  // Si el master cambió el estado a pausado / vencido / inactivo
+  if (
+    sitio.estado &&
+    String(sitio.estado).toLowerCase() !== 'activo'
+  ) {
+    return true;
+  }
 
+  // Si existe campo activo booleano
+  if (sitio.activo === false) {
+    return true;
+  }
+
+  // Si la RPC devuelve dias_restantes
   if (
     sitio.dias_restantes !== null &&
     sitio.dias_restantes !== undefined &&
@@ -142,6 +154,17 @@ function sitioEstaVencido(sitio) {
     return Number(sitio.dias_restantes) <= 0;
   }
 
+  // Si existe vence_en
+  if (sitio.vence_en) {
+    const ahora = new Date();
+    const vence = new Date(sitio.vence_en);
+
+    if (!isNaN(vence.getTime())) {
+      return vence <= ahora;
+    }
+  }
+
+  // Si existe fecha_vencimiento
   if (sitio.fecha_vencimiento) {
     const hoy = new Date();
     hoy.setHours(0, 0, 0, 0);
@@ -178,25 +201,19 @@ async function iniciarSitioActual() {
   }
 
   sitioActual = sitio;
-SITE_ID = sitio.id;
+  SITE_ID = sitio.id;
 
-console.log('✅ Sitio cargado:', sitioActual);
+  console.log('✅ Sitio cargado:', sitioActual);
 
-aplicarDatosSitio(sitioActual);
+  if (sitioEstaVencido(sitioActual)) {
+    mostrarSitioPausado(sitioActual);
+    return false;
+  }
 
-if (sitioEstaVencido(sitioActual)) {
-  mostrarSitioPausado(sitioActual);
-  return false;
-}
-
-if (!sitioActual.activo) {
-  mostrarSitioPausado(sitioActual);
-  return false;
-}
+  aplicarDatosSitio(sitioActual);
 
   return true;
 }
-
 function aplicarDatosSitio(sitio) {
   if (!sitio) return;
 
