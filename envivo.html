@@ -546,132 +546,311 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <script>
-    // Toast notification helper
+    // ==================== CONFIG SUPABASE PRINCIPAL ====================
+    const supabaseUrl = 'https://zxtgaovreqzcpzdvmmcx.supabase.co';
+    const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4dGdhb3ZyZXF6Y3B6ZHZtbWN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NzUwOTUsImV4cCI6MjA5NzE1MTA5NX0.aUqskDkosOTXmWOm0q0RacgAnQezSxVD2wGB6CXOB3g';
+
+    const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+    let SITE_SLUG = 'golden';
+    let SITE_ID = null;
+    let sitioActual = null;
+
     function mostrarToast(mensaje, tipo = 'info') {
       const toast = document.getElementById('toast');
+      if (!toast) return;
+
       toast.textContent = mensaje;
       toast.className = `toast ${tipo} mostrar`;
+
       setTimeout(() => {
         toast.classList.remove('mostrar');
       }, 3000);
     }
 
-    document.addEventListener('DOMContentLoaded', async () => {
+    function obtenerSlugSitio() {
+      const params = new URLSearchParams(window.location.search);
+      const slugUrl = params.get('site');
+
+      if (slugUrl && slugUrl.trim()) {
+        return slugUrl.trim().toLowerCase();
+      }
+
+      // Si viene desde index.html?site=cliente, intenta heredar ese slug
+      try {
+        if (document.referrer) {
+          const ref = new URL(document.referrer);
+          const slugRef = ref.searchParams.get('site');
+
+          if (slugRef && slugRef.trim()) {
+            return slugRef.trim().toLowerCase();
+          }
+        }
+      } catch (error) {
+        console.warn('No se pudo leer slug desde referrer:', error);
+      }
+
+      return 'golden';
+    }
+
+    function sitioEstaNoDisponible(sitio) {
+      if (!sitio) return true;
+
+      if (sitio.estado && String(sitio.estado).toLowerCase() !== 'activo') {
+        return true;
+      }
+
+      if (sitio.activo === false) {
+        return true;
+      }
+
+      if (
+        sitio.dias_restantes !== null &&
+        sitio.dias_restantes !== undefined &&
+        sitio.dias_restantes !== ''
+      ) {
+        return Number(sitio.dias_restantes) <= 0;
+      }
+
+      return false;
+    }
+
+    function mostrarErrorPantalla(titulo, mensaje) {
       const loading = document.getElementById('loading');
 
-      const supabaseClient = supabase.createClient(
-        'https://zxtgaovreqzcpzdvmmcx.supabase.co',
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inp4dGdhb3ZyZXF6Y3B6ZHZtbWN4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE1NzUwOTUsImV4cCI6MjA5NzE1MTA5NX0.aUqskDkosOTXmWOm0q0RacgAnQezSxVD2wGB6CXOB3g'
-      );
+      if (loading) {
+        loading.innerHTML = `
+          <div class="error-container">
+            <div class="error-icon">⚠️</div>
+            <h2>${titulo}</h2>
+            <p>${mensaje}</p>
+          </div>
+        `;
+        loading.style.display = 'flex';
+        loading.style.opacity = '1';
+      }
+    }
 
-      function extraerIDYoutube(link) {
-        try {
-          const url = new URL(link);
-          return url.hostname === "youtu.be" ? url.pathname.slice(1) : url.searchParams.get("v");
-        } catch {
-          return null;
-        }
+    function ocultarLoading() {
+      const loading = document.getElementById('loading');
+      if (!loading) return;
+
+      loading.style.opacity = '0';
+      loading.style.transition = 'opacity 0.5s ease';
+
+      setTimeout(() => {
+        loading.style.display = 'none';
+      }, 500);
+    }
+
+    async function cargarSitioActual() {
+      SITE_SLUG = obtenerSlugSitio();
+
+      const { data, error } = await supabaseClient.rpc('rpc_public_get_sitio', {
+        _slug: SITE_SLUG
+      });
+
+      if (error) {
+        console.error('Error cargando sitio:', error);
+        throw new Error('No se pudo cargar este sitio.');
       }
 
-      async function cargarVideo() {
-        try {
-          const { data, error } = await supabaseClient
-            .from('configuracion')
-            .select('valore')
-            .eq('clave', 'youtube_live')
-            .single();
+      const sitio = Array.isArray(data) ? data[0] : data;
 
-          if (error || !data) {
-            throw new Error('No se pudo cargar la configuración del video');
-          }
-
-          const id = extraerIDYoutube(data.valore);
-          const dominio = location.hostname;
-
-          if (id) {
-            document.getElementById("youtube-frame").src = `https://www.youtube.com/embed/${id}?autoplay=1`;
-            document.getElementById("youtube-chat").src = `https://www.youtube.com/live_chat?v=${id}&embed_domain=${dominio}`;
-            document.getElementById("chat-external").href = `https://www.youtube.com/live_chat?v=${id}`;
-
-            // Ocultar loading con animación
-            loading.style.opacity = '0';
-            loading.style.transition = 'opacity 0.5s ease';
-            setTimeout(() => {
-              loading.style.display = 'none';
-            }, 500);
-
-            mostrarToast('¡Transmisión cargada con éxito!', 'success');
-          } else {
-            throw new Error('ID de YouTube inválido');
-          }
-        } catch (err) {
-          loading.innerHTML = `
-            <div class="error-container">
-              <div class="error-icon">⚠️</div>
-              <h2>Error al cargar</h2>
-              <p>${err.message}</p>
-            </div>
-          `;
-          mostrarToast(err.message, 'error');
-        }
+      if (!sitio) {
+        throw new Error('Este sitio no existe.');
       }
 
-      await cargarVideo();
-
-      // Ajustar chat en móvil
-      function ajustarChatMobile() {
-        const chatWrapper = document.getElementById("chat-wrapper");
-        const chatExternal = document.getElementById("chat-external");
-
-        if (window.innerWidth < 768) {
-          chatWrapper.style.display = "none";
-          chatExternal.style.display = "inline-flex";
-        } else {
-          chatWrapper.style.display = "block";
-          chatExternal.style.display = "none";
-        }
+      if (sitioEstaNoDisponible(sitio)) {
+        throw new Error('Este sitio está pausado o vencido.');
       }
 
-      ajustarChatMobile();
-      window.addEventListener('resize', ajustarChatMobile);
+      sitioActual = sitio;
+      SITE_ID = sitio.id;
 
-      // Cohetes: efecto y sonido desde Supabase
+      document.title = `${sitio.nombre || 'Bingo'} - En Vivo`;
+
+      const titulo = document.querySelector('.live-header h1');
+      if (titulo) titulo.textContent = `Transmisión en Vivo`;
+
+      const subtitulo = document.querySelector('.live-header p');
+      if (subtitulo) subtitulo.textContent = sitio.nombre ? `Sitio: ${sitio.nombre}` : '¡Únete a la conversación en el chat!';
+
+      document.documentElement.style.setProperty('--secondary', sitio.color_secundario || '#FFA500');
+      document.documentElement.style.setProperty('--dark', sitio.color_principal || '#020A35');
+
+      return sitio;
+    }
+
+    function extraerIDYoutube(link) {
+      try {
+        const url = new URL(link);
+
+        if (url.hostname.includes('youtu.be')) {
+          return url.pathname.replace('/', '').split('?')[0];
+        }
+
+        if (url.searchParams.get('v')) {
+          return url.searchParams.get('v');
+        }
+
+        const partes = url.pathname.split('/').filter(Boolean);
+
+        // youtube.com/live/ID
+        const liveIndex = partes.indexOf('live');
+        if (liveIndex >= 0 && partes[liveIndex + 1]) {
+          return partes[liveIndex + 1];
+        }
+
+        // youtube.com/embed/ID
+        const embedIndex = partes.indexOf('embed');
+        if (embedIndex >= 0 && partes[embedIndex + 1]) {
+          return partes[embedIndex + 1];
+        }
+
+        return null;
+      } catch {
+        return null;
+      }
+    }
+
+    async function cargarLinkYoutubeSitio() {
+      if (!SITE_ID) {
+        throw new Error('No se pudo identificar el sitio actual.');
+      }
+
+      // Esta RPC lee solo el link youtube_live del sitio actual.
+      const { data, error } = await supabaseClient.rpc('rpc_public_youtube_live', {
+        _site_id: SITE_ID
+      });
+
+      if (error) {
+        console.error('Error cargando YouTube Live:', error);
+        throw new Error('No se pudo cargar la configuración del video.');
+      }
+
+      const link = typeof data === 'string' ? data.trim() : '';
+
+      if (!link) {
+        throw new Error('Este sitio todavía no tiene un enlace de YouTube configurado.');
+      }
+
+      return link;
+    }
+
+    async function cargarVideo() {
+      const linkYoutube = await cargarLinkYoutubeSitio();
+      const id = extraerIDYoutube(linkYoutube);
+      const dominio = location.hostname;
+
+      if (!id) {
+        throw new Error('El enlace de YouTube no es válido.');
+      }
+
+      const frame = document.getElementById('youtube-frame');
+      const chat = document.getElementById('youtube-chat');
+      const chatExternal = document.getElementById('chat-external');
+
+      if (frame) {
+        frame.src = `https://www.youtube.com/embed/${id}?autoplay=1`;
+      }
+
+      if (chat) {
+        chat.src = `https://www.youtube.com/live_chat?v=${id}&embed_domain=${dominio}`;
+      }
+
+      if (chatExternal) {
+        chatExternal.href = `https://www.youtube.com/live_chat?v=${id}`;
+      }
+
+      ocultarLoading();
+      mostrarToast('¡Transmisión cargada con éxito!', 'success');
+    }
+
+    function ajustarChatMobile() {
+      const chatWrapper = document.getElementById('chat-wrapper');
+      const chatExternal = document.getElementById('chat-external');
+
+      if (!chatWrapper || !chatExternal) return;
+
+      if (window.innerWidth < 768) {
+        chatWrapper.style.display = 'none';
+        chatExternal.style.display = 'inline-flex';
+      } else {
+        chatWrapper.style.display = 'block';
+        chatExternal.style.display = 'none';
+      }
+    }
+
+    function activarCohetesRealtime() {
+      if (!SITE_ID) return;
+
       supabaseClient
-        .channel('cohetes')
+        .channel(`cohetes-site-${SITE_ID}`)
         .on('postgres_changes', {
           event: 'UPDATE',
           schema: 'public',
           table: 'configuracion',
-          filter: 'clave=eq.cohetes_activados'
+          filter: `site_id=eq.${SITE_ID}`
         }, async (payload) => {
-          const valor = payload.new.valore;
-          if (valor === true || valor === "true") {
+          if (payload.new?.clave !== 'cohetes_activados') return;
+
+          const valor = payload.new?.valore;
+
+          if (valor === true || valor === 'true') {
             const gif = document.getElementById('cohetesGif');
             const sonido = document.getElementById('sonidoCohetes');
 
-            gif.style.display = 'block';
+            if (gif) gif.style.display = 'block';
             mostrarToast('🎉 ¡Cohetes activados!', 'success');
 
             try {
-              sonido.currentTime = 0;
-              await sonido.play();
-            } catch (e) {
-              console.warn("⚠️ Sonido bloqueado por navegador (autoplay)", e);
+              if (sonido) {
+                sonido.currentTime = 0;
+                await sonido.play();
+              }
+            } catch (error) {
+              console.warn('Sonido bloqueado por navegador:', error);
             }
 
-            setTimeout(() => {
-              gif.style.display = 'none';
-              sonido.pause();
-              sonido.currentTime = 0;
+            setTimeout(async () => {
+              if (gif) gif.style.display = 'none';
 
-              supabaseClient
-                .from('configuracion')
-                .update({ valore: false })
-                .eq('clave', 'cohetes_activados');
+              if (sonido) {
+                sonido.pause();
+                sonido.currentTime = 0;
+              }
+
+              // Intenta apagarlo solo para este sitio. Si RLS no permite update público, no rompe la página.
+              try {
+                await supabaseClient
+                  .from('configuracion')
+                  .update({ valore: 'false' })
+                  .eq('site_id', SITE_ID)
+                  .eq('clave', 'cohetes_activados');
+              } catch (error) {
+                console.warn('No se pudo apagar cohetes_activados desde público:', error);
+              }
             }, 12000);
           }
         })
         .subscribe();
+    }
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      try {
+        await cargarSitioActual();
+        await cargarVideo();
+
+        ajustarChatMobile();
+        window.addEventListener('resize', ajustarChatMobile);
+
+        activarCohetesRealtime();
+      } catch (error) {
+        console.error('Error en envivo:', error);
+        mostrarErrorPantalla('Error al cargar', error.message || 'No se pudo cargar la transmisión.');
+        mostrarToast(error.message || 'No se pudo cargar la transmisión.', 'error');
+      }
     });
   </script>
 </body>
