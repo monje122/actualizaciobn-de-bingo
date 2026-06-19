@@ -17,6 +17,86 @@
   <meta property="og:type" content="website" />
   <meta property="og:image" content="" />
   <link rel="stylesheet" href="styles.css">
+
+  <style>
+    .btn-politica-privacidad {
+      border: none;
+      background: transparent;
+      color: #f9d949;
+      text-decoration: underline;
+      cursor: pointer;
+      font-weight: 700;
+      font-size: 13px;
+      padding: 0;
+    }
+
+    .modal-politica-privacidad {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.72);
+      z-index: 9999999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+
+    .modal-politica-card {
+      width: min(760px, 96vw);
+      max-height: 88vh;
+      overflow-y: auto;
+      background: #ffffff;
+      color: #111111;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.35);
+      text-align: left;
+      line-height: 1.55;
+      position: relative;
+    }
+
+    .modal-politica-card h2 {
+      margin-top: 0;
+      color: #020A35;
+      text-align: center;
+    }
+
+    .modal-politica-card h3 {
+      color: #020A35;
+      margin-top: 18px;
+      margin-bottom: 6px;
+    }
+
+    .modal-politica-card p,
+    .modal-politica-card li {
+      font-size: 14px;
+    }
+
+    .cerrar-politica {
+      position: sticky;
+      top: 0;
+      float: right;
+      border: none;
+      background: #dc3545;
+      color: #fff;
+      border-radius: 50%;
+      width: 34px;
+      height: 34px;
+      cursor: pointer;
+      font-size: 22px;
+      line-height: 30px;
+      font-weight: bold;
+    }
+
+    .politica-contacto-box {
+      background: #fff7e6;
+      border: 1px solid #ffbf69;
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 12px;
+    }
+  </style>
+
 </head>
 <body>
   <div id="overlay-carga" style="
@@ -89,7 +169,7 @@
     <button onclick="mostrarVentana('inscripcion')">Comprar</button>
     <button onclick="mostrarVentana('usuario')">verificar tu compra</button>
     <button onclick="mostrarVentana('lista-aprobados')">📋 Lista de Aprobados</button>
-    <button onclick="window.open('envivo.html', '_blank')">🔴 Ver En Vivo</button>
+    <button id="btnVerEnVivoPublico" onclick="abrirEnVivoSitio()">🔴 Ver En Vivo</button>
     <button onclick="mostrarVentana('top-compradores')">🏆 Top compradores</button>
     <button onclick="mostrarSeccion('ganadores')">Historial de ganadores</button>
     <button id="boton-admin-oculto" style="display: none;" onclick="entrarAdmin()">Admin</button>
@@ -807,9 +887,21 @@
   </div>
 </div>
 
+<!-- Modal Política de Privacidad -->
+<div id="modalPoliticaPrivacidad" class="modal-politica-privacidad oculto">
+  <div class="modal-politica-card">
+    <button type="button" class="cerrar-politica" onclick="cerrarPoliticaPrivacidad()">×</button>
+    <h2>Política de Privacidad</h2>
+    <div id="contenidoPoliticaPrivacidad">
+      <p>Cargando política de privacidad...</p>
+    </div>
+  </div>
+</div>
+
+
  <footer style="text-align: center; padding: 20px; font-size: 13px; color: black; background-color: rgba(0,0,0,0.0);">
   © 2025 GP. Todos los derechos reservados. <br>
-  <a href="privacidad.html" style="color: #f9d949; text-decoration: underline;">Política de Privacidad</a>
+  <button id="btnPoliticaPrivacidad" type="button" class="btn-politica-privacidad" onclick="mostrarPoliticaPrivacidad()">Política de Privacidad</button>
 
   <br><br>
 
