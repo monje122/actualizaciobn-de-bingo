@@ -247,6 +247,7 @@
 
     .master-grid input,
     .master-grid select,
+    .master-grid textarea,
     .login-box input {
       width: 100%;
       padding: 12px;
@@ -260,9 +261,20 @@
 
     .master-grid input:focus,
     .master-grid select:focus,
+    .master-grid textarea:focus,
     .login-box input:focus {
       border-color: var(--master-info);
       box-shadow: 0 0 0 3px rgba(13, 110, 253, .12);
+    }
+
+
+
+    .master-grid textarea {
+      width: 100%;
+      min-height: 92px;
+      resize: vertical;
+      font-family: Arial, sans-serif;
+      line-height: 1.35;
     }
 
     .master-btn {
@@ -667,6 +679,15 @@
               <label>Grupo WhatsApp opcional
                 <input type="text" id="masterWhatsappGrupo" placeholder="Grupo WhatsApp opcional">
               </label>
+              <label>Organizador del bingo
+                <input type="text" id="masterPrivacidadOrganizador" placeholder="Ej: Bingo Andino 75">
+              </label>
+              <label>Contacto de privacidad
+                <input type="text" id="masterPrivacidadContacto" placeholder="WhatsApp o correo de contacto">
+              </label>
+              <label>Texto adicional de privacidad
+                <textarea id="masterPrivacidadTexto" placeholder="Texto adicional para la política de privacidad"></textarea>
+              </label>
               <label class="master-option-row">
                 <input type="checkbox" id="masterModoCartonSimple">
                 <span>
@@ -790,6 +811,15 @@
               <label>Grupo WhatsApp
                 <input type="text" id="masterEditWhatsappGrupo" placeholder="Grupo WhatsApp">
               </label>
+              <label>Organizador del bingo
+                <input type="text" id="masterEditPrivacidadOrganizador" placeholder="Organizador del bingo">
+              </label>
+              <label>Contacto de privacidad
+                <input type="text" id="masterEditPrivacidadContacto" placeholder="WhatsApp o correo de contacto">
+              </label>
+              <label>Texto adicional de privacidad
+                <textarea id="masterEditPrivacidadTexto" placeholder="Texto adicional para la política de privacidad"></textarea>
+              </label>
               <label>Estado
                 <select id="masterEditActivo">
                   <option value="true">Activo</option>
@@ -853,8 +883,7 @@
         </div>
 
         <!-- COLUMNA LATERAL -->
-        <aside class="master-stack">
-        </div>
+        <aside class="master-stack"></aside>
       </div>
     </section>
   </main>
@@ -868,6 +897,6 @@
     window.supabase = supabase.createClient(supabaseUrl, supabaseKey);
   </script>
 
-  <script src="master.js"></script>
+  <script src="master.js?v=10"></script>
 </body>
 </html>
