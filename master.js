@@ -7,6 +7,21 @@ const masterState = {
   admins: []
 };
 
+const MASTER_PLANES = {
+  basico: { nombre: 'Plan Básico', precio: 10, clase: 'basico', icono: '📦' },
+  plus: { nombre: 'Plan Plus', precio: 15, clase: 'plus', icono: '⭐' },
+  pro: { nombre: 'Plan Pro', precio: 20, clase: 'pro', icono: '💎' }
+};
+
+function masterPlanInfo(plan) {
+  return MASTER_PLANES[plan] || MASTER_PLANES.basico;
+}
+
+function masterPlanBadge(plan) {
+  const info = masterPlanInfo(plan);
+  return `<span class="master-plan-badge ${info.clase}">${info.icono} ${info.nombre}</span>`;
+}
+
 function $(id) {
   return document.getElementById(id);
 }
@@ -281,6 +296,8 @@ function masterActualizarResumen() {
   const admins = masterState.admins?.length || 0;
   const totalTopes = sitios.reduce((acc, s) => acc + Number(s.limite_cartones || s.total_cartones || 0), 0);
 
+  masterActualizarResumenPlanes();
+
   contenedor.innerHTML = `
     <article class="master-kpi-card">
       <span>🌐 Sitios</span>
@@ -320,6 +337,52 @@ function masterActualizarResumen() {
   `;
 }
 
+
+function masterActualizarResumenPlanes() {
+  const contenedor = $('masterResumenPlanes');
+  if (!contenedor) return;
+
+  const sitios = masterState.sitios || [];
+  const activos = sitios.filter(s => s.activo !== false && masterDiasRestantes(s.fecha_vencimiento) > 0);
+
+  const conteo = {
+    basico: sitios.filter(s => (s.plan_tipo || 'basico') === 'basico').length,
+    plus: sitios.filter(s => (s.plan_tipo || 'basico') === 'plus').length,
+    pro: sitios.filter(s => (s.plan_tipo || 'basico') === 'pro').length
+  };
+
+  const ingresoMensual = activos.reduce((acc, s) => {
+    const info = masterPlanInfo(s.plan_tipo || 'basico');
+    return acc + Number(info.precio || 0);
+  }, 0);
+
+  contenedor.innerHTML = `
+    <article class="master-plan-card basico">
+      <span>📦 Plan Básico</span>
+      <strong>${conteo.basico}</strong>
+      <small>Clientes en Básico · $10</small>
+    </article>
+
+    <article class="master-plan-card plus">
+      <span>⭐ Plan Plus</span>
+      <strong>${conteo.plus}</strong>
+      <small>Clientes en Plus · $15</small>
+    </article>
+
+    <article class="master-plan-card pro">
+      <span>💎 Plan Pro</span>
+      <strong>${conteo.pro}</strong>
+      <small>Clientes en Pro · $20</small>
+    </article>
+
+    <article class="master-plan-card total">
+      <span>💰 Estimado mensual</span>
+      <strong>$${ingresoMensual.toFixed(2)}</strong>
+      <small>Solo sitios activos y no vencidos</small>
+    </article>
+  `;
+}
+
 async function masterCrearSitio() {
   const nombre = $('masterNombreSitio')?.value.trim();
   const slugManual = $('masterSlugSitio')?.value.trim();
@@ -329,7 +392,10 @@ async function masterCrearSitio() {
   const logoUrl = $('masterLogoUrl')?.value.trim();
   const colorPrincipal = $('masterColorPrincipal')?.value.trim();
   const whatsappGrupo = $('masterWhatsappGrupo')?.value.trim();
+  const planTipo = $('masterPlanSitio')?.value || 'basico';
   const modoCartonSimple = $('masterModoCartonSimple')?.checked === true;
+  const mostrarEnVivo = $('masterMostrarEnVivo')?.checked !== false;
+  const mostrarTopCompradores = $('masterMostrarTopCompradores')?.checked !== false;
 const mesesServicio = parseInt($('masterMesesServicio')?.value || '1', 10);
 const fechaInicio = masterFechaHoyISO();
 const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
@@ -356,6 +422,9 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
   nombre,
   slug,
   titulo_publico: titulo || nombre,
+  plan_tipo: planTipo,
+  mostrar_en_vivo: mostrarEnVivo,
+  mostrar_top_compradores: mostrarTopCompradores,
 
   // Tope máximo colocado por el master
   limite_cartones: total,
@@ -405,9 +474,10 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
       if (el) el.value = '';
     });
 
-    if ($('masterModoCartonSimple')) {
-      $('masterModoCartonSimple').checked = false;
-    }
+    if ($('masterPlanSitio')) $('masterPlanSitio').value = 'basico';
+    if ($('masterModoCartonSimple')) $('masterModoCartonSimple').checked = false;
+    if ($('masterMostrarEnVivo')) $('masterMostrarEnVivo').checked = true;
+    if ($('masterMostrarTopCompradores')) $('masterMostrarTopCompradores').checked = true;
 
     await masterCargarSitios();
 
@@ -448,11 +518,13 @@ async function masterCargarSitios() {
           <td>${masterEscapeHTML(sitio.id)}</td>
           <td>
             <strong>${masterEscapeHTML(sitio.nombre || '')}</strong><br>
-            <small>${masterEscapeHTML(sitio.titulo_publico || '')}</small>
+            <small>${masterEscapeHTML(sitio.titulo_publico || '')}</small><br>
+            ${masterPlanBadge(sitio.plan_tipo || 'basico')}
           </td>
           <td>
             <code>${masterEscapeHTML(sitio.slug || '')}</code><br>
-            <a href="${url}" target="_blank" rel="noopener">Abrir sitio</a>
+            <a href="${url}" target="_blank" rel="noopener">Abrir sitio</a><br>
+            <small>🔴 En vivo: ${sitio.mostrar_en_vivo === false ? 'No' : 'Sí'} · 🏆 Top: ${sitio.mostrar_top_compradores === false ? 'No' : 'Sí'}</small>
           </td>
           <td>
             <strong>Tope:</strong> ${masterEscapeHTML(sitio.limite_cartones || sitio.total_cartones || 0)}<br>
@@ -550,12 +622,15 @@ async function masterAbrirEditor(siteId) {
   $('masterEditId').value = sitio.id;
   $('masterEditNombre').value = sitio.nombre || '';
   $('masterEditTitulo').value = sitio.titulo_publico || sitio.nombre || '';
+  if ($('masterEditPlanSitio')) $('masterEditPlanSitio').value = sitio.plan_tipo || 'basico';
   $('masterEditTotal').value = sitio.limite_cartones || sitio.total_cartones || sitio.cartones_visibles || 0;
   $('masterEditPrecio').value = sitio.precio_carton_bs || 0;
   $('masterEditLogoUrl').value = sitio.logo_url || '';
   $('masterEditColorPrincipal').value = sitio.color_principal || '';
   $('masterEditWhatsappGrupo').value = sitio.whatsapp_grupo || '';
   $('masterEditActivo').value = sitio.activo === false ? 'false' : 'true';
+  if ($('masterEditMostrarEnVivo')) $('masterEditMostrarEnVivo').checked = sitio.mostrar_en_vivo !== false;
+  if ($('masterEditMostrarTopCompradores')) $('masterEditMostrarTopCompradores').checked = sitio.mostrar_top_compradores !== false;
 
   if ($('masterEditModoCartonSimple')) {
     $('masterEditModoCartonSimple').checked = false;
@@ -598,7 +673,10 @@ async function masterGuardarEdicion() {
   const colorPrincipal = $('masterEditColorPrincipal')?.value.trim();
   const whatsappGrupo = $('masterEditWhatsappGrupo')?.value.trim();
   const activo = $('masterEditActivo')?.value === 'true';
+  const planTipo = $('masterEditPlanSitio')?.value || 'basico';
   const modoCartonSimple = $('masterEditModoCartonSimple')?.checked === true;
+  const mostrarEnVivo = $('masterEditMostrarEnVivo')?.checked !== false;
+  const mostrarTopCompradores = $('masterEditMostrarTopCompradores')?.checked !== false;
 
   if (!nombre) {
     masterSetEstado('masterEstadoEditarSitio', 'El nombre no puede estar vacío.', 'error');
@@ -622,6 +700,9 @@ async function masterGuardarEdicion() {
     const cambios = {
       nombre,
       titulo_publico: titulo || nombre,
+      plan_tipo: planTipo,
+      mostrar_en_vivo: mostrarEnVivo,
+      mostrar_top_compradores: mostrarTopCompradores,
       precio_carton_bs: precio,
       activo,
       logo_url: logoUrl || null,
