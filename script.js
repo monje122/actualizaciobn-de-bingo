@@ -1,4 +1,73 @@
 var supabase = window.supabase;
+
+// ==================== SEGURIDAD: LOGS SIN DATOS SENSIBLES ====================
+const SEGURIDAD_DEBUG = false;
+
+function sanitizarLogSeguro(valor) {
+  const ocultarTexto = (texto) => String(texto || '')
+    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, '[correo oculto]')
+    .replace(/eyJ[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+\.[A-Za-z0-9_\-]+/g, '[jwt oculto]')
+    .replace(/(password|contraseña|clave|access_token|refresh_token|token|secret|service_role)\s*[:=]\s*[^,\s}]+/gi, '$1=[oculto]');
+
+  if (valor instanceof Error) {
+    return {
+      name: valor.name || 'Error',
+      message: ocultarTexto(valor.message || ''),
+      code: valor.code || undefined
+    };
+  }
+
+  if (typeof valor === 'string') {
+    return ocultarTexto(valor);
+  }
+
+  if (valor && typeof valor === 'object') {
+    try {
+      return JSON.parse(JSON.stringify(valor, (key, value) => {
+        const k = String(key || '').toLowerCase();
+        if (
+          k.includes('email') ||
+          k.includes('correo') ||
+          k.includes('password') ||
+          k.includes('contraseña') ||
+          k.includes('clave') ||
+          k.includes('token') ||
+          k.includes('secret') ||
+          k.includes('service_role')
+        ) {
+          return '[oculto]';
+        }
+
+        if (typeof value === 'string') {
+          return ocultarTexto(value);
+        }
+
+        return value;
+      }));
+    } catch {
+      return '[objeto protegido]';
+    }
+  }
+
+  return valor;
+}
+
+function logSeguro(...args) {
+  if (SEGURIDAD_DEBUG) {
+    console.log(...args.map(sanitizarLogSeguro));
+  }
+}
+
+function warnSeguro(...args) {
+  if (SEGURIDAD_DEBUG) {
+    console.warn(...args.map(sanitizarLogSeguro));
+  }
+}
+
+function errorSeguro(...args) {
+  console.error(...args.map(sanitizarLogSeguro));
+}
+
 // ==================== MULTI-SITIO ====================
 let sitioActual = null;
 let SITE_ID = null;
@@ -46,13 +115,13 @@ async function procesarEstadoUnaVez(id, fila, nuevoEstado, accion) {
 
   // Si ya está en ese mismo estado, no hace nada
   if (ultimoEstado === nuevoEstado) {
-    console.log(`Inscripción ${id} ya está en estado ${nuevoEstado}. No se repite.`);
+    logSeguro(`Inscripción ${id} ya está en estado ${nuevoEstado}. No se repite.`);
     return;
   }
 
   // Si ya se está procesando esa misma acción, no repite
   if (estadoEnProceso.has(claveProceso)) {
-    console.log(`Ya se está procesando ${nuevoEstado} para inscripción ${id}`);
+    logSeguro(`Ya se está procesando ${nuevoEstado} para inscripción ${id}`);
     return;
   }
 
@@ -69,7 +138,7 @@ async function procesarEstadoUnaVez(id, fila, nuevoEstado, accion) {
       }
     }
   } catch (error) {
-    console.error('Error procesando estado:', error);
+    errorSeguro('Error procesando estado:', error);
   } finally {
     estadoEnProceso.delete(claveProceso);
   }
@@ -185,14 +254,14 @@ function sitioEstaVencido(sitio) {
 async function iniciarSitioActual() {
   SITE_SLUG = obtenerSlugSitio();
 
-  console.log('🌐 Cargando sitio:', SITE_SLUG);
+  logSeguro('🌐 Cargando sitio:', SITE_SLUG);
 
   const { data, error } = await supabase.rpc('rpc_public_get_sitio', {
     _slug: SITE_SLUG
   });
 
   if (error) {
-    console.error('❌ Error cargando sitio:', error);
+    errorSeguro('❌ Error cargando sitio:', error);
     mostrarSitioNoDisponible('No se pudo cargar esta página.');
     return false;
   }
@@ -207,7 +276,7 @@ async function iniciarSitioActual() {
   sitioActual = sitio;
   SITE_ID = sitio.id;
 
-  console.log('✅ Sitio cargado:', sitioActual);
+  logSeguro('✅ Sitio cargado:', sitioActual);
 
   if (sitioEstaVencido(sitioActual)) {
     mostrarSitioPausado(sitioActual);
@@ -239,7 +308,7 @@ async function verificarPausaAutomaticaSitio() {
     });
 
     if (error) {
-      console.warn('No se pudo verificar estado del sitio:', error);
+      warnSeguro('No se pudo verificar estado del sitio:', error);
       return;
     }
 
@@ -262,7 +331,7 @@ async function verificarPausaAutomaticaSitio() {
     }
 
   } catch (error) {
-    console.warn('Error verificando pausa automática:', error);
+    warnSeguro('Error verificando pausa automática:', error);
   }
 }
 function aplicarDatosSitio(sitio) {
@@ -575,12 +644,12 @@ async function cargarPoliticaPrivacidadSitio() {
     });
 
     if (error) {
-      console.warn('No se pudo cargar privacidad por RPC, usando datos básicos:', error);
+      warnSeguro('No se pudo cargar privacidad por RPC, usando datos básicos:', error);
     } else {
       info = Array.isArray(data) ? data[0] : data;
     }
   } catch (error) {
-    console.warn('Error cargando política de privacidad:', error);
+    warnSeguro('Error cargando política de privacidad:', error);
   }
 
   const nombreSitio = escaparHTML(info?.nombre || sitioActual?.nombre || SITE_SLUG || 'este bingo');
@@ -676,7 +745,7 @@ function abrirEnVivoSitio() {
 // ==================== FUNCIONES DE CONFIGURACIÓN ====================
 async function getConfigValue(clave, fallback = null) {
   if (!SITE_ID) {
-    console.warn('SITE_ID no cargado todavía para getConfigValue:', clave);
+    warnSeguro('SITE_ID no cargado todavía para getConfigValue:', clave);
     return fallback;
   }
 
@@ -687,7 +756,7 @@ async function getConfigValue(clave, fallback = null) {
   });
 
   if (error) {
-    console.warn('Error getConfigValue:', clave, error);
+    warnSeguro('Error getConfigValue:', clave, error);
     return fallback;
   }
 
@@ -696,7 +765,7 @@ async function getConfigValue(clave, fallback = null) {
 
 async function setConfigValue(clave, value) {
   if (!SITE_ID) {
-    console.warn('SITE_ID no cargado todavía para setConfigValue:', clave);
+    warnSeguro('SITE_ID no cargado todavía para setConfigValue:', clave);
     return false;
   }
 
@@ -707,7 +776,7 @@ async function setConfigValue(clave, value) {
   });
 
   if (error) {
-    console.error('Error setConfigValue:', clave, error);
+    errorSeguro('Error setConfigValue:', clave, error);
     return false;
   }
 
@@ -793,7 +862,7 @@ async function guardarColoresSitio() {
     }
 
   } catch (error) {
-    console.error('Error guardando colores:', error);
+    errorSeguro('Error guardando colores:', error);
 
     if (estado) {
       estado.textContent = 'Error guardando colores: ' + error.message;
@@ -1007,9 +1076,9 @@ async function subirImagenSitio(inputId, clave, nombreBase) {
         .remove([rutaVieja]);
 
       if (errorDelete) {
-        console.warn('La imagen nueva se guardó, pero no se pudo borrar la vieja:', errorDelete);
+        warnSeguro('La imagen nueva se guardó, pero no se pudo borrar la vieja:', errorDelete);
       } else {
-        console.log('🗑️ Imagen vieja borrada:', rutaVieja);
+        logSeguro('🗑️ Imagen vieja borrada:', rutaVieja);
       }
     }
 
@@ -1021,7 +1090,7 @@ async function subirImagenSitio(inputId, clave, nombreBase) {
     input.value = '';
 
   } catch (error) {
-    console.error('Error guardando imagen:', error);
+    errorSeguro('Error guardando imagen:', error);
 
     if (estado) {
       estado.textContent = 'Error guardando imagen: ' + error.message;
@@ -1055,7 +1124,7 @@ async function logoutAdminSilencioso() {
   try {
     await supabase.auth.signOut();
   } catch (error) {
-    console.warn('Logout silencioso falló:', error);
+    warnSeguro('Logout silencioso falló:', error);
   } finally {
     clearAdminSession();
     resetToLoginState();
@@ -1068,7 +1137,7 @@ async function logoutAdmin() {
   try {
     await supabase.auth.signOut();
   } catch (error) {
-    console.warn('Error cerrando sesión Auth:', error);
+    warnSeguro('Error cerrando sesión Auth:', error);
   }
 
   clearAdminSession();
@@ -1078,7 +1147,7 @@ async function logoutAdmin() {
 }
 // ========== FUNCIÓN PARA LIMPIA SESIÓN (COMPATIBLE) ==========
 function clearAdminSession() {
-  console.log('🧹 Limpiando sesión...');
+  logSeguro('🧹 Limpiando sesión...');
 
   // Limpiar datos nuevos del login con Supabase Auth
   sessionStorage.removeItem('admin_email');
@@ -1126,12 +1195,12 @@ function clearAdminSession() {
   const sessionInfo = document.getElementById('session-info');
   if (sessionInfo) sessionInfo.remove();
 
-  console.log('✅ Sesión limpiada localmente');
+  logSeguro('✅ Sesión limpiada localmente');
 }
 
 // ========== FUNCIÓN PARA VOLVER A LOGIN (COMPATIBLE) ==========
 function resetToLoginState() {
-  console.log('🔄 Regresando a estado de login...');
+  logSeguro('🔄 Regresando a estado de login...');
   
   // Ocultar panel, mostrar login
   const adminPanel = document.getElementById('admin-panel');
@@ -1157,7 +1226,7 @@ document.addEventListener('DOMContentLoaded', function() {
   
   if (logoutBtn) {
     logoutBtn.addEventListener('click', logoutAdmin);
-    console.log('✅ Botón de logout configurado');
+    logSeguro('✅ Botón de logout configurado');
   }
 });
 
@@ -1193,8 +1262,8 @@ async function loginAdmin() {
     });
 
     if (loginError) {
-      console.error('Error login:', loginError);
-      errorDiv.textContent = 'Correo o clave incorrectos';
+      errorSeguro('Error login:', loginError);
+      errorDiv.textContent = 'Usuario o clave incorrectos';
       errorDiv.className = 'error';
       document.getElementById('admin-password').value = '';
       return;
@@ -1205,7 +1274,7 @@ async function loginAdmin() {
     });
 
     if (ctxError) {
-      console.error('Error verificando permisos:', ctxError);
+      errorSeguro('Error verificando permisos:', ctxError);
       await supabase.auth.signOut();
       errorDiv.textContent = 'No se pudo verificar el permiso del administrador';
       errorDiv.className = 'error';
@@ -1217,22 +1286,21 @@ async function loginAdmin() {
     if (!permiso || (!permiso.es_master && !permiso.es_admin_sitio)) {
       await supabase.auth.signOut();
 
-      errorDiv.textContent = 'Este correo no tiene permiso para administrar esta página';
+      errorDiv.textContent = 'Este usuario no tiene permiso para administrar esta página';
       errorDiv.className = 'error';
       document.getElementById('admin-password').value = '';
       return;
     }
 
-    sessionStorage.setItem('admin_email', permiso.email);
+    sessionStorage.removeItem('admin_email');
     sessionStorage.setItem('admin_rol', permiso.rol || 'admin');
     sessionStorage.setItem('admin_site_id', SITE_ID);
     sessionStorage.setItem('admin_is_master', permiso.es_master ? 'true' : 'false');
 
     adminSession = {
-      email: permiso.email,
-      rol: permiso.rol,
+      rol: permiso.rol || (permiso.es_master ? 'master' : 'admin'),
       site_id: SITE_ID,
-      es_master: permiso.es_master
+      es_master: permiso.es_master === true
     };
 
     sesionActiva = true;
@@ -1247,7 +1315,7 @@ async function loginAdmin() {
       document.getElementById('admin-panel').classList.remove('oculto');
 
       const emailDisplay = document.getElementById('admin-email-display');
-      if (emailDisplay) emailDisplay.textContent = permiso.email;
+      if (emailDisplay) emailDisplay.textContent = permiso.es_master ? 'Master' : 'Administrador';
 
       actualizarVencimientoPanelAdmin();
 
@@ -1259,7 +1327,7 @@ async function loginAdmin() {
     }, 700);
 
   } catch (error) {
-    console.error('Error en loginAdmin:', error);
+    errorSeguro('Error en loginAdmin:', error);
     errorDiv.textContent = 'Error de conexión o configuración';
     errorDiv.className = 'error';
     document.getElementById('admin-password').value = '';
@@ -1279,7 +1347,7 @@ function cancelarLogin() {
 // Función para actualizr actividad de sesión
 function actualizarActividadSesion() {
   if (!sesionActiva) return;
-  console.log('👀 Actividad detectada');
+  logSeguro('👀 Actividad detectada');
 }
 // Timer de inactividad
 function resetInactivityTimer() {
@@ -1289,11 +1357,11 @@ function resetInactivityTimer() {
   }
 
   if (sesionActiva) {
-    console.log('⏰ Reiniciando timer de inactividad (30 minutos)');
+    logSeguro('⏰ Reiniciando timer de inactividad (30 minutos)');
 
     inactivityTimer = setTimeout(async () => {
       if (sesionActiva) {
-        console.log('⏰ Sesión expirada por inactividad');
+        logSeguro('⏰ Sesión expirada por inactividad');
         alert('Sesión expirada por inactividad (30 minutos)');
         await cerrarSesionAdmin();
       }
@@ -1306,7 +1374,7 @@ function iniciarDetectorActividad() {
   if (detectorIniciado) return; // ⛔ evita doble ejecución
   detectorIniciado = true;
 
-  console.log('👀 Iniciando detector de actividad');
+  logSeguro('👀 Iniciando detector de actividad');
 
  ['click', 'keypress', 'scroll', 'touchstart'].forEach(event => {
     document.addEventListener(event, () => {
@@ -1322,14 +1390,14 @@ function iniciarDetectorActividad() {
 
 // ==================== VERIFICACIÓN INICIAL ====================
 async function verificarSesionInicial() {
-  console.log('🔍 Verificando sesión inicial con Supabase Auth...');
+  logSeguro('🔍 Verificando sesión inicial con Supabase Auth...');
 
   document.getElementById('admin-panel')?.classList.add('oculto');
   document.getElementById('admin-login')?.classList.add('oculto');
   document.getElementById('bienvenida')?.classList.remove('oculto');
 
   if (!SITE_ID) {
-    console.warn('SITE_ID no está cargado todavía');
+    warnSeguro('SITE_ID no está cargado todavía');
     return;
   }
 
@@ -1337,8 +1405,8 @@ async function verificarSesionInicial() {
     const { data: sessionData } = await supabase.auth.getSession();
     const session = sessionData?.session;
 
-    if (!session?.user?.email) {
-      console.log('ℹ️ No hay sesión Auth activa');
+    if (!session?.user) {
+      logSeguro('ℹ️ No hay sesión Auth activa');
       sesionActiva = false;
       adminSession = null;
       return;
@@ -1349,7 +1417,7 @@ async function verificarSesionInicial() {
     });
 
     if (ctxError) {
-      console.error('Error verificando contexto admin:', ctxError);
+      errorSeguro('Error verificando contexto admin:', ctxError);
       await supabase.auth.signOut();
       sesionActiva = false;
       adminSession = null;
@@ -1359,37 +1427,36 @@ async function verificarSesionInicial() {
     const permiso = Array.isArray(ctx) ? ctx[0] : ctx;
 
     if (!permiso || (!permiso.es_master && !permiso.es_admin_sitio)) {
-      console.warn('Sesión Auth existe, pero no tiene permiso en este sitio');
+      warnSeguro('Sesión Auth existe, pero no tiene permiso en este sitio');
       await supabase.auth.signOut();
       sesionActiva = false;
       adminSession = null;
       return;
     }
 
-    sessionStorage.setItem('admin_email', permiso.email);
+    sessionStorage.removeItem('admin_email');
     sessionStorage.setItem('admin_rol', permiso.rol || 'admin');
     sessionStorage.setItem('admin_site_id', SITE_ID);
     sessionStorage.setItem('admin_is_master', permiso.es_master ? 'true' : 'false');
 
     adminSession = {
-      email: permiso.email,
-      rol: permiso.rol,
+      rol: permiso.rol || (permiso.es_master ? 'master' : 'admin'),
       site_id: SITE_ID,
-      es_master: permiso.es_master
+      es_master: permiso.es_master === true
     };
 
     sesionActiva = true;
 
     const emailDisplay = document.getElementById('admin-email-display');
-    if (emailDisplay) emailDisplay.textContent = permiso.email;
+    if (emailDisplay) emailDisplay.textContent = permiso.es_master ? 'Master' : 'Administrador';
 
     iniciarDetectorActividad();
     resetInactivityTimer();
 
-    console.log('✅ Sesión admin válida:', adminSession);
+    logSeguro('✅ Sesión admin válida:', adminSession);
 
   } catch (error) {
-    console.error('❌ Error verificando sesión inicial:', error);
+    errorSeguro('❌ Error verificando sesión inicial:', error);
     await supabase.auth.signOut();
     sesionActiva = false;
     adminSession = null;
@@ -1407,14 +1474,14 @@ async function verListaAprobados() {
 
   const listaDiv = document.getElementById('listaAprobados');
   if (!listaDiv) {
-    console.error('Elemento listaAprobados no encontrado');
+    errorSeguro('Elemento listaAprobados no encontrado');
     return;
   }
 
   listaDiv.innerHTML = '';
 
   if (error) {
-    console.error('Error al obtener aprobados:', error);
+    errorSeguro('Error al obtener aprobados:', error);
     listaDiv.innerHTML = '<p>Error al obtener la lista.</p>';
     return;
   }
@@ -1526,7 +1593,7 @@ async function detectarCartonesDuplicados() {
     resaltarCeldasDuplicadas(duplicadosSet);
 
   } catch (e) {
-    console.error(e);
+    errorSeguro(e);
     const cont = document.getElementById('duplicadosResultado');
     if (cont) {
       cont.innerHTML = '<p style="color:#f44336;">Error buscando duplicados. Revisa la consola.</p>';
@@ -1626,7 +1693,7 @@ async function verHuerfanos() {
     renderTablaHuerfanos(data || []);
 
   } catch (e) {
-    console.error(e);
+    errorSeguro(e);
     const resultado = document.getElementById('huerfanosResultado');
     if (resultado) {
       resultado.innerHTML = '<p style="color:#f44336;">Error buscando huérfanos. Revisa consola.</p>';
@@ -1711,7 +1778,7 @@ async function liberarHuerfanos() {
     await contarCartonesVendidos();
 
   } catch (e) {
-    console.error(e);
+    errorSeguro(e);
     alert('Error al liberar huérfanos.');
   } finally {
     btn.disabled = false;
@@ -1755,7 +1822,7 @@ async function obtenerMontoTotalRecaudado() {
     .eq('estado', 'aprobado'); 
 
   if (error) {
-    console.error('Error al obtener inscripciones:', error.message);
+    errorSeguro('Error al obtener inscripciones:', error.message);
     return;
   }
 
@@ -1788,7 +1855,7 @@ async function contarCartonesVendidos() {
   });
 
   if (error) {
-    console.error('Error contando cartones ocupados por RPC:', error);
+    errorSeguro('Error contando cartones ocupados por RPC:', error);
     return 0;
   }
 
@@ -1838,12 +1905,12 @@ function renderizarBotonesPromociones() {
 
 // ==================== FUNC PINCILES ====================
 window.addEventListener('DOMContentLoaded', async () => {
-  console.log('🚀 Inicializando sistema...');
+  logSeguro('🚀 Inicializando sistema...');
     sistemaListo = false;
   const sitioOk = await iniciarSitioActual();
 
 if (!sitioOk) {
-  console.warn('Sitio no disponible o pausado.');
+  warnSeguro('Sitio no disponible o pausado.');
   return;
 }
   // Crear ta¿'bl ses nxiste
@@ -1902,7 +1969,7 @@ document.getElementById('btnResetColoresSitio')?.addEventListener('click', reset
   // Mostrar términos
 
   document.getElementById('overlay-carga').style.display = 'none';
-  console.log('✅ Sistema inicializado correctamente');
+  logSeguro('✅ Sistema inicializado correctamente');
 });
 
 async function obtenerTotalCartones() {
@@ -1924,7 +1991,7 @@ async function cargarModoCartonSimple() {
     });
 
     if (error) {
-      console.warn('No se pudo leer modo cartón simple por RPC pública:', error);
+      warnSeguro('No se pudo leer modo cartón simple por RPC pública:', error);
       const valorFallback = await getConfigValue('modo_carton_simple', 'false');
       modoCartonSimple = isTrue(valorFallback);
     } else {
@@ -1933,7 +2000,7 @@ async function cargarModoCartonSimple() {
 
     aplicarModoCartonSimpleAdmin();
   } catch (error) {
-    console.warn('Error cargando modo cartón simple:', error);
+    warnSeguro('Error cargando modo cartón simple:', error);
     modoCartonSimple = false;
     aplicarModoCartonSimpleAdmin();
   }
@@ -1969,7 +2036,7 @@ async function cargarOpcionesMasterSitio() {
     });
 
     if (error) {
-      console.warn('No se pudieron cargar opciones master del sitio:', error);
+      warnSeguro('No se pudieron cargar opciones master del sitio:', error);
       aplicarOpcionesMasterSitio();
       return;
     }
@@ -1984,7 +2051,7 @@ async function cargarOpcionesMasterSitio() {
 
     aplicarOpcionesMasterSitio();
   } catch (error) {
-    console.warn('Error cargando opciones master:', error);
+    warnSeguro('Error cargando opciones master:', error);
     aplicarOpcionesMasterSitio();
   }
 }
@@ -2045,7 +2112,7 @@ async function cargarPrecioPorCarton() {
 }
 
 function generarCartones() {
-  console.log(`Sistema de bingo inicializado con ${totalCartones} cartones disponibles`);
+  logSeguro(`Sistema de bingo inicializado con ${totalCartones} cartones disponibles`);
 }
 
 function actualizarPreseleccion() {
@@ -2293,7 +2360,7 @@ async function cargarCartones() {
 });
 
   if (errorHuerfanos) {
-    console.error('Error liberando huérfanos:', errorHuerfanos);
+    errorSeguro('Error liberando huérfanos:', errorHuerfanos);
   }
 
   cartonesOcupados = await fetchTodosLosOcupados();
@@ -2346,7 +2413,7 @@ const { data: liberado, error: errorLiberar } = await supabase.rpc('rpc_liberar_
   _cedula: cedulaLimpia,
   _partida_id: null
 });
-    console.log('Liberar cartón:', {
+    logSeguro('Liberar cartón:', {
       numero: num,
       cedula: cedulaLimpia,
       liberado,
@@ -2354,13 +2421,13 @@ const { data: liberado, error: errorLiberar } = await supabase.rpc('rpc_liberar_
     });
 
     if (errorLiberar) {
-      console.error('Error liberando reserva:', errorLiberar);
+      errorSeguro('Error liberando reserva:', errorLiberar);
       alert('No se pudo liberar el cartón. Intenta otra vez.');
       return;
     }
 
     if (liberado !== true) {
-      console.warn('El cartón no se liberó. Puede que no coincidía la cédula o ya estaba en inscripción.');
+      warnSeguro('El cartón no se liberó. Puede que no coincidía la cédula o ya estaba en inscripción.');
     }
 
     cartonesOcupados = cartonesOcupados.filter(n => Number(n) !== num);
@@ -2614,7 +2681,7 @@ const { data: cartonesDuplicados, error: errorDuplicados } = await supabase.rpc(
 );
 
 if (errorDuplicados) {
-  console.error('Error validando cartones duplicados:', errorDuplicados);
+  errorSeguro('Error validando cartones duplicados:', errorDuplicados);
   throw new Error('No se pudieron verificar cartones duplicados.');
 }
 
@@ -2661,7 +2728,7 @@ if (duplicados.length > 0) {
       }]);
 
     if (errorInsert) {
-      console.error('Error insertando inscripción:', errorInsert);
+      errorSeguro('Error insertando inscripción:', errorInsert);
 
       await liberarReservasSeleccionadas(cedulaLimpia, cartonesEnviar);
 
@@ -2680,7 +2747,7 @@ if (duplicados.length > 0) {
     location.reload();
 
   } catch (err) {
-    console.error(err);
+    errorSeguro(err);
     alert(err.message || 'Ocurrió un error inesperado');
   } finally {
     if (boton) {
@@ -2728,7 +2795,7 @@ async function consultarCartones() {
   });
 
   if (error) {
-    console.error('Error consultando compra:', error);
+    errorSeguro('Error consultando compra:', error);
     cont.innerHTML = `
       <p style="text-align:center;color:#ff4444;">
         Error consultando la compra.
@@ -2854,7 +2921,7 @@ cartonesOcupados = await fetchTodosLosOcupados();
     .order('id', { ascending: false });
 
   if (error) {
-    console.error(error);
+    errorSeguro(error);
     return alert('Error cargando inscripciones');
   }
 
@@ -3015,7 +3082,7 @@ async function aprobarInscripcion(id, fila) {
     .eq('id', id);
 
   if (error) {
-    console.error(error);
+    errorSeguro(error);
     alert('No se pudo aprobar');
     return false;
   }
@@ -3061,7 +3128,7 @@ async function rechazarInscripcion(item, fila) {
     .eq('id', item.id);
 
   if (errUpd) {
-    console.error(errUpd);
+    errorSeguro(errUpd);
     alert('Error actualizando inscripción');
     return false;
   }
@@ -3103,7 +3170,7 @@ function obtenerRutaComprobanteDesdeUrl(url) {
     return `${SITE_SLUG}/${nombreArchivo}`;
 
   } catch (error) {
-    console.error('Error obteniendo ruta del comprobante:', error);
+    errorSeguro('Error obteniendo ruta del comprobante:', error);
     return null;
   }
 }
@@ -3139,7 +3206,7 @@ async function eliminarInscripcion(item, fila) {
           .remove(rutasIntento);
 
         if (errorStorage) {
-          console.warn('No se pudo eliminar el comprobante del storage:', errorStorage);
+          warnSeguro('No se pudo eliminar el comprobante del storage:', errorStorage);
         }
       }
     }
@@ -3153,7 +3220,7 @@ async function eliminarInscripcion(item, fila) {
     alert(`Inscripción eliminada. Cartones liberados: ${data ?? 0}`);
 
   } catch (e) {
-    console.error(e);
+    errorSeguro(e);
     alert('Error al eliminar inscripción.');
   }
 }
@@ -3258,7 +3325,7 @@ async function reiniciarTodo() {
     .gte('id', 0);
 
   if (errorGanadores) {
-    console.warn('No se pudieron borrar ganadores:', errorGanadores);
+    warnSeguro('No se pudieron borrar ganadores:', errorGanadores);
   }
 
   // Borrar comprobantes solo dentro de la carpeta del sitio
@@ -3389,7 +3456,7 @@ async function guardarNuevoTotal() {
     await contarCartonesVendidos();
 
   } catch (error) {
-    console.error('Error guardando cartones visibles:', error);
+    errorSeguro('Error guardando cartones visibles:', error);
 
     if (estado) {
       estado.textContent = error.message || "Error al actualizar.";
@@ -3408,10 +3475,10 @@ async function cargarPromocionesConfig() {
       promo.precio = parseFloat(await getConfigValue(`${prefix}_precio`, '0')) || 0;
     }
     
-    console.log('Promociones cargadas:', promociones);
+    logSeguro('Promociones cargadas:', promociones);
     renderizarBotonesPromociones();
   } catch (error) {
-    console.error('Error cargando promociones:', error);
+    errorSeguro('Error cargando promociones:', error);
   }
 }
 
@@ -3428,7 +3495,7 @@ async function cargarPromocionesAdmin() {
         parseFloat(await getConfigValue(`promo${i}_precio`, '0')) || '';
     }
   } catch (error) {
-    console.error('Error cargando promociones en admin:', error);
+    errorSeguro('Error cargando promociones en admin:', error);
   }
 }
 
@@ -3474,7 +3541,7 @@ async function guardarPromociones() {
     }, 3000);
 
   } catch (error) {
-    console.error('Error guardando promociones:', error);
+    errorSeguro('Error guardando promociones:', error);
 
     if (estado) {
       estado.textContent = 'Error inesperado al guardar';
@@ -3565,7 +3632,7 @@ async function cargarListaAprobadosSeccion() {
   contenedor.innerHTML = '';
 
   if (error) {
-    console.error('Error cargando lista pública:', error);
+    errorSeguro('Error cargando lista pública:', error);
     contenedor.innerHTML = '<p>Error cargando lista de aprobados.</p>';
     return;
   }
@@ -3848,7 +3915,7 @@ async function guardarGanador() {
     }]);
 
   if (error) {
-    console.error(error);
+    errorSeguro(error);
     alert("Error al guardar el ganador.");
     return;
   }
@@ -4009,7 +4076,7 @@ async function fetchTodosLosOcupados() {
   });
 
   if (error) {
-    console.error('Error cargando cartones ocupados por RPC:', error);
+    errorSeguro('Error cargando cartones ocupados por RPC:', error);
     return [];
   }
 
@@ -4060,7 +4127,7 @@ function editarReferencia(td) {
       .eq('id', id);
 
     if (error) {
-      console.error(error);
+      errorSeguro(error);
       alert('No se pudo guardar la referencia.');
       return;
     }
@@ -4101,7 +4168,7 @@ async function fetchAprobadosBasico() {
   .eq('site_id', SITE_ID)
     .eq('estado','aprobado');
   if (error) {
-    console.error('Error cargando aprobados:', error);
+    errorSeguro('Error cargando aprobados:', error);
     alert('No se pudieron cargar los aprobados.');
     return [];
   }
@@ -4479,7 +4546,7 @@ async function borrarCartones() {
     }
 
   } catch (error) {
-    console.error('Error borrando cartones:', error);
+    errorSeguro('Error borrando cartones:', error);
 
     if (status) {
       status.innerHTML = `<p style="color:red;">❌ Error al borrar imágenes: ${error.message}</p>`;
@@ -4501,7 +4568,7 @@ async function entrarAdmin() {
   const { data: sessionData } = await supabase.auth.getSession();
   const session = sessionData?.session;
 
-  if (!session?.user?.email) {
+  if (!session?.user) {
     mostrarVentana('admin-login');
 
     const emailInput = document.getElementById('admin-email');
@@ -4523,7 +4590,7 @@ async function entrarAdmin() {
   });
 
   if (error) {
-    console.error(error);
+    errorSeguro(error);
     alert('No se pudo verificar el permiso del administrador.');
     return;
   }
@@ -4532,20 +4599,19 @@ async function entrarAdmin() {
 
   if (!permiso || (!permiso.es_master && !permiso.es_admin_sitio)) {
     await supabase.auth.signOut();
-    alert('Este correo no tiene permiso para administrar esta página.');
+    alert('Este usuario no tiene permiso para administrar esta página.');
     return;
   }
 
   adminSession = {
-    email: permiso.email,
-    rol: permiso.rol,
-    site_id: SITE_ID,
-    es_master: permiso.es_master
-  };
+      rol: permiso.rol || (permiso.es_master ? 'master' : 'admin'),
+      site_id: SITE_ID,
+      es_master: permiso.es_master === true
+    };
 
   sesionActiva = true;
 
-  sessionStorage.setItem('admin_email', permiso.email);
+  sessionStorage.removeItem('admin_email');
   sessionStorage.setItem('admin_rol', permiso.rol || 'admin');
   sessionStorage.setItem('admin_site_id', SITE_ID);
   sessionStorage.setItem('admin_is_master', permiso.es_master ? 'true' : 'false');
@@ -4556,7 +4622,7 @@ async function entrarAdmin() {
   if (panel) panel.classList.remove('oculto');
 
   const emailDisplay = document.getElementById('admin-email-display');
-  if (emailDisplay) emailDisplay.textContent = permiso.email;
+  if (emailDisplay) emailDisplay.textContent = permiso.es_master ? 'Master' : 'Administrador';
 
   actualizarVencimientoPanelAdmin();
 
@@ -4584,7 +4650,7 @@ async function recuperarPasswordAdmin() {
     alert('✅ Enlace de recuperación enviado a tu email');
     
   } catch (error) {
-    console.error('Error recuperando password:', error);
+    errorSeguro('Error recuperando password:', error);
     alert('❌ Error enviando enlace de recuperación');
   }
 }
@@ -4625,10 +4691,10 @@ function programarRecargaAdmin() {
     cargandoPanelAdmin = true;
 
     try {
-      console.log('🔄 Recargando panel admin con pausa...');
+      logSeguro('🔄 Recargando panel admin con pausa...');
       await cargarPanelAdmin();
     } catch (error) {
-      console.error('❌ Error recargando panel admin:', error);
+      errorSeguro('❌ Error recargando panel admin:', error);
     } finally {
       cargandoPanelAdmin = false;
     }
@@ -4637,7 +4703,7 @@ function programarRecargaAdmin() {
 
 function activarRefrescoAutomaticoAdmin() {
   if (!SITE_ID) {
-    console.warn('No se puede activar Realtime admin: SITE_ID no está cargado.');
+    warnSeguro('No se puede activar Realtime admin: SITE_ID no está cargado.');
     return;
   }
 
@@ -4654,12 +4720,12 @@ function activarRefrescoAutomaticoAdmin() {
         filter: `site_id=eq.${SITE_ID}`
       },
       (payload) => {
-        console.log('🔄 Cambio detectado en inscripciones de este sitio:', payload);
+        logSeguro('🔄 Cambio detectado en inscripciones de este sitio:', payload);
         programarRecargaAdmin();
       }
     )
     .subscribe((status) => {
-      console.log('📡 Realtime admin:', status);
+      logSeguro('📡 Realtime admin:', status);
     });
 }
 function iniciarContadorReserva(minutos = 5) {
@@ -4710,7 +4776,7 @@ async function liberarReservaPorTiempo() {
     await cargarCartones();
 
   } catch (err) {
-    console.error(err);
+    errorSeguro(err);
   }
 }
 async function cargarTopCompradores() {
@@ -4725,7 +4791,7 @@ async function cargarTopCompradores() {
   });
 
   if (error) {
-    console.error('Error cargando top compradores:', error);
+    errorSeguro('Error cargando top compradores:', error);
     cont.innerHTML = '<p>Error cargando top compradores.</p>';
     return;
   }
@@ -4756,7 +4822,7 @@ let canalTopCompradores = null;
 
 function activarTopCompradoresRealtime() {
   if (!SITE_ID) {
-    console.warn('No se puede activar Realtime top compradores: SITE_ID no está cargado.');
+    warnSeguro('No se puede activar Realtime top compradores: SITE_ID no está cargado.');
     return;
   }
 
@@ -4781,7 +4847,7 @@ function activarTopCompradoresRealtime() {
       }
     )
     .subscribe((status) => {
-      console.log('📡 Realtime top compradores:', status);
+      logSeguro('📡 Realtime top compradores:', status);
     });
 }
 
@@ -4799,7 +4865,7 @@ function obtenerRutaStorageDesdeUrlImagen(url) {
     return String(url).split('/').pop().split('?')[0];
 
   } catch (err) {
-    console.error('Error obteniendo ruta de imagen:', err);
+    errorSeguro('Error obteniendo ruta de imagen:', err);
     return null;
   }
 }
@@ -4845,7 +4911,7 @@ async function subirImagenPremiosInicio() {
 
     if (uploadError) {
       if (estado) estado.textContent = 'Error subiendo imagen';
-      console.error(uploadError);
+      errorSeguro(uploadError);
       return;
     }
 
@@ -4886,7 +4952,7 @@ async function subirImagenPremiosInicio() {
     await cargarImagenPremiosInicio();
 
   } catch (error) {
-    console.error(error);
+    errorSeguro(error);
     if (estado) estado.textContent = '❌ Error: ' + error.message;
   }
 }
@@ -4945,7 +5011,7 @@ async function eliminarImagenPremiosInicio() {
     alert('Imagen eliminada correctamente');
 
   } catch (err) {
-    console.error(err);
+    errorSeguro(err);
     alert('Error eliminando imagen');
   }
 }
@@ -5007,7 +5073,7 @@ let canalProgresoCartones = null;
 
 function activarProgresoCartonesRealtime() {
   if (!SITE_ID) {
-    console.warn('No se puede activar Realtime progreso: SITE_ID no está cargado.');
+    warnSeguro('No se puede activar Realtime progreso: SITE_ID no está cargado.');
     return;
   }
 
@@ -5045,7 +5111,7 @@ function activarProgresoCartonesRealtime() {
       }
     )
     .subscribe((status) => {
-      console.log('📡 Realtime progreso:', status);
+      logSeguro('📡 Realtime progreso:', status);
     });
 }
 let seleccionAleatoriaEnProceso = false;
@@ -5071,7 +5137,7 @@ if (seleccionAleatoriaEnProceso) return;
 });
 
   if (error) {
-    console.error(error);
+    errorSeguro(error);
     alert('Error eligiendo cartones aleatorios.');
     return;
   }
@@ -5278,7 +5344,7 @@ function obtenerRutaStorageDesdeUrl(url, bucket = 'imagenes') {
     const ruta = texto.substring(index + marcador.length);
     return decodeURIComponent(ruta);
   } catch (error) {
-    console.warn('No se pudo obtener ruta de imagen vieja:', error);
+    warnSeguro('No se pudo obtener ruta de imagen vieja:', error);
     return null;
   }
 }
@@ -5386,7 +5452,7 @@ async function guardarPagoMovilSitio() {
     }
 
   } catch (error) {
-    console.error('Error guardando pago móvil:', error);
+    errorSeguro('Error guardando pago móvil:', error);
 
     if (estado) {
       estado.textContent = 'Error guardando pago móvil: ' + error.message;
@@ -5484,7 +5550,7 @@ async function guardarRedesSitio() {
     }
 
   } catch (error) {
-    console.error('Error guardando redes sociales:', error);
+    errorSeguro('Error guardando redes sociales:', error);
 
     if (estado) {
       estado.textContent = 'Error guardando redes sociales: ' + error.message;
@@ -5522,7 +5588,7 @@ window.guardarPremioSitio = guardarPremioSitio;
 window.guardarFaviconSitio = guardarFaviconSitio;
 window.guardarPagoMovilSitio = guardarPagoMovilSitio;
 window.guardarRedesSitio = guardarRedesSitio;
-console.log('✅ Sistema configurado correctamente');
+logSeguro('✅ Sistema configurado correctamente');
 window.abrirEnVivoSitio = abrirEnVivoSitio;
 window.mostrarPoliticaPrivacidad = mostrarPoliticaPrivacidad;
 window.cerrarPoliticaPrivacidad = cerrarPoliticaPrivacidad;
