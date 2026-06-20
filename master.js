@@ -469,6 +469,7 @@ async function masterCrearSitio() {
   const modoCartonSimple = $('masterModoCartonSimple')?.checked === true;
   const mostrarEnVivo = $('masterMostrarEnVivo')?.checked !== false;
   const mostrarTopCompradores = $('masterMostrarTopCompradores')?.checked !== false;
+  const mostrarPromociones = $('masterMostrarPromociones')?.checked !== false;
 const mesesServicio = parseInt($('masterMesesServicio')?.value || '1', 10);
 const fechaInicio = masterFechaHoyISO();
 const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
@@ -537,6 +538,12 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
       modoCartonSimple ? 'true' : 'false'
     );
 
+    await masterSetConfigSitio(
+      data.id,
+      'mostrar_promociones',
+      mostrarPromociones ? 'true' : 'false'
+    );
+
     masterSetEstado(
       'masterEstadoCrearSitio',
       `✅ Sitio creado correctamente.\nLink: ${masterUrlSitio(data.slug)}`,
@@ -555,6 +562,7 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
     if ($('masterModoCartonSimple')) $('masterModoCartonSimple').checked = false;
     if ($('masterMostrarEnVivo')) $('masterMostrarEnVivo').checked = true;
     if ($('masterMostrarTopCompradores')) $('masterMostrarTopCompradores').checked = true;
+    if ($('masterMostrarPromociones')) $('masterMostrarPromociones').checked = true;
 
     await masterCargarSitios();
 
