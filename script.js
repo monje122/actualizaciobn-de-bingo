@@ -2640,22 +2640,27 @@ async function enviarComprobante() {
       throw new Error('La cantidad de cartones seleccionados no coincide con la cantidad elegida.');
     }
 
-    // 1. Validar que esos cartones estén reservados por esta misma cédula en este sitio
-    const { data: reservas, error: errorReservas } = await supabase
-      .from('cartones')
-      .select('numero, cedula')
-      .eq('site_id', SITE_ID)
-      .in('numero', cartonesEnviar);
+    // 1. Validar reserva por RPC segura.
+    // No usamos SELECT directo a cartones porque esa tabla debe estar cerrada por RLS.
+    const { data: reservas, error: errorReservas } = await supabase.rpc(
+      'rpc_public_validar_reserva_cartones',
+      {
+        _site_id: SITE_ID,
+        _cedula: cedulaLimpia,
+        _cartones: cartonesEnviar
+      }
+    );
 
     if (errorReservas) {
+      errorSeguro('Error validando reservas:', errorReservas);
       throw new Error('No se pudieron validar tus cartones.');
     }
 
     const reservasValidas = (reservas || [])
-      .filter(r => String(r.cedula || '').trim() === cedulaLimpia)
-      .map(r => Number(r.numero));
+      .map(r => Number(r.numero))
+      .filter(Number.isFinite);
 
-    const faltantes = cartonesEnviar.filter(n => !reservasValidas.includes(n));
+    const faltantes = cartonesEnviar.filter(n => !reservasValidas.includes(Number(n)));
 
     if (faltantes.length > 0) {
       await liberarReservasSeleccionadas(cedulaLimpia, cartonesEnviar);
