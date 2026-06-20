@@ -3064,6 +3064,7 @@ cartonesOcupados = await fetchTodosLosOcupados();
   data.forEach(item => {
     const tr = document.createElement('tr');
     tr.dataset.estadoActual = item.estado || 'pendiente';
+    tr.dataset.inscripcionId = item.id;
     tr.innerHTML = `
       <td>${item.nombre}</td>
       <td>
@@ -4217,6 +4218,33 @@ function ordenarPorReferencia() {
   tabla.innerHTML = '';
   filas.forEach(fila => tabla.appendChild(fila));
   ordenReferenciaAscendente = !ordenReferenciaAscendente;
+}
+
+function ordenarPendientesArriba() {
+  const tabla = document.querySelector('#tabla-comprobantes tbody');
+  if (!tabla) return;
+
+  const filas = Array.from(tabla.rows);
+
+  filas.sort((a, b) => {
+    const estadoA = String(a.dataset.estadoActual || '').toLowerCase();
+    const estadoB = String(b.dataset.estadoActual || '').toLowerCase();
+
+    const prioridadA = estadoA === 'pendiente' ? 0 : 1;
+    const prioridadB = estadoB === 'pendiente' ? 0 : 1;
+
+    if (prioridadA !== prioridadB) {
+      return prioridadA - prioridadB;
+    }
+
+    const idA = parseInt(a.dataset.inscripcionId || '0', 10) || 0;
+    const idB = parseInt(b.dataset.inscripcionId || '0', 10) || 0;
+
+    return idB - idA;
+  });
+
+  tabla.innerHTML = '';
+  filas.forEach(fila => tabla.appendChild(fila));
 }
 
 function buildWhatsAppLink(rawPhone, presetMsg = '') {
@@ -5585,6 +5613,7 @@ window.guardarGanador = guardarGanador;
 window.ordenarInscripcionesPorNombre = ordenarInscripcionesPorNombre;
 window.ordenarPorCedula = ordenarPorCedula;
 window.ordenarPorReferencia = ordenarPorReferencia;
+window.ordenarPendientesArriba = ordenarPendientesArriba;
 window.activarCohetes = activarCohetes;
 window.mostrarSeccion = mostrarSeccion;
 window.recuperarPasswordAdmin = recuperarPasswordAdmin;
