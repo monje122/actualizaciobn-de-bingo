@@ -720,6 +720,18 @@ async function masterAbrirEditor(siteId) {
   if ($('masterEditMostrarEnVivo')) $('masterEditMostrarEnVivo').checked = sitio.mostrar_en_vivo !== false;
   if ($('masterEditMostrarTopCompradores')) $('masterEditMostrarTopCompradores').checked = sitio.mostrar_top_compradores !== false;
 
+  if ($('masterEditMostrarPromociones')) {
+    $('masterEditMostrarPromociones').checked = true;
+
+    const valorPromociones = await masterGetConfigSitio(
+      sitio.id,
+      'mostrar_promociones',
+      'true'
+    );
+
+    $('masterEditMostrarPromociones').checked = String(valorPromociones).toLowerCase() !== 'false';
+  }
+
   if ($('masterEditModoCartonSimple')) {
     $('masterEditModoCartonSimple').checked = false;
 
@@ -768,6 +780,7 @@ async function masterGuardarEdicion() {
   const modoCartonSimple = $('masterEditModoCartonSimple')?.checked === true;
   const mostrarEnVivo = $('masterEditMostrarEnVivo')?.checked !== false;
   const mostrarTopCompradores = $('masterEditMostrarTopCompradores')?.checked !== false;
+  const mostrarPromociones = $('masterEditMostrarPromociones')?.checked !== false;
 
   if (!nombre) {
     masterSetEstado('masterEstadoEditarSitio', 'El nombre no puede estar vacío.', 'error');
@@ -824,6 +837,12 @@ async function masterGuardarEdicion() {
       siteId,
       'modo_carton_simple',
       modoCartonSimple ? 'true' : 'false'
+    );
+
+    await masterSetConfigSitio(
+      siteId,
+      'mostrar_promociones',
+      mostrarPromociones ? 'true' : 'false'
     );
 
     masterSetEstado('masterEstadoEditarSitio', '✅ Cambios guardados.', 'success');
