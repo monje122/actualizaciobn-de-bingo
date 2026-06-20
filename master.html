@@ -662,6 +662,9 @@
               <label>Precio por cartón Bs
                 <input type="number" id="masterPrecioCarton" placeholder="Precio" min="0" step="0.01">
               </label>
+              <label>Clave de reinicio
+                <input type="text" id="masterClaveReinicio" placeholder="Ej: Reinicio-Cliente-2026!" autocomplete="new-password">
+              </label>
               <label>Tiempo de servicio
                 <select id="masterMesesServicio">
                   <option value="1">1 mes</option>
@@ -809,6 +812,9 @@
               <label>Precio Bs
                 <input type="number" id="masterEditPrecio" placeholder="Precio Bs" min="0" step="0.01">
               </label>
+              <label>Clave de reinicio
+                <input type="text" id="masterEditClaveReinicio" placeholder="Clave para reiniciar este sitio" autocomplete="new-password">
+              </label>
               <label>Logo URL
                 <input type="text" id="masterEditLogoUrl" placeholder="Logo URL">
               </label>
@@ -911,6 +917,6 @@
     window.supabase = supabase.createClient(supabaseUrl, supabaseKey);
   </script>
 
-  <script src="master.js?v=10"></script>
+  <script src="master.js?v=127"></script>
 </body>
 </html>
