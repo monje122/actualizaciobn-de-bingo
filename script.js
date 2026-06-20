@@ -2855,13 +2855,46 @@ async function consultarCartones() {
     box.style.gap = '10px';
 
     cartones.forEach(numero => {
-      const item = document.createElement('div');
-      item.className = 'carton';
-      item.textContent = numero;
-      item.style.cursor = 'default';
-      item.style.pointerEvents = 'none';
-      box.appendChild(item);
-    });
+  const item = document.createElement('div');
+  item.className = 'carton-consulta-card';
+  item.style.width = '130px';
+  item.style.textAlign = 'center';
+  item.style.border = '2px solid #ffa500';
+  item.style.borderRadius = '12px';
+  item.style.padding = '6px';
+  item.style.background = '#fff';
+
+  const img = document.createElement('img');
+  img.src = urlCartonWebP(numero);
+  img.loading = 'lazy';
+  img.alt = `Cartón ${numero}`;
+  img.style.width = '100%';
+  img.style.maxWidth = '120px';
+  img.style.borderRadius = '8px';
+  img.style.display = 'block';
+  img.style.margin = '0 auto 6px auto';
+
+  const label = document.createElement('div');
+  label.textContent = `Cartón ${numero}`;
+  label.style.fontWeight = 'bold';
+  label.style.color = '#020A35';
+
+  img.onerror = () => {
+    img.remove();
+    item.style.width = '70px';
+    item.style.height = '65px';
+    item.style.display = 'flex';
+    item.style.alignItems = 'center';
+    item.style.justifyContent = 'center';
+    item.style.fontSize = '22px';
+    item.style.fontWeight = 'bold';
+    label.textContent = numero;
+  };
+
+  item.appendChild(img);
+  item.appendChild(label);
+  box.appendChild(item);
+});
 
     cont.appendChild(box);
   }
