@@ -94,6 +94,7 @@ let modoCartones = "libre";
 let modoCartonSimple = false;
 let mostrarEnVivoSitio = true;
 let mostrarTopCompradoresSitio = true;
+let mostrarPromocionesSitio = true;
 let planTipoSitio = 'basico';
 let cantidadFijaCartones = 1;
 let detectorIniciado = false;
@@ -1869,9 +1870,44 @@ async function contarCartonesVendidos() {
   return totalVendidos;
 }
 
+
+async function cargarMostrarPromocionesSitio() {
+  try {
+    const { data, error } = await supabase.rpc('rpc_public_mostrar_promociones', {
+      _site_id: SITE_ID
+    });
+
+    if (error) {
+      warnSeguro('No se pudo cargar mostrar_promociones por RPC pública:', error);
+      const valorFallback = await getConfigValue('mostrar_promociones', 'true');
+      mostrarPromocionesSitio = String(valorFallback).toLowerCase() !== 'false';
+      return;
+    }
+
+    mostrarPromocionesSitio = data !== false && String(data).toLowerCase() !== 'false';
+
+  } catch (error) {
+    warnSeguro('Error cargando mostrar_promociones:', error);
+    mostrarPromocionesSitio = true;
+  }
+}
+
 function renderizarBotonesPromociones() {
   const promoBox = document.getElementById('promoBox');
   if (!promoBox) return;
+
+  if (!mostrarPromocionesSitio) {
+    promoBox.classList.add('oculto');
+    promocionSeleccionada = null;
+
+    document.querySelectorAll('.btn-promo').forEach(btn => {
+      btn.classList.remove('seleccionado');
+      btn.classList.add('desactivado');
+      btn.onclick = null;
+    });
+
+    return;
+  }
 
   let algunaActiva = false;
   
@@ -1929,6 +1965,7 @@ if (!sitioOk) {
     cargarConfiguracionModoCartones(),
     cargarModoCartonSimple(),
     cargarOpcionesMasterSitio(),
+    cargarMostrarPromocionesSitio(),
     cargarPromocionesConfig(),
     cargarImagenesSitio(),
     cargarColoresSitio(),
@@ -3588,6 +3625,11 @@ async function guardarPromociones() {
 }
 
 function seleccionarPromocion(numero) {
+  if (!mostrarPromocionesSitio) {
+    promocionSeleccionada = null;
+    return;
+  }
+
   const promo = promociones[numero - 1];
   
   if (!promo.activa || promo.cantidad <= 0 || promo.precio <= 0) {
@@ -3635,6 +3677,7 @@ function deseleccionarPromocion() {
 }
 
 function getPromocionSeleccionada() {
+  if (!mostrarPromocionesSitio) return null;
   return promocionSeleccionada ? promociones[promocionSeleccionada - 1] : null;
 }
 
