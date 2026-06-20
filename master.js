@@ -459,6 +459,7 @@ async function masterCrearSitio() {
   const titulo = $('masterTituloSitio')?.value.trim();
   const total = parseInt($('masterTotalCartones')?.value, 10);
   const precio = parseFloat($('masterPrecioCarton')?.value);
+  const claveReinicio = $('masterClaveReinicio')?.value.trim();
   const logoUrl = $('masterLogoUrl')?.value.trim();
   const colorPrincipal = $('masterColorPrincipal')?.value.trim();
   const whatsappGrupo = $('masterWhatsappGrupo')?.value.trim();
@@ -487,6 +488,11 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
 
   if (!Number.isFinite(precio) || precio < 0) {
     masterSetEstado('masterEstadoCrearSitio', 'El precio debe ser válido.', 'error');
+    return;
+  }
+
+  if (!claveReinicio) {
+    masterSetEstado('masterEstadoCrearSitio', 'Debes colocar una clave de reinicio para este sitio.', 'error');
     return;
   }
 
@@ -542,6 +548,12 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
       data.id,
       'mostrar_promociones',
       mostrarPromociones ? 'true' : 'false'
+    );
+
+    await masterSetConfigSitio(
+      data.id,
+      'clave_reinicio',
+      claveReinicio
     );
 
     masterSetEstado(
@@ -720,6 +732,16 @@ async function masterAbrirEditor(siteId) {
   if ($('masterEditMostrarEnVivo')) $('masterEditMostrarEnVivo').checked = sitio.mostrar_en_vivo !== false;
   if ($('masterEditMostrarTopCompradores')) $('masterEditMostrarTopCompradores').checked = sitio.mostrar_top_compradores !== false;
 
+  if ($('masterEditClaveReinicio')) {
+    const valorClaveReinicio = await masterGetConfigSitio(
+      sitio.id,
+      'clave_reinicio',
+      ''
+    );
+
+    $('masterEditClaveReinicio').value = valorClaveReinicio || '';
+  }
+
   if ($('masterEditMostrarPromociones')) {
     $('masterEditMostrarPromociones').checked = true;
 
@@ -769,6 +791,7 @@ async function masterGuardarEdicion() {
   const titulo = $('masterEditTitulo')?.value.trim();
   const total = parseInt($('masterEditTotal')?.value, 10);
   const precio = parseFloat($('masterEditPrecio')?.value);
+  const claveReinicio = $('masterEditClaveReinicio')?.value.trim();
   const logoUrl = $('masterEditLogoUrl')?.value.trim();
   const colorPrincipal = $('masterEditColorPrincipal')?.value.trim();
   const whatsappGrupo = $('masterEditWhatsappGrupo')?.value.trim();
@@ -794,6 +817,11 @@ async function masterGuardarEdicion() {
 
   if (!Number.isFinite(precio) || precio < 0) {
     masterSetEstado('masterEstadoEditarSitio', 'Precio inválido.', 'error');
+    return;
+  }
+
+  if (!claveReinicio) {
+    masterSetEstado('masterEstadoEditarSitio', 'La clave de reinicio no puede estar vacía.', 'error');
     return;
   }
 
@@ -843,6 +871,12 @@ async function masterGuardarEdicion() {
       siteId,
       'mostrar_promociones',
       mostrarPromociones ? 'true' : 'false'
+    );
+
+    await masterSetConfigSitio(
+      siteId,
+      'clave_reinicio',
+      claveReinicio
     );
 
     masterSetEstado('masterEstadoEditarSitio', '✅ Cambios guardados.', 'success');
