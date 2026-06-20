@@ -3426,42 +3426,8 @@ async function reiniciarTodo() {
     return;
   }
 
-  // Borrar inscripciones solo de este sitio
-  const { error: errorInscripciones } = await supabase
-    .from('inscripciones')
-    .delete()
-    .eq('site_id', SITE_ID)
-    .gte('id', 0);
-
-  if (errorInscripciones) {
-    alert('❌ Error eliminando inscripciones: ' + errorInscripciones.message);
-    return;
-  }
-
-  // Borrar cartones solo de este sitio
-  const { error: errorCartones } = await supabase
-    .from('cartones')
-    .delete()
-    .eq('site_id', SITE_ID)
-    .gte('numero', 1);
-
-  if (errorCartones) {
-    alert('❌ Error eliminando cartones: ' + errorCartones.message);
-    return;
-  }
-
-  // Opcional: borrar ganadores solo de este sitio
-  const { error: errorGanadores } = await supabase
-    .from('ganadores')
-    .delete()
-    .eq('site_id', SITE_ID)
-    .gte('id', 0);
-
-  if (errorGanadores) {
-    warnSeguro('No se pudieron borrar ganadores:', errorGanadores);
-  }
-
-  // Borrar comprobantes solo dentro de la carpeta del sitio
+  // 1) Borrar comprobantes primero, antes de borrar las inscripciones.
+  // Así, si Storage falla, no se pierden las referencias en la tabla.
   let totalEliminados = 0;
   const pageSize = 1000;
 
@@ -3474,26 +3440,65 @@ async function reiniciarTodo() {
       });
 
     if (listErr) {
-      alert('❌ Error listando comprobantes: ' + listErr.message);
-      break;
+      alert('❌ Error listando comprobantes. No se reinició nada: ' + listErr.message);
+      return;
     }
 
     if (!files || files.length === 0) break;
 
-    const names = files.map(f => `${SITE_SLUG}/${f.name}`);
+    const names = files
+      .filter(f => f && f.name)
+      .map(f => `${SITE_SLUG}/${f.name}`);
+
+    if (names.length === 0) break;
 
     const { error: delErr } = await supabase.storage
       .from('comprobantes')
       .remove(names);
 
     if (delErr) {
-      alert('❌ Error eliminando comprobantes: ' + delErr.message);
-      break;
+      alert('❌ Error eliminando comprobantes. No se reinició nada: ' + delErr.message);
+      return;
     }
 
     totalEliminados += names.length;
 
     if (files.length < pageSize) break;
+  }
+
+  // 2) Borrar inscripciones solo de este sitio
+  const { error: errorInscripciones } = await supabase
+    .from('inscripciones')
+    .delete()
+    .eq('site_id', SITE_ID)
+    .gte('id', 0);
+
+  if (errorInscripciones) {
+    alert('❌ Los comprobantes se borraron, pero hubo error eliminando inscripciones: ' + errorInscripciones.message);
+    return;
+  }
+
+  // 3) Borrar cartones solo de este sitio
+  const { error: errorCartones } = await supabase
+    .from('cartones')
+    .delete()
+    .eq('site_id', SITE_ID)
+    .gte('numero', 1);
+
+  if (errorCartones) {
+    alert('❌ Error eliminando cartones: ' + errorCartones.message);
+    return;
+  }
+
+  // 4) Opcional: borrar ganadores solo de este sitio
+  const { error: errorGanadores } = await supabase
+    .from('ganadores')
+    .delete()
+    .eq('site_id', SITE_ID)
+    .gte('id', 0);
+
+  if (errorGanadores) {
+    warnSeguro('No se pudieron borrar ganadores:', errorGanadores);
   }
 
   usuario.cartones = [];
