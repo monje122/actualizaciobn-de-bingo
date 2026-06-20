@@ -1881,14 +1881,70 @@ async function cargarMostrarPromocionesSitio() {
       warnSeguro('No se pudo cargar mostrar_promociones por RPC pública:', error);
       const valorFallback = await getConfigValue('mostrar_promociones', 'true');
       mostrarPromocionesSitio = String(valorFallback).toLowerCase() !== 'false';
+      aplicarEstadoPromocionesAdminPanel();
       return;
     }
 
     mostrarPromocionesSitio = data !== false && String(data).toLowerCase() !== 'false';
+    aplicarEstadoPromocionesAdminPanel();
 
   } catch (error) {
     warnSeguro('Error cargando mostrar_promociones:', error);
     mostrarPromocionesSitio = true;
+    aplicarEstadoPromocionesAdminPanel();
+  }
+}
+
+function aplicarEstadoPromocionesAdminPanel() {
+  const tabPromociones = document.getElementById('tab-promociones');
+  const btnTabPromociones = Array.from(document.querySelectorAll('.tab-btn, button'))
+    .find(btn => {
+      const onclick = String(btn.getAttribute('onclick') || '').toLowerCase();
+      const texto = String(btn.textContent || '').toLowerCase();
+      return onclick.includes('tab-promociones') || texto.includes('promocion') || texto.includes('promoción');
+    });
+
+  const promoBoxPublico = document.getElementById('promoBox');
+
+  if (!mostrarPromocionesSitio) {
+    promocionSeleccionada = null;
+
+    if (promoBoxPublico) {
+      promoBoxPublico.classList.add('oculto');
+    }
+
+    if (btnTabPromociones) {
+      btnTabPromociones.style.display = 'none';
+      btnTabPromociones.disabled = true;
+    }
+
+    if (tabPromociones) {
+      const estabaActivo = tabPromociones.classList.contains('active');
+      tabPromociones.classList.remove('active');
+      tabPromociones.classList.add('oculto');
+
+      tabPromociones.querySelectorAll('input, select, textarea, button').forEach(el => {
+        el.disabled = true;
+      });
+
+      if (estabaActivo && typeof cambiarTab === 'function') {
+        cambiarTab('tab-dashboard');
+      }
+    }
+
+    return;
+  }
+
+  if (btnTabPromociones) {
+    btnTabPromociones.style.display = '';
+    btnTabPromociones.disabled = false;
+  }
+
+  if (tabPromociones) {
+    tabPromociones.classList.remove('oculto');
+    tabPromociones.querySelectorAll('input, select, textarea, button').forEach(el => {
+      el.disabled = false;
+    });
   }
 }
 
@@ -1955,6 +2011,10 @@ if (!sitioOk) {
   await cargarLinkWhatsapp();
   document.getElementById('overlay-carga').style.display = 'none';
 
+  // Primero se carga si el master permite promociones.
+  // Luego se cargan las promociones para evitar que se muestren por carrera de carga.
+  await cargarMostrarPromocionesSitio();
+
   await Promise.all([
     cargarDatosClienteLocal(),
   activarProgresoCartonesRealtime(),
@@ -1965,7 +2025,6 @@ if (!sitioOk) {
     cargarConfiguracionModoCartones(),
     cargarModoCartonSimple(),
     cargarOpcionesMasterSitio(),
-    cargarMostrarPromocionesSitio(),
     cargarPromocionesConfig(),
     cargarImagenesSitio(),
     cargarColoresSitio(),
@@ -3557,16 +3616,35 @@ async function cargarPromocionesConfig() {
 }
 
 async function cargarPromocionesAdmin() {
+  const estado = document.getElementById('estadoPromociones');
+
   try {
+    await cargarMostrarPromocionesSitio();
+    aplicarEstadoPromocionesAdminPanel();
+
+    if (!mostrarPromocionesSitio) {
+      if (estado) {
+        estado.textContent = '🚫 Promociones deshabilitadas por el master para este sitio.';
+        estado.style.color = '#dc3545';
+      }
+      return;
+    }
+
+    if (estado) {
+      estado.textContent = '';
+      estado.style.color = '';
+    }
+
     for (let i = 1; i <= 4; i++) {
-      document.getElementById(`promo${i}_activa`).checked = 
-        (await getConfigValue(`promo${i}_activa`, 'false')) === 'true';
-      document.getElementById(`promo${i}_descripcion`).value = 
-        await getConfigValue(`promo${i}_descripcion`, '');
-      document.getElementById(`promo${i}_cantidad`).value = 
-        parseInt(await getConfigValue(`promo${i}_cantidad`, '0')) || '';
-      document.getElementById(`promo${i}_precio`).value = 
-        parseFloat(await getConfigValue(`promo${i}_precio`, '0')) || '';
+      const activa = document.getElementById(`promo${i}_activa`);
+      const descripcion = document.getElementById(`promo${i}_descripcion`);
+      const cantidad = document.getElementById(`promo${i}_cantidad`);
+      const precio = document.getElementById(`promo${i}_precio`);
+
+      if (activa) activa.checked = (await getConfigValue(`promo${i}_activa`, 'false')) === 'true';
+      if (descripcion) descripcion.value = await getConfigValue(`promo${i}_descripcion`, '');
+      if (cantidad) cantidad.value = parseInt(await getConfigValue(`promo${i}_cantidad`, '0'), 10) || '';
+      if (precio) precio.value = parseFloat(await getConfigValue(`promo${i}_precio`, '0')) || '';
     }
   } catch (error) {
     errorSeguro('Error cargando promociones en admin:', error);
@@ -3580,6 +3658,17 @@ async function guardarPromociones() {
     if (estado) {
       estado.textContent = 'Error: sitio no identificado';
       estado.style.color = 'red';
+    }
+    return;
+  }
+
+  await cargarMostrarPromocionesSitio();
+  aplicarEstadoPromocionesAdminPanel();
+
+  if (!mostrarPromocionesSitio) {
+    if (estado) {
+      estado.textContent = '🚫 No se pueden guardar promociones: están deshabilitadas por el master.';
+      estado.style.color = '#dc3545';
     }
     return;
   }
