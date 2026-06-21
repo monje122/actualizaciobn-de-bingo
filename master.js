@@ -227,6 +227,63 @@ async function masterVerificarAcceso() {
   }
 }
 
+// ==================== RATE LIMIT LOGIN MASTER ====================
+const MASTER_LOGIN_RATE_MAX_INTENTOS = 5;
+const MASTER_LOGIN_RATE_VENTANA_MINUTOS = 10;
+const MASTER_LOGIN_RATE_BLOQUEO_MINUTOS = 15;
+
+function masterNormalizarRespuestaRateLogin(data) {
+  return Array.isArray(data) ? data[0] : data;
+}
+
+async function masterVerificarRateLogin(email) {
+  const { data, error } = await supabase.rpc('rpc_login_rate_check', {
+    _tipo: 'master_login',
+    _email: email,
+    _site_id: null,
+    _max_intentos: MASTER_LOGIN_RATE_MAX_INTENTOS,
+    _ventana_minutos: MASTER_LOGIN_RATE_VENTANA_MINUTOS,
+    _bloqueo_minutos: MASTER_LOGIN_RATE_BLOQUEO_MINUTOS
+  });
+
+  if (error) {
+    errorSeguro('Error verificando rate limit master:', error);
+    throw new Error('Falta ejecutar el SQL de seguridad para intentos de login.');
+  }
+
+  return masterNormalizarRespuestaRateLogin(data) || { permitido: true, mensaje: 'Permitido' };
+}
+
+async function masterRegistrarFalloRateLogin(email) {
+  const { data, error } = await supabase.rpc('rpc_login_rate_registrar_fallo', {
+    _tipo: 'master_login',
+    _email: email,
+    _site_id: null,
+    _max_intentos: MASTER_LOGIN_RATE_MAX_INTENTOS,
+    _ventana_minutos: MASTER_LOGIN_RATE_VENTANA_MINUTOS,
+    _bloqueo_minutos: MASTER_LOGIN_RATE_BLOQUEO_MINUTOS
+  });
+
+  if (error) {
+    warnSeguro('No se pudo registrar fallo de login master:', error);
+    return null;
+  }
+
+  return masterNormalizarRespuestaRateLogin(data);
+}
+
+async function masterLimpiarRateLogin(email) {
+  const { error } = await supabase.rpc('rpc_login_rate_limpiar', {
+    _tipo: 'master_login',
+    _email: email,
+    _site_id: null
+  });
+
+  if (error) {
+    warnSeguro('No se pudo limpiar rate limit master:', error);
+  }
+}
+
 async function masterLogin() {
   const email = $('masterEmail')?.value.trim().toLowerCase();
   const password = $('masterPassword')?.value || '';
@@ -247,21 +304,40 @@ async function masterLogin() {
   }
 
   try {
+    const rate = await masterVerificarRateLogin(email);
+
+    if (rate && rate.permitido === false) {
+      masterSetEstado('masterLoginEstado', rate.mensaje || 'Demasiados intentos. Intenta más tarde.', 'error');
+      if ($('masterPassword')) $('masterPassword').value = '';
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email,
       password
     });
 
     if (error) {
-      masterSetEstado('masterLoginEstado', 'Correo o contraseña incorrectos.', 'error');
+      const fallo = await masterRegistrarFalloRateLogin(email);
+      masterSetEstado('masterLoginEstado', fallo?.mensaje || 'Correo o contraseña incorrectos.', 'error');
+      if ($('masterPassword')) $('masterPassword').value = '';
       return;
     }
 
-    await masterVerificarAcceso();
+    const accesoOk = await masterVerificarAcceso();
+
+    if (accesoOk === false) {
+      const fallo = await masterRegistrarFalloRateLogin(email);
+      masterSetEstado('masterLoginEstado', fallo?.mensaje || 'Este correo no tiene permiso master.', 'error');
+      if ($('masterPassword')) $('masterPassword').value = '';
+      return;
+    }
+
+    await masterLimpiarRateLogin(email);
 
   } catch (error) {
     errorSeguro('Error login master:', error);
-    masterSetEstado('masterLoginEstado', 'Error iniciando sesión.', 'error');
+    masterSetEstado('masterLoginEstado', error.message || 'Error iniciando sesión.', 'error');
   } finally {
     if (btn) {
       btn.disabled = false;
