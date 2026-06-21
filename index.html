@@ -246,6 +246,48 @@
       color: #5b667a;
     }
 
+
+    .oferta-limitada {
+      max-width: 900px;
+      margin: 0 auto 22px;
+      padding: 15px 18px;
+      border-radius: 18px;
+      text-align: center;
+      background: linear-gradient(135deg, #ffefb0, #ffb22e, #ff7a1a);
+      color: #10162f;
+      border: 2px solid rgba(2, 10, 53, .18);
+      box-shadow: 0 14px 30px rgba(255, 122, 26, .22);
+      font-weight: 900;
+      animation: parpadeoOferta 1.15s ease-in-out infinite;
+    }
+
+    .oferta-limitada .oferta-titulo {
+      display: block;
+      font-size: clamp(18px, 3vw, 28px);
+      line-height: 1.15;
+      text-transform: uppercase;
+      letter-spacing: .3px;
+    }
+
+    .oferta-limitada .oferta-texto {
+      display: block;
+      margin-top: 5px;
+      font-size: clamp(14px, 2vw, 18px);
+      color: #1f2937;
+      font-weight: 800;
+    }
+
+    @keyframes parpadeoOferta {
+      0%, 100% {
+        transform: scale(1);
+        filter: brightness(1);
+      }
+      50% {
+        transform: scale(1.025);
+        filter: brightness(1.14);
+      }
+    }
+
     .features {
       display: grid;
       grid-template-columns: repeat(3, 1fr);
@@ -669,7 +711,13 @@
       <div class="container">
         <div class="section-title">
           <h2>Elige tu plan ideal</h2>
-          <p>Planes pensados para comenzar, crecer o manejar bingos grandes. tasa EURO BCV</p>
+          <p>Planes pensados para comenzar, crecer o manejar bingos grandes.</p>
+        </div>
+
+
+        <div class="oferta-limitada" role="note" aria-label="Oferta por tiempo limitado">
+          <span class="oferta-titulo">🔥 Precio especial para los primeros 50 clientes</span>
+          <span class="oferta-texto">Tiempo limitado hasta el día 30. Quienes entren ahora quedarán pagando estos precios antes de que suban.</span>
         </div>
 
         <div class="plans">
