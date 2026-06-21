@@ -1231,6 +1231,62 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 });
 
+// ==================== RATE LIMIT LOGIN ADMIN / MASTER ====================
+const LOGIN_RATE_MAX_INTENTOS = 5;
+const LOGIN_RATE_VENTANA_MINUTOS = 10;
+const LOGIN_RATE_BLOQUEO_MINUTOS = 15;
+
+function normalizarRespuestaRateLogin(data) {
+  return Array.isArray(data) ? data[0] : data;
+}
+
+async function verificarRateLogin(tipo, email, siteId = null) {
+  const { data, error } = await supabase.rpc('rpc_login_rate_check', {
+    _tipo: tipo,
+    _email: email,
+    _site_id: siteId,
+    _max_intentos: LOGIN_RATE_MAX_INTENTOS,
+    _ventana_minutos: LOGIN_RATE_VENTANA_MINUTOS,
+    _bloqueo_minutos: LOGIN_RATE_BLOQUEO_MINUTOS
+  });
+
+  if (error) {
+    errorSeguro('Error verificando rate limit login:', error);
+    throw new Error('Falta ejecutar el SQL de seguridad para intentos de login.');
+  }
+
+  return normalizarRespuestaRateLogin(data) || { permitido: true, mensaje: 'Permitido' };
+}
+
+async function registrarFalloRateLogin(tipo, email, siteId = null) {
+  const { data, error } = await supabase.rpc('rpc_login_rate_registrar_fallo', {
+    _tipo: tipo,
+    _email: email,
+    _site_id: siteId,
+    _max_intentos: LOGIN_RATE_MAX_INTENTOS,
+    _ventana_minutos: LOGIN_RATE_VENTANA_MINUTOS,
+    _bloqueo_minutos: LOGIN_RATE_BLOQUEO_MINUTOS
+  });
+
+  if (error) {
+    warnSeguro('No se pudo registrar fallo de login:', error);
+    return null;
+  }
+
+  return normalizarRespuestaRateLogin(data);
+}
+
+async function limpiarRateLogin(tipo, email, siteId = null) {
+  const { error } = await supabase.rpc('rpc_login_rate_limpiar', {
+    _tipo: tipo,
+    _email: email,
+    _site_id: siteId
+  });
+
+  if (error) {
+    warnSeguro('No se pudo limpiar rate limit de login:', error);
+  }
+}
 // ==================== LOGIN ADMIN CON EMAIL Y CLAVE ====================
 async function loginAdmin() {
   const email = document.getElementById('admin-email').value.trim().toLowerCase();
@@ -1257,6 +1313,15 @@ async function loginAdmin() {
     errorDiv.textContent = '🔐 Verificando acceso...';
     errorDiv.className = 'info';
 
+    const rate = await verificarRateLogin('admin_login', email, SITE_ID);
+
+    if (rate && rate.permitido === false) {
+      errorDiv.textContent = rate.mensaje || 'Demasiados intentos. Intenta más tarde.';
+      errorDiv.className = 'error';
+      document.getElementById('admin-password').value = '';
+      return;
+    }
+
     const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
       email,
       password
@@ -1264,7 +1329,8 @@ async function loginAdmin() {
 
     if (loginError) {
       errorSeguro('Error login:', loginError);
-      errorDiv.textContent = 'Usuario o clave incorrectos';
+      const fallo = await registrarFalloRateLogin('admin_login', email, SITE_ID);
+      errorDiv.textContent = fallo?.mensaje || 'Usuario o clave incorrectos';
       errorDiv.className = 'error';
       document.getElementById('admin-password').value = '';
       return;
@@ -1277,6 +1343,7 @@ async function loginAdmin() {
     if (ctxError) {
       errorSeguro('Error verificando permisos:', ctxError);
       await supabase.auth.signOut();
+      await registrarFalloRateLogin('admin_login', email, SITE_ID);
       errorDiv.textContent = 'No se pudo verificar el permiso del administrador';
       errorDiv.className = 'error';
       return;
@@ -1286,12 +1353,15 @@ async function loginAdmin() {
 
     if (!permiso || (!permiso.es_master && !permiso.es_admin_sitio)) {
       await supabase.auth.signOut();
+      const fallo = await registrarFalloRateLogin('admin_login', email, SITE_ID);
 
-      errorDiv.textContent = 'Este usuario no tiene permiso para administrar esta página';
+      errorDiv.textContent = fallo?.mensaje || 'Este usuario no tiene permiso para administrar esta página';
       errorDiv.className = 'error';
       document.getElementById('admin-password').value = '';
       return;
     }
+
+    await limpiarRateLogin('admin_login', email, SITE_ID);
 
     sessionStorage.removeItem('admin_email');
     sessionStorage.setItem('admin_rol', permiso.rol || 'admin');
@@ -1329,7 +1399,7 @@ async function loginAdmin() {
 
   } catch (error) {
     errorSeguro('Error en loginAdmin:', error);
-    errorDiv.textContent = 'Error de conexión o configuración';
+    errorDiv.textContent = error.message || 'Error de conexión o configuración';
     errorDiv.className = 'error';
     document.getElementById('admin-password').value = '';
   }
