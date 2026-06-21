@@ -30,6 +30,57 @@
       padding: 0;
     }
 
+
+    /* Footer legal limpio: links en una sola línea, sin franjas ni botones */
+    .footer-bingogp-legal {
+      text-align: center;
+      padding: 18px 10px;
+      font-size: 13px;
+      color: #111;
+      background: transparent;
+    }
+
+    .footer-bingogp-legal .legal-links {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+
+    .footer-bingogp-legal .legal-link {
+      all: unset;
+      display: inline;
+      width: auto !important;
+      min-width: 0 !important;
+      max-width: none !important;
+      background: transparent !important;
+      background-color: transparent !important;
+      color: #020A35 !important;
+      border: 0 !important;
+      border-radius: 0 !important;
+      box-shadow: none !important;
+      padding: 0 !important;
+      margin: 0 !important;
+      font-size: 13px !important;
+      font-weight: 700 !important;
+      line-height: 1.2 !important;
+      text-decoration: underline !important;
+      cursor: pointer;
+      text-transform: none !important;
+      letter-spacing: normal !important;
+    }
+
+    .footer-bingogp-legal .legal-link:hover {
+      color: #f59e0b !important;
+    }
+
+    .footer-bingogp-legal .legal-sep {
+      color: #777;
+      font-weight: 400;
+    }
+
     .modal-politica-privacidad {
       position: fixed;
       inset: 0;
@@ -1016,18 +1067,16 @@
 </div>
 
 
- <footer style="text-align: center; padding: 20px; font-size: 13px; color: black; background-color: rgba(0,0,0,0.0);">
-  © 2026 BingoGP. Todos los derechos reservados. <br>
-  <button id="btnPoliticaPrivacidad" type="button" class="btn-politica-privacidad" onclick="mostrarPoliticaPrivacidad()">Política de Privacidad</button>
-  <span style="color:#777; margin: 0 6px;">|</span>
-  <button type="button" class="btn-politica-privacidad" onclick="mostrarTerminosBingoGP()">Términos y Condiciones</button>
-  <span style="color:#777; margin: 0 6px;">|</span>
-  <button type="button" class="btn-politica-privacidad" onclick="mostrarAvisoLegalBingoGP()">Aviso Legal</button>
+<footer class="footer-bingogp-legal">
+  <div>© 2026 BingoGP. Todos los derechos reservados.</div>
 
-  <br><br>
-
-  <a href="index.html">
-  </a>
+  <div class="legal-links">
+    <button id="btnPoliticaPrivacidad" type="button" class="legal-link" onclick="mostrarPoliticaPrivacidad()">Política de Privacidad</button>
+    <span class="legal-sep">|</span>
+    <button type="button" class="legal-link" onclick="mostrarTerminosBingoGP()">Términos y Condiciones</button>
+    <span class="legal-sep">|</span>
+    <button type="button" class="legal-link" onclick="mostrarAvisoLegalBingoGP()">Aviso Legal</button>
+  </div>
 </footer>
 
 
