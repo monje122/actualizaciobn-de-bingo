@@ -2386,18 +2386,7 @@ function limpiarPromoPorCambioCantidad() {
 }
 
 function isTrue(v) {
-  const texto = String(v ?? '').trim().toLowerCase();
-  return (
-    v === true ||
-    v === 1 ||
-    texto === 'true' ||
-    texto === '1' ||
-    texto === 't' ||
-    texto === 'yes' ||
-    texto === 'si' ||
-    texto === 'sí' ||
-    texto === 'on'
-  );
+  return v === true || v === 'true' || v === 1 || v === '1';
 }
 
 async function mostrarVentana(id) {
@@ -5143,7 +5132,7 @@ async function cargarBarraProgresoInicio() {
 
   const mostrar = await getConfigValue('mostrar_barra_progreso', 'false');
 
-  if (!isTrue(mostrar)) {
+  if (mostrar !== 'true') {
     contenedor.classList.add('oculto');
     return;
   }
@@ -5171,9 +5160,8 @@ async function guardarConfigBarraProgreso() {
   const ok = await setConfigValue('mostrar_barra_progreso', valor);
 
   if (ok) {
-    await cargarConfigBarraProgresoAdmin();
-    await cargarBarraProgresoInicio();
     alert('Configuración guardada');
+    await cargarBarraProgresoInicio();
   } else {
     alert('Error guardando configuración');
   }
@@ -5184,7 +5172,7 @@ async function cargarConfigBarraProgresoAdmin() {
   if (!check) return;
 
   const valor = await getConfigValue('mostrar_barra_progreso', 'false');
-  check.checked = isTrue(valor);
+  check.checked = valor === 'true';
 }
 let canalProgresoCartones = null;
 
