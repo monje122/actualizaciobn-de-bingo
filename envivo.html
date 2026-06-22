@@ -855,16 +855,42 @@
     document.addEventListener('DOMContentLoaded', async () => {
       try {
         await cargarSitioActual();
+
+        // IMPORTANTE: activar Realtime apenas se conoce el SITE_ID.
+        // Antes estaba después de cargarVideo(); si YouTube fallaba o estaba vacío,
+        // nunca se iniciaba el escuchador de cohetes.
+        activarCohetesRealtime();
+
         await cargarVideo();
 
         ajustarChatMobile();
         window.addEventListener('resize', ajustarChatMobile);
-
-        activarCohetesRealtime();
       } catch (error) {
         console.error('Error en envivo:', error);
-        mostrarErrorPantalla('Error al cargar', error.message || 'No se pudo cargar la transmisión.');
+
+        // Aunque falle el video, dejamos la página viva para que los cohetes puedan escucharse.
+        const loading = document.getElementById('loading');
+        if (loading) loading.style.display = 'none';
+
         mostrarToast(error.message || 'No se pudo cargar la transmisión.', 'error');
+
+        const frame = document.getElementById('youtube-frame');
+        if (frame) frame.style.display = 'none';
+
+        const contenedor = document.getElementById('video-container');
+        if (contenedor) {
+          const aviso = document.createElement('div');
+          aviso.style.background = '#fff3cd';
+          aviso.style.color = '#111';
+          aviso.style.border = '1px solid #ffecb5';
+          aviso.style.borderRadius = '12px';
+          aviso.style.padding = '16px';
+          aviso.style.margin = '20px auto';
+          aviso.style.maxWidth = '700px';
+          aviso.style.textAlign = 'center';
+          aviso.innerHTML = `⚠️ ${error.message || 'No se pudo cargar la transmisión.'}<br><small>La página sigue escuchando los cohetes del panel admin.</small>`;
+          contenedor.prepend(aviso);
+        }
       }
     });
   </script>
