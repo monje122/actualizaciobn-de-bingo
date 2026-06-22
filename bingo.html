@@ -27,7 +27,7 @@
   <meta property="og:url" content="https://GP/" />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="" />
-  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="styles.css?v=139">
 
   <style>
     .btn-politica-privacidad {
@@ -157,6 +157,25 @@
       padding: 12px;
       margin-top: 12px;
     }
+
+
+    /* Quitar subrayado de Página creada por GoldenPrime */
+    #bienvenida footer,
+    #bienvenida footer a,
+    #bienvenida footer a:visited,
+    #bienvenida footer a:hover,
+    #bienvenida footer a:active {
+      text-decoration: none !important;
+      border-bottom: none !important;
+      box-shadow: none !important;
+    }
+
+    #bienvenida footer a {
+      color: #16bedb !important;
+      background: transparent !important;
+      font-weight: bold !important;
+    }
+
   </style>
 
 </head>
@@ -179,7 +198,7 @@
   <section id="bienvenida">
     <footer>
   Página creada por 
-  <a href="https://instagram.com/goldenprime.ve" target="_blank" rel="noopener noreferrer" style="color: #16bedb; text-decoration: none; font-weight: bold;">
+  <a href="https://instagram.com/goldenprime.ve" target="_blank" rel="noopener noreferrer" style="color: #16bedb !important; text-decoration: none !important; border-bottom: none !important; box-shadow: none !important; font-weight: bold;">
     @goldenprime.vene
   </a>
 </footer>
