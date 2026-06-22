@@ -4231,14 +4231,26 @@ async function activarCohetes() {
     return;
   }
 
-  const ok = await setConfigValue('cohetes_activados', 'true');
+  try {
+    // IMPORTANTE:
+    // Primero lo apagamos y luego lo encendemos con un valor único.
+    // Así Realtime dispara el evento aunque ya estuviera en true.
+    await setConfigValue('cohetes_activados', 'false');
 
-  if (!ok) {
+    await new Promise(resolve => setTimeout(resolve, 350));
+
+    const ok = await setConfigValue('cohetes_activados', `true:${Date.now()}`);
+
+    if (!ok) {
+      alert('Error activando cohetes');
+      return;
+    }
+
+    alert('¡Cohetes activados!');
+  } catch (error) {
+    errorSeguro('Error activando cohetes:', error);
     alert('Error activando cohetes');
-    return;
   }
-
-  alert('¡Cohetes activados!');
 }
 
 function ordenarInscripcionesPorNombre() {
