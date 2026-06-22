@@ -536,6 +536,7 @@ async function masterCrearSitio() {
   const total = parseInt($('masterTotalCartones')?.value, 10);
   const precio = parseFloat($('masterPrecioCarton')?.value);
   const claveReinicio = $('masterClaveReinicio')?.value.trim();
+  const claveBorrarCartones = $('masterClaveBorrarCartones')?.value.trim();
   const logoUrl = $('masterLogoUrl')?.value.trim();
   const colorPrincipal = $('masterColorPrincipal')?.value.trim();
   const whatsappGrupo = $('masterWhatsappGrupo')?.value.trim();
@@ -569,6 +570,11 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
 
   if (!claveReinicio) {
     masterSetEstado('masterEstadoCrearSitio', 'Debes colocar una clave de reinicio para este sitio.', 'error');
+    return;
+  }
+
+  if (!claveBorrarCartones) {
+    masterSetEstado('masterEstadoCrearSitio', 'Debes colocar una clave para borrar cartones de este sitio.', 'error');
     return;
   }
 
@@ -632,6 +638,12 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
       claveReinicio
     );
 
+    await masterSetConfigSitio(
+      data.id,
+      'clave_borrar_cartones',
+      claveBorrarCartones
+    );
+
     masterSetEstado(
       'masterEstadoCrearSitio',
       `✅ Sitio creado correctamente.\nLink: ${masterUrlSitio(data.slug)}`,
@@ -639,7 +651,8 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
     );
 
     ['masterNombreSitio', 'masterSlugSitio', 'masterTituloSitio', 'masterTotalCartones',
-     'masterPrecioCarton', 'masterLogoUrl', 'masterColorPrincipal', 'masterWhatsappGrupo',
+     'masterPrecioCarton', 'masterClaveReinicio', 'masterClaveBorrarCartones',
+     'masterLogoUrl', 'masterColorPrincipal', 'masterWhatsappGrupo',
      'masterPrivacidadOrganizador', 'masterPrivacidadContacto', 'masterPrivacidadTexto'
     ].forEach(id => {
       const el = $(id);
@@ -818,6 +831,16 @@ async function masterAbrirEditor(siteId) {
     $('masterEditClaveReinicio').value = valorClaveReinicio || '';
   }
 
+  if ($('masterEditClaveBorrarCartones')) {
+    const valorClaveBorrarCartones = await masterGetConfigSitio(
+      sitio.id,
+      'clave_borrar_cartones',
+      ''
+    );
+
+    $('masterEditClaveBorrarCartones').value = valorClaveBorrarCartones || '';
+  }
+
   if ($('masterEditMostrarPromociones')) {
     $('masterEditMostrarPromociones').checked = true;
 
@@ -868,6 +891,7 @@ async function masterGuardarEdicion() {
   const total = parseInt($('masterEditTotal')?.value, 10);
   const precio = parseFloat($('masterEditPrecio')?.value);
   const claveReinicio = $('masterEditClaveReinicio')?.value.trim();
+  const claveBorrarCartones = $('masterEditClaveBorrarCartones')?.value.trim();
   const logoUrl = $('masterEditLogoUrl')?.value.trim();
   const colorPrincipal = $('masterEditColorPrincipal')?.value.trim();
   const whatsappGrupo = $('masterEditWhatsappGrupo')?.value.trim();
@@ -898,6 +922,11 @@ async function masterGuardarEdicion() {
 
   if (!claveReinicio) {
     masterSetEstado('masterEstadoEditarSitio', 'La clave de reinicio no puede estar vacía.', 'error');
+    return;
+  }
+
+  if (!claveBorrarCartones) {
+    masterSetEstado('masterEstadoEditarSitio', 'La clave para borrar cartones no puede estar vacía.', 'error');
     return;
   }
 
@@ -953,6 +982,12 @@ async function masterGuardarEdicion() {
       siteId,
       'clave_reinicio',
       claveReinicio
+    );
+
+    await masterSetConfigSitio(
+      siteId,
+      'clave_borrar_cartones',
+      claveBorrarCartones
     );
 
     masterSetEstado('masterEstadoEditarSitio', '✅ Cambios guardados.', 'success');
