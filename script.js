@@ -99,6 +99,71 @@ let planTipoSitio = 'basico';
 let cantidadFijaCartones = 1;
 let detectorIniciado = false;
 
+// ==================== NAVEGACIÓN INTERNA DEL NAVEGADOR ====================
+// Permite que el botón ATRÁS del teléfono vuelva a la ventana anterior
+// dentro del bingo, en vez de salirse de la página completa.
+let historialNavegacionListo = false;
+let navegandoConBotonAtras = false;
+let ventanaActual = 'bienvenida';
+
+function obtenerUrlVentana(id) {
+  const url = new URL(window.location.href);
+  url.hash = id || 'bienvenida';
+  return `${url.pathname}${url.search}${url.hash}`;
+}
+
+function registrarHistorialVentana(id, reemplazar = false) {
+  if (!id) return;
+
+  try {
+    const estado = { ventana: id };
+    const url = obtenerUrlVentana(id);
+
+    if (reemplazar) {
+      history.replaceState(estado, '', url);
+    } else {
+      const estadoActual = history.state?.ventana;
+      const hashActual = String(location.hash || '').replace('#', '');
+
+      // Evita duplicar la misma ventana varias veces seguidas.
+      if (estadoActual === id || hashActual === id) return;
+
+      history.pushState(estado, '', url);
+    }
+  } catch (error) {
+    warnSeguro('No se pudo registrar historial interno:', error);
+  }
+}
+
+function inicializarHistorialVentanas() {
+  if (historialNavegacionListo) return;
+
+  historialNavegacionListo = true;
+
+  const hashInicial = String(location.hash || '').replace('#', '').trim();
+  const ventanaInicial = document.getElementById(hashInicial) ? hashInicial : 'bienvenida';
+  ventanaActual = ventanaInicial;
+
+  registrarHistorialVentana(ventanaInicial, true);
+
+  window.addEventListener('popstate', async (event) => {
+    const ventana = event.state?.ventana || String(location.hash || '').replace('#', '') || 'bienvenida';
+
+    if (!document.getElementById(ventana)) return;
+
+    navegandoConBotonAtras = true;
+
+    try {
+      await mostrarVentana(ventana, false);
+    } catch (error) {
+      warnSeguro('Error navegando con botón atrás:', error);
+    } finally {
+      navegandoConBotonAtras = false;
+    }
+  });
+}
+
+
 // Variables de sesión
 let adminSession = null;
 let sesionActiva = false;
@@ -2131,6 +2196,7 @@ document.getElementById('btnResetColoresSitio')?.addEventListener('click', reset
   activarVistaPreviaColores();
   // Cargar likde WhatsApp
     sistemaListo = true;
+  inicializarHistorialVentanas();
   // Mostrar términos
 
   document.getElementById('overlay-carga').style.display = 'none';
@@ -2389,7 +2455,7 @@ function isTrue(v) {
   return v === true || v === 'true' || v === 1 || v === '1';
 }
 
-async function mostrarVentana(id) {
+async function mostrarVentana(id, guardarHistorial = true) {
   if (!sistemaListo) return;
 
   if (id === 'top-compradores') {
@@ -2436,7 +2502,14 @@ async function mostrarVentana(id) {
   document.querySelectorAll('section').forEach(s => s.classList.add('oculto'));
 
   const target = document.getElementById(id);
-  if (target) target.classList.remove('oculto');
+  if (target) {
+    target.classList.remove('oculto');
+    ventanaActual = id;
+
+    if (guardarHistorial && !navegandoConBotonAtras) {
+      registrarHistorialVentana(id);
+    }
+  }
 
   requestAnimationFrame(() => {
     document.documentElement.scrollTop = 0;
@@ -2465,6 +2538,10 @@ async function mostrarVentana(id) {
 
   if (id === 'lista-aprobados') {
     await cargarListaAprobadosSeccion();
+  }
+
+  if (id === 'ganadores') {
+    cargarGanadores();
   }
 }
 // Guardar datos del formulario
@@ -3847,11 +3924,18 @@ function getPromocionSeleccionada() {
 }
 
 // ==================== FUNCIONES RESTANTES ====================
-function mostrarSeccion(id) {
+function mostrarSeccion(id, guardarHistorial = true) {
   const secciones = document.querySelectorAll('section');
   secciones.forEach(sec => sec.classList.add('oculto'));
   const target = document.getElementById(id);
-  if (target) target.classList.remove('oculto');
+  if (target) {
+    target.classList.remove('oculto');
+    ventanaActual = id;
+
+    if (guardarHistorial && !navegandoConBotonAtras) {
+      registrarHistorialVentana(id);
+    }
+  }
   
     if (id === 'ganadores') {
     cargarGanadores();
