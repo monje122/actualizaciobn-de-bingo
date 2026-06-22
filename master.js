@@ -1302,7 +1302,8 @@ async function masterEliminarSitio(siteId) {
   const nombre = sitio.nombre || slug || `ID ${siteId}`;
 
   const confirmacion = prompt(
-    `⚠️ Vas a eliminar el sitio:\n\n${nombre}\nSlug: ${slug}\n\n` +
+    `⚠️ Vas a eliminar el sitio completo:\n\n${nombre}\nSlug: ${slug}\n\n` +
+    `Esto eliminará datos de ese sitio: inscripciones, cartones, configuración, admins, ganadores y pagos.\n\n` +
     `Para confirmar escribe exactamente el slug del sitio:`
   );
 
@@ -1314,21 +1315,37 @@ async function masterEliminarSitio(siteId) {
   }
 
   const confirmarFinal = confirm(
-    `Última confirmación:\n\n¿Eliminar definitivamente el sitio ${nombre}?\n\n` +
-    `Si tiene ventas, admins o datos relacionados, Supabase puede bloquear la eliminación.`
+    `Última confirmación:\n\n¿Eliminar DEFINITIVAMENTE el sitio ${nombre}?\n\n` +
+    `Se borrará solamente la información del site_id ${siteId}.\n` +
+    `No afecta otros sitios.`
   );
 
   if (!confirmarFinal) return;
 
   try {
-    const { error } = await supabase
-      .from('sitios')
-      .delete()
-      .eq('id', Number(siteId));
+    const { data, error } = await supabase.rpc('rpc_master_eliminar_sitio_completo', {
+      _site_id: Number(siteId)
+    });
 
     if (error) throw error;
 
-    alert('✅ Sitio eliminado correctamente.');
+    const resultado = Array.isArray(data) ? data[0] : data;
+
+    if (!resultado || resultado.ok !== true) {
+      throw new Error('La RPC no confirmó la eliminación del sitio.');
+    }
+
+    alert(
+      `✅ Sitio eliminado correctamente.\n\n` +
+      `Sitio: ${resultado.nombre || nombre}\n` +
+      `Slug: ${resultado.slug || slug}\n\n` +
+      `Cartones BD: ${resultado.cartones ?? 0}\n` +
+      `Inscripciones: ${resultado.inscripciones ?? 0}\n` +
+      `Configuración: ${resultado.configuracion ?? 0}\n` +
+      `Admins: ${(resultado.sitio_admins ?? 0) + (resultado.site_admins ?? 0)}\n` +
+      `Ganadores: ${resultado.ganadores ?? 0}\n` +
+      `Archivos Storage: ${resultado.storage_objetos ?? 0}`
+    );
 
     const editorId = parseInt($('masterEditId')?.value || '0', 10);
     if (Number(editorId) === Number(siteId)) {
@@ -1339,10 +1356,10 @@ async function masterEliminarSitio(siteId) {
     await masterCargarAdminsSitios();
 
   } catch (error) {
-    errorSeguro('Error eliminando sitio:', error);
+    errorSeguro('Error eliminando sitio completo:', error);
     alert(
-      'No se pudo eliminar el sitio: ' + (error.message || error) +
-      '\n\nSi el sitio tiene inscripciones, admins, cartones o configuración, primero hay que crear una eliminación segura por SQL/RPC.'
+      'No se pudo eliminar el sitio completo: ' + (error.message || error) +
+      '\n\nEjecuta primero el SQL: sql_eliminar_sitio_completo_master.txt'
     );
   }
 }
