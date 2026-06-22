@@ -782,13 +782,58 @@
       }
     }
 
+    let ultimoCoheteProcesado = '';
+
+    async function mostrarCohetes(valorEvento = '') {
+      const valorActual = String(valorEvento || 'true');
+
+      // Evita procesar el mismo evento dos veces.
+      if (valorActual && valorActual === ultimoCoheteProcesado) return;
+      ultimoCoheteProcesado = valorActual;
+
+      const gif = document.getElementById('cohetesGif');
+      const sonido = document.getElementById('sonidoCohetes');
+
+      if (gif) gif.style.display = 'block';
+      mostrarToast('🎉 ¡Cohetes activados!', 'success');
+
+      try {
+        if (sonido) {
+          sonido.currentTime = 0;
+          await sonido.play();
+        }
+      } catch (error) {
+        console.warn('Sonido bloqueado por navegador:', error);
+      }
+
+      setTimeout(async () => {
+        if (gif) gif.style.display = 'none';
+
+        if (sonido) {
+          sonido.pause();
+          sonido.currentTime = 0;
+        }
+
+        // Intenta apagarlo solo para este sitio. Si RLS no permite update público, no rompe la página.
+        try {
+          await supabaseClient
+            .from('configuracion')
+            .update({ valore: 'false' })
+            .eq('site_id', SITE_ID)
+            .eq('clave', 'cohetes_activados');
+        } catch (error) {
+          console.warn('No se pudo apagar cohetes_activados desde público:', error);
+        }
+      }, 12000);
+    }
+
     function activarCohetesRealtime() {
       if (!SITE_ID) return;
 
       supabaseClient
         .channel(`cohetes-site-${SITE_ID}`)
         .on('postgres_changes', {
-          event: 'UPDATE',
+          event: '*',
           schema: 'public',
           table: 'configuracion',
           filter: `site_id=eq.${SITE_ID}`
@@ -796,45 +841,15 @@
           if (payload.new?.clave !== 'cohetes_activados') return;
 
           const valor = payload.new?.valore;
+          const valorTexto = String(valor || '').toLowerCase();
 
-          if (valor === true || valor === 'true') {
-            const gif = document.getElementById('cohetesGif');
-            const sonido = document.getElementById('sonidoCohetes');
-
-            if (gif) gif.style.display = 'block';
-            mostrarToast('🎉 ¡Cohetes activados!', 'success');
-
-            try {
-              if (sonido) {
-                sonido.currentTime = 0;
-                await sonido.play();
-              }
-            } catch (error) {
-              console.warn('Sonido bloqueado por navegador:', error);
-            }
-
-            setTimeout(async () => {
-              if (gif) gif.style.display = 'none';
-
-              if (sonido) {
-                sonido.pause();
-                sonido.currentTime = 0;
-              }
-
-              // Intenta apagarlo solo para este sitio. Si RLS no permite update público, no rompe la página.
-              try {
-                await supabaseClient
-                  .from('configuracion')
-                  .update({ valore: 'false' })
-                  .eq('site_id', SITE_ID)
-                  .eq('clave', 'cohetes_activados');
-              } catch (error) {
-                console.warn('No se pudo apagar cohetes_activados desde público:', error);
-              }
-            }, 12000);
+          if (valor === true || valorTexto === 'true' || valorTexto.startsWith('true:')) {
+            await mostrarCohetes(valorTexto);
           }
         })
-        .subscribe();
+        .subscribe((status) => {
+          console.log('Realtime cohetes:', status);
+        });
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
