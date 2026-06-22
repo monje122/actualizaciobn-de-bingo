@@ -827,38 +827,52 @@
       }, 12000);
     }
 
-    function activarCohetesRealtime() {
+    let intervaloCohetesPublico = null;
+
+    async function leerCohetesPublico() {
       if (!SITE_ID) return;
 
-      supabaseClient
-        .channel(`cohetes-site-${SITE_ID}`)
-        .on('postgres_changes', {
-          event: '*',
-          schema: 'public',
-          table: 'configuracion',
-          filter: `site_id=eq.${SITE_ID}`
-        }, async (payload) => {
-          if (payload.new?.clave !== 'cohetes_activados') return;
-
-          const valor = payload.new?.valore;
-          const valorTexto = String(valor || '').toLowerCase();
-
-          if (valor === true || valorTexto === 'true' || valorTexto.startsWith('true:')) {
-            await mostrarCohetes(valorTexto);
-          }
-        })
-        .subscribe((status) => {
-          console.log('Realtime cohetes:', status);
+      try {
+        const { data, error } = await supabaseClient.rpc('rpc_public_get_cohetes_estado', {
+          _site_id: SITE_ID
         });
+
+        if (error) {
+          console.warn('No se pudo leer cohetes por RPC pública:', error);
+          return;
+        }
+
+        const valorTexto = String(data || '').toLowerCase().trim();
+
+        if (valorTexto === 'true' || valorTexto.startsWith('true:')) {
+          await mostrarCohetes(valorTexto);
+        }
+      } catch (error) {
+        console.warn('Error leyendo cohetes:', error);
+      }
+    }
+
+    function activarCohetesRealtime() {
+      // Versión corregida: ya no dependemos de Supabase Realtime.
+      // Realtime puede fallar si RLS/publicación/cache no entregan el evento al público.
+      // Esta página consulta una RPC pública segura cada 1.5 segundos.
+      if (!SITE_ID) return;
+
+      if (intervaloCohetesPublico) {
+        clearInterval(intervaloCohetesPublico);
+      }
+
+      leerCohetesPublico();
+      intervaloCohetesPublico = setInterval(leerCohetesPublico, 1500);
+      console.log('Cohetes público por polling activo para site:', SITE_ID);
     }
 
     document.addEventListener('DOMContentLoaded', async () => {
       try {
         await cargarSitioActual();
 
-        // IMPORTANTE: activar Realtime apenas se conoce el SITE_ID.
-        // Antes estaba después de cargarVideo(); si YouTube fallaba o estaba vacío,
-        // nunca se iniciaba el escuchador de cohetes.
+        // IMPORTANTE: activar los cohetes apenas se conoce el SITE_ID.
+        // Ahora usa una RPC pública por intervalo, no depende de Realtime.
         activarCohetesRealtime();
 
         await cargarVideo();
