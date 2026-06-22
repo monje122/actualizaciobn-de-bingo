@@ -665,6 +665,9 @@
               <label>Clave de reinicio
                 <input type="text" id="masterClaveReinicio" placeholder="Ej: Reinicio-Cliente-2026!" autocomplete="new-password">
               </label>
+              <label>Clave para borrar cartones
+                <input type="text" id="masterClaveBorrarCartones" placeholder="Ej: Borrar-Cartones-2026!" autocomplete="new-password">
+              </label>
               <label>Tiempo de servicio
                 <select id="masterMesesServicio">
                   <option value="1">1 mes</option>
@@ -815,6 +818,9 @@
               <label>Clave de reinicio
                 <input type="text" id="masterEditClaveReinicio" placeholder="Clave para reiniciar este sitio" autocomplete="new-password">
               </label>
+              <label>Clave para borrar cartones
+                <input type="text" id="masterEditClaveBorrarCartones" placeholder="Clave para borrar imágenes de cartones" autocomplete="new-password">
+              </label>
               <label>Logo URL
                 <input type="text" id="masterEditLogoUrl" placeholder="Logo URL">
               </label>
@@ -917,6 +923,6 @@
     window.supabase = supabase.createClient(supabaseUrl, supabaseKey);
   </script>
 
-  <script src="master.js?v=127"></script>
+  <script src="master.js?v=128"></script>
 </body>
 </html>
