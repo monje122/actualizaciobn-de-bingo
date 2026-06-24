@@ -123,8 +123,17 @@ function masterEscapeHTML(valor) {
 }
 
 function masterUrlSitio(slug) {
-  const basePath = window.location.pathname.replace(/\/master\.html$/i, '/index.html');
-  return `${window.location.origin}${basePath}?site=${encodeURIComponent(slug)}`;
+  slug = masterNormalizarSlug(slug);
+
+  if (!slug) {
+    return `${window.location.origin}/`;
+  }
+
+  // Link corto para cualquier sitio nuevo:
+  // https://bingogp.com/bingolike
+  // El 404.html lo redirige automáticamente a:
+  // https://bingogp.com/bingo.html?site=bingolike
+  return `${window.location.origin}/${encodeURIComponent(slug)}`;
 }
 
 function masterIsTrue(valor) {
