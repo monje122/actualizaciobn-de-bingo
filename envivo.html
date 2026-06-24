@@ -43,6 +43,10 @@
       --site-video-bg: #000000;
       --site-chat-bg: #ffffff;
       --site-muted-text: rgba(255, 255, 255, 0.72);
+      --site-fondo: #020A35;
+      --site-texto-general: #ffffff;
+      --site-color-botones: #020A35;
+      --site-texto-botones: #ffffff;
       --site-soft-line: rgba(255, 255, 255, 0.12);
       --site-overlay-bg: rgba(2, 10, 53, 0.92);
       --site-gradient-bg: linear-gradient(135deg, #01051A 0%, #020A35 55%, #1A237E 100%);
@@ -65,7 +69,7 @@
       margin: 0;
       padding: 0;
       background: var(--site-gradient-bg);
-      color: var(--white);
+      color: var(--site-texto-general, var(--white));
       min-height: 100vh;
       position: relative;
       overflow-x: hidden;
@@ -521,6 +525,7 @@
        ═══════════════════════════════════════ */
     body {
       background: var(--site-gradient-bg) !important;
+      color: var(--site-texto-general, var(--white)) !important;
     }
 
     .video-wrapper,
@@ -540,7 +545,12 @@
 
     .chat-header h3,
     .live-header h1 {
-      color: var(--white) !important;
+      color: var(--site-texto-general, var(--white)) !important;
+    }
+
+    .live-header p {
+      color: var(--site-texto-general, var(--white)) !important;
+      opacity: 0.78;
     }
 
     .chat-header {
@@ -550,12 +560,12 @@
     #chat-external,
     #redes-sociales {
       background: var(--site-gradient-acento) !important;
-      color: var(--site-texto-sobre-acento) !important;
+      color: var(--site-texto-botones, var(--site-texto-sobre-acento)) !important;
     }
 
     #chat-external,
     #redes-sociales a {
-      color: var(--site-texto-sobre-acento) !important;
+      color: var(--site-texto-botones, var(--site-texto-sobre-acento)) !important;
     }
 
     .live-badge {
@@ -800,25 +810,80 @@
       return envivoLuminancia(color) > 0.62 ? '#111111' : '#FFFFFF';
     }
 
-    function aplicarColorPrincipalEnvivo(sitio) {
-      // Toma el color guardado del sitio y lo convierte en TODO el tema de envivo.html.
-      // Así ningún color fijo del diseño anterior tapa la configuración del panel.
-      const colorPrincipal = envivoNormalizarHex(sitio?.color_principal, '#020A35');
+    async function envivoGetConfigSitio(clave, fallback = '') {
+      if (!SITE_ID) return fallback;
 
-      // Si el sitio tiene color secundario, se usa como acento.
-      // Si no tiene, el acento sale del mismo color principal para evitar colores fijos.
-      const colorAcento = envivoNormalizarHex(
-        sitio?.color_secundario || sitio?.color_acento || sitio?.color_principal,
+      try {
+        const { data, error } = await supabaseClient.rpc('rpc_get_config_sitio', {
+          _site_id: SITE_ID,
+          _clave: clave,
+          _fallback: fallback
+        });
+
+        if (error) {
+          console.warn('No se pudo leer color/configuración:', clave, error);
+          return fallback;
+        }
+
+        return data ?? fallback;
+      } catch (error) {
+        console.warn('Error leyendo color/configuración:', clave, error);
+        return fallback;
+      }
+    }
+
+    async function cargarTemaEnvivo(sitio) {
+      // Envivo debe leer los mismos colores que la página principal del bingo.
+      // El fondo viene de la configuración del panel admin: color_fondo.
+      const colores = {
+        color_fondo: await envivoGetConfigSitio('color_fondo', sitio?.color_fondo || ''),
+        color_botones: await envivoGetConfigSitio('color_botones', sitio?.color_botones || ''),
+        color_texto: await envivoGetConfigSitio('color_texto', sitio?.color_texto || ''),
+        color_texto_botones: await envivoGetConfigSitio('color_texto_botones', sitio?.color_texto_botones || ''),
+        color_principal: await envivoGetConfigSitio('color_principal', sitio?.color_principal || ''),
+        color_secundario: await envivoGetConfigSitio('color_secundario', sitio?.color_secundario || '')
+      };
+
+      aplicarColorPrincipalEnvivo({ ...sitio, ...colores });
+    }
+
+    function aplicarColorPrincipalEnvivo(sitio) {
+      // Toma los colores guardados desde el panel admin y los convierte en tema de envivo.html.
+      // Importante: color_fondo controla el fondo de envivo, igual que en bingo.html.
+      const colorPrincipal = envivoNormalizarHex(sitio?.color_principal || sitio?.color_botones, '#020A35');
+      const colorFondoGuardado = String(sitio?.color_fondo || '').trim();
+      const colorFondo = colorFondoGuardado
+        ? envivoNormalizarHex(colorFondoGuardado, colorPrincipal)
+        : '';
+
+      const colorBotones = envivoNormalizarHex(
+        sitio?.color_botones || sitio?.color_secundario || sitio?.color_acento || sitio?.color_principal,
         colorPrincipal
+      );
+
+      const colorAcento = envivoNormalizarHex(
+        sitio?.color_secundario || sitio?.color_acento || sitio?.color_botones || sitio?.color_principal,
+        colorBotones
+      );
+
+      const colorTextoGeneral = envivoNormalizarHex(
+        sitio?.color_texto,
+        colorFondo ? envivoTextoContraste(colorFondo) : '#FFFFFF'
+      );
+
+      const colorTextoBotones = envivoNormalizarHex(
+        sitio?.color_texto_botones,
+        envivoTextoContraste(colorBotones)
       );
 
       const colorPrincipalOscuro = envivoAjustarColor(colorPrincipal, -55);
       const colorPrincipalMedio = envivoAjustarColor(colorPrincipal, -25);
       const colorAcentoClaro = envivoAjustarColor(colorAcento, 22);
       const colorAcentoOscuro = envivoAjustarColor(colorAcento, -18);
-      const textoSobreAcento = envivoTextoContraste(colorAcento);
       const principalRgb = envivoRgbTexto(colorPrincipal);
       const acentoRgb = envivoRgbTexto(colorAcento);
+      const botonesRgb = envivoRgbTexto(colorBotones);
+      const fondoRgb = colorFondo ? envivoRgbTexto(colorFondo) : principalRgb;
 
       const root = document.documentElement;
 
@@ -828,6 +893,11 @@
       root.style.setProperty('--secondary', colorAcento);
       root.style.setProperty('--secondary-light', colorAcentoClaro);
 
+      root.style.setProperty('--site-fondo', colorFondo || colorPrincipalOscuro);
+      root.style.setProperty('--site-texto-general', colorTextoGeneral);
+      root.style.setProperty('--site-color-botones', colorBotones);
+      root.style.setProperty('--site-texto-botones', colorTextoBotones);
+
       root.style.setProperty('--site-color-principal', colorPrincipal);
       root.style.setProperty('--site-color-principal-rgb', principalRgb);
       root.style.setProperty('--site-color-principal-oscuro', colorPrincipalOscuro);
@@ -835,20 +905,30 @@
       root.style.setProperty('--site-color-acento', colorAcento);
       root.style.setProperty('--site-color-acento-claro', colorAcentoClaro);
       root.style.setProperty('--site-color-acento-rgb', acentoRgb);
-      root.style.setProperty('--site-texto-sobre-acento', textoSobreAcento);
+      root.style.setProperty('--site-texto-sobre-acento', colorTextoBotones);
 
       root.style.setProperty('--site-panel-bg', colorPrincipalOscuro);
       root.style.setProperty('--site-panel-bg-2', colorPrincipalMedio);
-      root.style.setProperty('--site-overlay-bg', `rgba(${principalRgb}, 0.92)`);
-      root.style.setProperty('--site-gradient-bg', `linear-gradient(135deg, ${colorPrincipalOscuro} 0%, ${colorPrincipalMedio} 55%, ${colorPrincipal} 100%)`);
+      root.style.setProperty('--site-overlay-bg', `rgba(${fondoRgb}, 0.92)`);
+
+      if (colorFondo) {
+        // Fondo exacto del panel admin, sin degradado que lo tape.
+        root.style.setProperty('--site-gradient-bg', colorFondo);
+      } else {
+        root.style.setProperty('--site-gradient-bg', `linear-gradient(135deg, ${colorPrincipalOscuro} 0%, ${colorPrincipalMedio} 55%, ${colorPrincipal} 100%)`);
+      }
+
       root.style.setProperty('--site-gradient-panel', `linear-gradient(145deg, ${colorPrincipalOscuro}, ${colorPrincipalMedio})`);
-      root.style.setProperty('--site-gradient-acento', `linear-gradient(135deg, ${colorAcentoOscuro}, ${colorAcentoClaro})`);
+      root.style.setProperty('--site-gradient-acento', `linear-gradient(135deg, ${colorBotones}, ${colorAcentoClaro})`);
       root.style.setProperty('--site-gradient-toast', `linear-gradient(135deg, ${colorPrincipalOscuro}, ${colorPrincipalMedio})`);
       root.style.setProperty('--site-live-color', colorAcento);
-      root.style.setProperty('--site-live-color-rgb', acentoRgb);
+      root.style.setProperty('--site-live-color-rgb', botonesRgb);
 
-      // Limpia cualquier estilo inline anterior y aplica el tema dinámico.
+      // Limpia estilos inline anteriores para que manden las variables dinámicas.
       document.body.style.background = '';
+      document.body.style.backgroundColor = '';
+      document.body.style.color = '';
+
       document.querySelectorAll('.video-wrapper, .chat-wrapper').forEach(el => {
         el.style.borderColor = '';
         el.style.background = '';
@@ -880,7 +960,7 @@
       sitioActual = sitio;
       SITE_ID = sitio.id;
 
-      aplicarColorPrincipalEnvivo(sitio);
+      await cargarTemaEnvivo(sitio);
 
       document.title = `${sitio.nombre || 'Bingo'} - En Vivo`;
 
@@ -890,7 +970,7 @@
       const subtitulo = document.querySelector('.live-header p');
       if (subtitulo) subtitulo.textContent = sitio.nombre ? `Sitio: ${sitio.nombre}` : '¡Únete a la conversación en el chat!';
 
-      // El color del sitio ya fue aplicado por aplicarColorPrincipalEnvivo(sitio).
+      // Los colores del sitio ya fueron aplicados por cargarTemaEnvivo(sitio), incluyendo color_fondo.
 
       return sitio;
     }
