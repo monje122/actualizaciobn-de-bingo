@@ -10,28 +10,47 @@
        VARIABLES GLOBALES
        ═══════════════════════════════════════ */
     :root {
-      --primary: #4361ee;
-      --primary-dark: #3a56d4;
-      --secondary: #FFA500;
-      --secondary-light: #F9E65C;
+      /* Colores base: se actualizan desde Supabase por sitio */
+      --primary: #020A35;
+      --primary-dark: #01051A;
+      --secondary: #020A35;
+      --secondary-light: #1A237E;
       --success: #06d6a0;
       --danger: #ef476f;
       --warning: #ffd166;
-      --dark: #020A35;
+      --dark: #01051A;
       --light: #f8f9fa;
       --gray: #6c757d;
       --white: #ffffff;
+      --black: #000000;
       --shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       --shadow-lg: 0 10px 15px rgba(0, 0, 0, 0.2);
       --border-radius: 12px;
       --border-radius-sm: 8px;
       --transition: all 0.3s ease;
 
-      /* Color dinámico del sitio para envivo.html */
+      /* Variables dinámicas del sitio para envivo.html */
       --site-color-principal: #020A35;
-      --site-color-acento: #FFA500;
-      --site-color-acento-rgb: 255, 165, 0;
-      --site-gradient-bg: linear-gradient(135deg, #020A35 0%, #1a237e 100%);
+      --site-color-principal-rgb: 2, 10, 53;
+      --site-color-principal-oscuro: #01051A;
+      --site-color-principal-medio: #1A237E;
+      --site-color-acento: #020A35;
+      --site-color-acento-claro: #1A237E;
+      --site-color-acento-rgb: 2, 10, 53;
+      --site-texto-sobre-acento: #ffffff;
+      --site-panel-bg: #01051A;
+      --site-panel-bg-2: #020A35;
+      --site-video-bg: #000000;
+      --site-chat-bg: #ffffff;
+      --site-muted-text: rgba(255, 255, 255, 0.72);
+      --site-soft-line: rgba(255, 255, 255, 0.12);
+      --site-overlay-bg: rgba(2, 10, 53, 0.92);
+      --site-gradient-bg: linear-gradient(135deg, #01051A 0%, #020A35 55%, #1A237E 100%);
+      --site-gradient-panel: linear-gradient(145deg, #01051A, #020A35);
+      --site-gradient-acento: linear-gradient(135deg, #020A35, #1A237E);
+      --site-gradient-toast: linear-gradient(135deg, #01051A, #020A35);
+      --site-live-color: var(--site-color-acento);
+      --site-live-color-rgb: var(--site-color-acento-rgb);
     }
 
     /* Reset y estilos base */
@@ -45,7 +64,7 @@
       font-family: 'Poppins', 'Segoe UI', Arial, sans-serif;
       margin: 0;
       padding: 0;
-      background: var(--site-gradient-bg, linear-gradient(135deg, #020A35 0%, #1a237e 100%));
+      background: var(--site-gradient-bg);
       color: var(--white);
       min-height: 100vh;
       position: relative;
@@ -99,15 +118,15 @@
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      background: linear-gradient(135deg, #e74c3c, #c0392b);
-      color: white;
+      background: linear-gradient(135deg, var(--danger), var(--site-color-principal));
+      color: var(--white);
       padding: 8px 20px;
       border-radius: 50px;
       font-weight: 700;
       font-size: 14px;
       letter-spacing: 1px;
       text-transform: uppercase;
-      box-shadow: 0 4px 15px rgba(231, 76, 60, 0.4);
+      box-shadow: 0 4px 15px rgba(var(--site-live-color-rgb), 0.4);
       animation: pulse-live 2s infinite;
       margin-bottom: 15px;
     }
@@ -116,7 +135,7 @@
       content: '';
       width: 10px;
       height: 10px;
-      background: white;
+      background: var(--white);
       border-radius: 50%;
       animation: blink 1.5s infinite;
     }
@@ -127,9 +146,9 @@
     }
 
     @keyframes pulse-live {
-      0% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0.7); }
-      70% { box-shadow: 0 0 0 15px rgba(231, 76, 60, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(231, 76, 60, 0); }
+      0% { box-shadow: 0 0 0 0 rgba(var(--site-live-color-rgb), 0.7); }
+      70% { box-shadow: 0 0 0 15px rgba(var(--site-live-color-rgb), 0); }
+      100% { box-shadow: 0 0 0 0 rgba(var(--site-live-color-rgb), 0); }
     }
 
     .live-header h1 {
@@ -141,7 +160,7 @@
     }
 
     .live-header p {
-      color: rgba(255, 255, 255, 0.7);
+      color: var(--site-muted-text);
       font-size: 16px;
       margin-top: 8px;
     }
@@ -151,11 +170,11 @@
        ═══════════════════════════════════════ */
     .video-wrapper {
       width: 100%;
-      background: linear-gradient(145deg, #1a1a2e, #16213e);
+      background: var(--site-gradient-panel);
       border-radius: var(--border-radius);
       padding: 15px;
       box-shadow: var(--shadow-lg);
-      border: 2px solid rgba(var(--site-color-acento-rgb, 255, 165, 0), 0.35);
+      border: 2px solid rgba(var(--site-color-acento-rgb), 0.35);
       margin-bottom: 20px;
       position: relative;
       overflow: hidden;
@@ -171,7 +190,7 @@
       background: linear-gradient(
         45deg,
         transparent 30%,
-        rgba(var(--site-color-acento-rgb, 255, 165, 0), 0.04) 50%,
+        rgba(var(--site-color-acento-rgb), 0.04) 50%,
         transparent 70%
       );
       animation: shine 6s infinite;
@@ -190,7 +209,7 @@
       min-height: 300px;
       border: none;
       border-radius: var(--border-radius-sm);
-      background: #000;
+      background: var(--site-video-bg);
     }
 
     /* ═══════════════════════════════════════
@@ -198,11 +217,11 @@
        ═══════════════════════════════════════ */
     .chat-wrapper {
       width: 100%;
-      background: linear-gradient(145deg, #1a1a2e, #16213e);
+      background: var(--site-gradient-panel);
       border-radius: var(--border-radius);
       padding: 15px;
       box-shadow: var(--shadow-lg);
-      border: 2px solid rgba(var(--site-color-acento-rgb, 255, 165, 0), 0.25);
+      border: 2px solid rgba(var(--site-color-acento-rgb), 0.25);
       margin-bottom: 20px;
     }
 
@@ -212,7 +231,7 @@
       gap: 10px;
       margin-bottom: 12px;
       padding-bottom: 12px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      border-bottom: 1px solid var(--site-soft-line);
     }
 
     .chat-header-icon {
@@ -222,7 +241,7 @@
     .chat-header h3 {
       margin: 0;
       font-size: 16px;
-      color: var(--secondary);
+      color: var(--site-color-acento);
       font-weight: 600;
     }
 
@@ -231,7 +250,7 @@
       height: 380px;
       border: none;
       border-radius: var(--border-radius-sm);
-      background: #fff;
+      background: var(--site-chat-bg);
     }
 
     /* ═══════════════════════════════════════
@@ -239,9 +258,9 @@
        ═══════════════════════════════════════ */
     #chat-external {
       display: none;
-      color: var(--dark);
+      color: var(--site-texto-sobre-acento);
       margin: 12px 0 20px;
-      background: linear-gradient(135deg, var(--site-color-acento, var(--secondary)), var(--secondary-light, #ffb347));
+      background: var(--site-gradient-acento);
       padding: 14px 32px;
       border-radius: 50px;
       font-size: 16px;
@@ -257,13 +276,13 @@
 
     #chat-external:hover {
       transform: translateY(-3px) scale(1.02);
-      box-shadow: 0 8px 25px rgba(var(--site-color-acento-rgb, 255, 165, 0), 0.5);
+      box-shadow: 0 8px 25px rgba(var(--site-color-acento-rgb), 0.5);
     }
 
     @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(var(--site-color-acento-rgb, 255, 165, 0), 0.7); }
-      70% { box-shadow: 0 0 0 15px rgba(var(--site-color-acento-rgb, 255, 165, 0), 0); }
-      100% { box-shadow: 0 0 0 0 rgba(var(--site-color-acento-rgb, 255, 165, 0), 0); }
+      0% { box-shadow: 0 0 0 0 rgba(var(--site-color-acento-rgb), 0.7); }
+      70% { box-shadow: 0 0 0 15px rgba(var(--site-color-acento-rgb), 0); }
+      100% { box-shadow: 0 0 0 0 rgba(var(--site-color-acento-rgb), 0); }
     }
 
     /* ═══════════════════════════════════════
@@ -274,14 +293,14 @@
       gap: 20px;
       justify-content: center;
       padding: 12px 25px;
-      background: linear-gradient(135deg, var(--site-color-acento, var(--secondary)), var(--secondary-light, #ffb347));
+      background: var(--site-gradient-acento);
       border-radius: 50px;
       box-shadow: var(--shadow-lg);
       margin-top: 10px;
     }
 
     #redes-sociales a {
-      color: var(--dark);
+      color: var(--site-texto-sobre-acento);
       font-size: 24px;
       transition: var(--transition);
       text-decoration: none;
@@ -315,8 +334,8 @@
       bottom: 30px;
       left: 50%;
       transform: translateX(-50%) translateY(100px);
-      background: linear-gradient(135deg, #2c3e50, #34495e);
-      color: white;
+      background: var(--site-gradient-toast);
+      color: var(--white);
       padding: 14px 28px;
       border-radius: 50px;
       font-size: 14px;
@@ -336,11 +355,11 @@
     }
 
     .toast.success {
-      background: linear-gradient(135deg, #27ae60, #229954);
+      background: linear-gradient(135deg, var(--success), var(--site-color-principal));
     }
 
     .toast.error {
-      background: linear-gradient(135deg, #e74c3c, #c0392b);
+      background: linear-gradient(135deg, var(--danger), var(--site-color-principal));
     }
 
     /* ═══════════════════════════════════════
@@ -352,7 +371,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background: rgba(2, 10, 53, 0.9);
+      background: var(--site-overlay-bg);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -364,8 +383,8 @@
     .spinner {
       width: 60px;
       height: 60px;
-      border: 4px solid rgba(var(--site-color-acento-rgb, 255, 165, 0), 0.2);
-      border-top-color: var(--secondary);
+      border: 4px solid rgba(var(--site-color-acento-rgb), 0.2);
+      border-top-color: var(--site-color-acento);
       border-radius: 50%;
       animation: spin 1s linear infinite;
     }
@@ -406,7 +425,7 @@
     }
 
     .error-container p {
-      color: rgba(255, 255, 255, 0.7);
+      color: var(--site-muted-text);
       font-size: 16px;
       max-width: 400px;
     }
@@ -419,16 +438,16 @@
     }
 
     ::-webkit-scrollbar-track {
-      background: rgba(255, 255, 255, 0.1);
+      background: var(--site-soft-line);
     }
 
     ::-webkit-scrollbar-thumb {
-      background: linear-gradient(135deg, var(--site-color-acento, var(--secondary)), var(--secondary-light, #ffb347));
+      background: var(--site-gradient-acento);
       border-radius: 5px;
     }
 
     ::-webkit-scrollbar-thumb:hover {
-      background: linear-gradient(135deg, var(--secondary-light, #ffb347), var(--site-color-acento, var(--secondary)));
+      background: var(--site-gradient-acento);
     }
 
     /* ═══════════════════════════════════════
@@ -495,6 +514,80 @@
         min-height: 180px;
       }
     }
+
+    /* ═══════════════════════════════════════
+       CAPA FINAL: COLORES 100% DINÁMICOS DEL SITIO
+       Esta capa evita que colores viejos/fijos tapen la configuración del panel.
+       ═══════════════════════════════════════ */
+    body {
+      background: var(--site-gradient-bg) !important;
+    }
+
+    .video-wrapper,
+    .chat-wrapper {
+      background: var(--site-gradient-panel) !important;
+      border-color: rgba(var(--site-color-acento-rgb), 0.35) !important;
+    }
+
+    .video-wrapper::before {
+      background: linear-gradient(
+        45deg,
+        transparent 30%,
+        rgba(var(--site-color-acento-rgb), 0.05) 50%,
+        transparent 70%
+      ) !important;
+    }
+
+    .chat-header h3,
+    .live-header h1 {
+      color: var(--white) !important;
+    }
+
+    .chat-header {
+      border-bottom-color: var(--site-soft-line) !important;
+    }
+
+    #chat-external,
+    #redes-sociales {
+      background: var(--site-gradient-acento) !important;
+      color: var(--site-texto-sobre-acento) !important;
+    }
+
+    #chat-external,
+    #redes-sociales a {
+      color: var(--site-texto-sobre-acento) !important;
+    }
+
+    .live-badge {
+      background: linear-gradient(135deg, var(--site-live-color), var(--site-color-principal)) !important;
+      box-shadow: 0 4px 15px rgba(var(--site-live-color-rgb), 0.4) !important;
+    }
+
+    .spinner {
+      border-color: rgba(var(--site-color-acento-rgb), 0.22) !important;
+      border-top-color: var(--site-color-acento) !important;
+    }
+
+    .loading-overlay {
+      background: var(--site-overlay-bg) !important;
+    }
+
+    ::-webkit-scrollbar-thumb,
+    ::-webkit-scrollbar-thumb:hover {
+      background: var(--site-gradient-acento) !important;
+    }
+
+    .aviso-envivo-error {
+      background: var(--site-chat-bg) !important;
+      color: var(--black) !important;
+      border: 1px solid rgba(var(--site-color-acento-rgb), 0.35) !important;
+      border-radius: 12px;
+      padding: 16px;
+      margin: 20px auto;
+      max-width: 700px;
+      text-align: center;
+    }
+
   </style>
 <base target="_blank">
 </head>
@@ -649,7 +742,7 @@
       }, 500);
     }
 
-    function envivoNormalizarHex(color, fallback = '#FFA500') {
+    function envivoNormalizarHex(color, fallback = '#020A35') {
       color = String(color || '').trim();
 
       if (!color) return fallback;
@@ -669,16 +762,16 @@
       return color.toUpperCase();
     }
 
-    function envivoHexARgb(color) {
-      color = envivoNormalizarHex(color, '#FFA500').replace('#', '');
+    function envivoHexARgb(color, fallback = '#020A35') {
+      color = envivoNormalizarHex(color, fallback).replace('#', '');
       const r = parseInt(color.slice(0, 2), 16);
       const g = parseInt(color.slice(2, 4), 16);
       const b = parseInt(color.slice(4, 6), 16);
       return { r, g, b };
     }
 
-    function envivoRgbTexto(color) {
-      const { r, g, b } = envivoHexARgb(color);
+    function envivoRgbTexto(color, fallback = '#020A35') {
+      const { r, g, b } = envivoHexARgb(color, fallback);
       return `${r}, ${g}, ${b}`;
     }
 
@@ -698,38 +791,67 @@
         .toUpperCase();
     }
 
+    function envivoLuminancia(color) {
+      const { r, g, b } = envivoHexARgb(color);
+      return (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+    }
+
+    function envivoTextoContraste(color) {
+      return envivoLuminancia(color) > 0.62 ? '#111111' : '#FFFFFF';
+    }
+
     function aplicarColorPrincipalEnvivo(sitio) {
-      // Toma el color guardado en el panel master / página del cliente
-      // y lo aplica también a envivo.html.
+      // Toma el color guardado del sitio y lo convierte en TODO el tema de envivo.html.
+      // Así ningún color fijo del diseño anterior tapa la configuración del panel.
       const colorPrincipal = envivoNormalizarHex(sitio?.color_principal, '#020A35');
+
+      // Si el sitio tiene color secundario, se usa como acento.
+      // Si no tiene, el acento sale del mismo color principal para evitar colores fijos.
       const colorAcento = envivoNormalizarHex(
-        sitio?.color_secundario || sitio?.color_principal,
-        '#FFA500'
+        sitio?.color_secundario || sitio?.color_acento || sitio?.color_principal,
+        colorPrincipal
       );
 
-      const colorAcentoClaro = envivoAjustarColor(colorAcento, 18);
-      const fondoOscuro = envivoAjustarColor(colorPrincipal, -45);
-      const fondoMedio = envivoAjustarColor(colorPrincipal, -20);
+      const colorPrincipalOscuro = envivoAjustarColor(colorPrincipal, -55);
+      const colorPrincipalMedio = envivoAjustarColor(colorPrincipal, -25);
+      const colorAcentoClaro = envivoAjustarColor(colorAcento, 22);
+      const colorAcentoOscuro = envivoAjustarColor(colorAcento, -18);
+      const textoSobreAcento = envivoTextoContraste(colorAcento);
+      const principalRgb = envivoRgbTexto(colorPrincipal);
+      const acentoRgb = envivoRgbTexto(colorAcento);
 
       const root = document.documentElement;
+
       root.style.setProperty('--primary', colorPrincipal);
-      root.style.setProperty('--primary-dark', fondoMedio);
-      root.style.setProperty('--dark', fondoOscuro);
+      root.style.setProperty('--primary-dark', colorPrincipalMedio);
+      root.style.setProperty('--dark', colorPrincipalOscuro);
       root.style.setProperty('--secondary', colorAcento);
       root.style.setProperty('--secondary-light', colorAcentoClaro);
+
       root.style.setProperty('--site-color-principal', colorPrincipal);
+      root.style.setProperty('--site-color-principal-rgb', principalRgb);
+      root.style.setProperty('--site-color-principal-oscuro', colorPrincipalOscuro);
+      root.style.setProperty('--site-color-principal-medio', colorPrincipalMedio);
       root.style.setProperty('--site-color-acento', colorAcento);
-      root.style.setProperty('--site-color-acento-rgb', envivoRgbTexto(colorAcento));
-      root.style.setProperty(
-        '--site-gradient-bg',
-        `linear-gradient(135deg, ${fondoOscuro} 0%, ${fondoMedio} 55%, ${colorPrincipal} 100%)`
-      );
+      root.style.setProperty('--site-color-acento-claro', colorAcentoClaro);
+      root.style.setProperty('--site-color-acento-rgb', acentoRgb);
+      root.style.setProperty('--site-texto-sobre-acento', textoSobreAcento);
 
-      document.body.style.background = `linear-gradient(135deg, ${fondoOscuro} 0%, ${fondoMedio} 55%, ${colorPrincipal} 100%)`;
+      root.style.setProperty('--site-panel-bg', colorPrincipalOscuro);
+      root.style.setProperty('--site-panel-bg-2', colorPrincipalMedio);
+      root.style.setProperty('--site-overlay-bg', `rgba(${principalRgb}, 0.92)`);
+      root.style.setProperty('--site-gradient-bg', `linear-gradient(135deg, ${colorPrincipalOscuro} 0%, ${colorPrincipalMedio} 55%, ${colorPrincipal} 100%)`);
+      root.style.setProperty('--site-gradient-panel', `linear-gradient(145deg, ${colorPrincipalOscuro}, ${colorPrincipalMedio})`);
+      root.style.setProperty('--site-gradient-acento', `linear-gradient(135deg, ${colorAcentoOscuro}, ${colorAcentoClaro})`);
+      root.style.setProperty('--site-gradient-toast', `linear-gradient(135deg, ${colorPrincipalOscuro}, ${colorPrincipalMedio})`);
+      root.style.setProperty('--site-live-color', colorAcento);
+      root.style.setProperty('--site-live-color-rgb', acentoRgb);
 
-      // Refuerza bordes y detalles si algún estilo fijo del navegador/cache queda aplicado.
+      // Limpia cualquier estilo inline anterior y aplica el tema dinámico.
+      document.body.style.background = '';
       document.querySelectorAll('.video-wrapper, .chat-wrapper').forEach(el => {
-        el.style.borderColor = `rgba(${envivoRgbTexto(colorAcento)}, 0.35)`;
+        el.style.borderColor = '';
+        el.style.background = '';
       });
     }
 
@@ -985,14 +1107,7 @@
         const contenedor = document.getElementById('video-container');
         if (contenedor) {
           const aviso = document.createElement('div');
-          aviso.style.background = '#fff3cd';
-          aviso.style.color = '#111';
-          aviso.style.border = '1px solid #ffecb5';
-          aviso.style.borderRadius = '12px';
-          aviso.style.padding = '16px';
-          aviso.style.margin = '20px auto';
-          aviso.style.maxWidth = '700px';
-          aviso.style.textAlign = 'center';
+          aviso.className = 'aviso-envivo-error';
           aviso.innerHTML = `⚠️ ${error.message || 'No se pudo cargar la transmisión.'}<br><small>La página sigue escuchando los cohetes del panel admin.</small>`;
           contenedor.prepend(aviso);
         }
