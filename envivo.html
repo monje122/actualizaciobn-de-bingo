@@ -26,6 +26,12 @@
       --border-radius: 12px;
       --border-radius-sm: 8px;
       --transition: all 0.3s ease;
+
+      /* Color dinámico del sitio para envivo.html */
+      --site-color-principal: #020A35;
+      --site-color-acento: #FFA500;
+      --site-color-acento-rgb: 255, 165, 0;
+      --site-gradient-bg: linear-gradient(135deg, #020A35 0%, #1a237e 100%);
     }
 
     /* Reset y estilos base */
@@ -39,7 +45,7 @@
       font-family: 'Poppins', 'Segoe UI', Arial, sans-serif;
       margin: 0;
       padding: 0;
-      background: linear-gradient(135deg, #020A35 0%, #1a237e 100%);
+      background: var(--site-gradient-bg, linear-gradient(135deg, #020A35 0%, #1a237e 100%));
       color: var(--white);
       min-height: 100vh;
       position: relative;
@@ -53,7 +59,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      background-image: url('https://i.postimg.cc/13mW4DZt/photo-2026-05-07-jpg.jpg');
+   
       background-size: cover;
       background-position: center;
       background-repeat: no-repeat;
@@ -149,7 +155,7 @@
       border-radius: var(--border-radius);
       padding: 15px;
       box-shadow: var(--shadow-lg);
-      border: 2px solid rgba(255, 165, 0, 0.3);
+      border: 2px solid rgba(var(--site-color-acento-rgb, 255, 165, 0), 0.35);
       margin-bottom: 20px;
       position: relative;
       overflow: hidden;
@@ -165,7 +171,7 @@
       background: linear-gradient(
         45deg,
         transparent 30%,
-        rgba(255, 165, 0, 0.03) 50%,
+        rgba(var(--site-color-acento-rgb, 255, 165, 0), 0.04) 50%,
         transparent 70%
       );
       animation: shine 6s infinite;
@@ -196,7 +202,7 @@
       border-radius: var(--border-radius);
       padding: 15px;
       box-shadow: var(--shadow-lg);
-      border: 2px solid rgba(255, 165, 0, 0.2);
+      border: 2px solid rgba(var(--site-color-acento-rgb, 255, 165, 0), 0.25);
       margin-bottom: 20px;
     }
 
@@ -235,7 +241,7 @@
       display: none;
       color: var(--dark);
       margin: 12px 0 20px;
-      background: linear-gradient(135deg, var(--secondary), #ffb347);
+      background: linear-gradient(135deg, var(--site-color-acento, var(--secondary)), var(--secondary-light, #ffb347));
       padding: 14px 32px;
       border-radius: 50px;
       font-size: 16px;
@@ -251,13 +257,13 @@
 
     #chat-external:hover {
       transform: translateY(-3px) scale(1.02);
-      box-shadow: 0 8px 25px rgba(255, 165, 0, 0.5);
+      box-shadow: 0 8px 25px rgba(var(--site-color-acento-rgb, 255, 165, 0), 0.5);
     }
 
     @keyframes pulse {
-      0% { box-shadow: 0 0 0 0 rgba(255, 165, 0, 0.7); }
-      70% { box-shadow: 0 0 0 15px rgba(255, 165, 0, 0); }
-      100% { box-shadow: 0 0 0 0 rgba(255, 165, 0, 0); }
+      0% { box-shadow: 0 0 0 0 rgba(var(--site-color-acento-rgb, 255, 165, 0), 0.7); }
+      70% { box-shadow: 0 0 0 15px rgba(var(--site-color-acento-rgb, 255, 165, 0), 0); }
+      100% { box-shadow: 0 0 0 0 rgba(var(--site-color-acento-rgb, 255, 165, 0), 0); }
     }
 
     /* ═══════════════════════════════════════
@@ -268,7 +274,7 @@
       gap: 20px;
       justify-content: center;
       padding: 12px 25px;
-      background: linear-gradient(135deg, var(--secondary), #ffb347);
+      background: linear-gradient(135deg, var(--site-color-acento, var(--secondary)), var(--secondary-light, #ffb347));
       border-radius: 50px;
       box-shadow: var(--shadow-lg);
       margin-top: 10px;
@@ -358,7 +364,7 @@
     .spinner {
       width: 60px;
       height: 60px;
-      border: 4px solid rgba(255, 165, 0, 0.2);
+      border: 4px solid rgba(var(--site-color-acento-rgb, 255, 165, 0), 0.2);
       border-top-color: var(--secondary);
       border-radius: 50%;
       animation: spin 1s linear infinite;
@@ -417,12 +423,12 @@
     }
 
     ::-webkit-scrollbar-thumb {
-      background: linear-gradient(135deg, var(--secondary), #ffb347);
+      background: linear-gradient(135deg, var(--site-color-acento, var(--secondary)), var(--secondary-light, #ffb347));
       border-radius: 5px;
     }
 
     ::-webkit-scrollbar-thumb:hover {
-      background: linear-gradient(135deg, #ffb347, var(--secondary-light));
+      background: linear-gradient(135deg, var(--secondary-light, #ffb347), var(--site-color-acento, var(--secondary)));
     }
 
     /* ═══════════════════════════════════════
@@ -643,6 +649,90 @@
       }, 500);
     }
 
+    function envivoNormalizarHex(color, fallback = '#FFA500') {
+      color = String(color || '').trim();
+
+      if (!color) return fallback;
+      if (!color.startsWith('#')) color = '#' + color;
+
+      if (/^#([0-9A-F]{3})$/i.test(color)) {
+        const r = color[1];
+        const g = color[2];
+        const b = color[3];
+        color = `#${r}${r}${g}${g}${b}${b}`;
+      }
+
+      if (!/^#([0-9A-F]{6})$/i.test(color)) {
+        return fallback;
+      }
+
+      return color.toUpperCase();
+    }
+
+    function envivoHexARgb(color) {
+      color = envivoNormalizarHex(color, '#FFA500').replace('#', '');
+      const r = parseInt(color.slice(0, 2), 16);
+      const g = parseInt(color.slice(2, 4), 16);
+      const b = parseInt(color.slice(4, 6), 16);
+      return { r, g, b };
+    }
+
+    function envivoRgbTexto(color) {
+      const { r, g, b } = envivoHexARgb(color);
+      return `${r}, ${g}, ${b}`;
+    }
+
+    function envivoAjustarColor(color, porcentaje) {
+      const { r, g, b } = envivoHexARgb(color);
+      const ajustar = (valor) => {
+        const nuevo = porcentaje < 0
+          ? valor * (1 + porcentaje / 100)
+          : valor + (255 - valor) * (porcentaje / 100);
+
+        return Math.max(0, Math.min(255, Math.round(nuevo)));
+      };
+
+      return '#' + [ajustar(r), ajustar(g), ajustar(b)]
+        .map(v => v.toString(16).padStart(2, '0'))
+        .join('')
+        .toUpperCase();
+    }
+
+    function aplicarColorPrincipalEnvivo(sitio) {
+      // Toma el color guardado en el panel master / página del cliente
+      // y lo aplica también a envivo.html.
+      const colorPrincipal = envivoNormalizarHex(sitio?.color_principal, '#020A35');
+      const colorAcento = envivoNormalizarHex(
+        sitio?.color_secundario || sitio?.color_principal,
+        '#FFA500'
+      );
+
+      const colorAcentoClaro = envivoAjustarColor(colorAcento, 18);
+      const fondoOscuro = envivoAjustarColor(colorPrincipal, -45);
+      const fondoMedio = envivoAjustarColor(colorPrincipal, -20);
+
+      const root = document.documentElement;
+      root.style.setProperty('--primary', colorPrincipal);
+      root.style.setProperty('--primary-dark', fondoMedio);
+      root.style.setProperty('--dark', fondoOscuro);
+      root.style.setProperty('--secondary', colorAcento);
+      root.style.setProperty('--secondary-light', colorAcentoClaro);
+      root.style.setProperty('--site-color-principal', colorPrincipal);
+      root.style.setProperty('--site-color-acento', colorAcento);
+      root.style.setProperty('--site-color-acento-rgb', envivoRgbTexto(colorAcento));
+      root.style.setProperty(
+        '--site-gradient-bg',
+        `linear-gradient(135deg, ${fondoOscuro} 0%, ${fondoMedio} 55%, ${colorPrincipal} 100%)`
+      );
+
+      document.body.style.background = `linear-gradient(135deg, ${fondoOscuro} 0%, ${fondoMedio} 55%, ${colorPrincipal} 100%)`;
+
+      // Refuerza bordes y detalles si algún estilo fijo del navegador/cache queda aplicado.
+      document.querySelectorAll('.video-wrapper, .chat-wrapper').forEach(el => {
+        el.style.borderColor = `rgba(${envivoRgbTexto(colorAcento)}, 0.35)`;
+      });
+    }
+
     async function cargarSitioActual() {
       SITE_SLUG = obtenerSlugSitio();
 
@@ -668,6 +758,8 @@
       sitioActual = sitio;
       SITE_ID = sitio.id;
 
+      aplicarColorPrincipalEnvivo(sitio);
+
       document.title = `${sitio.nombre || 'Bingo'} - En Vivo`;
 
       const titulo = document.querySelector('.live-header h1');
@@ -676,8 +768,7 @@
       const subtitulo = document.querySelector('.live-header p');
       if (subtitulo) subtitulo.textContent = sitio.nombre ? `Sitio: ${sitio.nombre}` : '¡Únete a la conversación en el chat!';
 
-      document.documentElement.style.setProperty('--secondary', sitio.color_secundario || '#FFA500');
-      document.documentElement.style.setProperty('--dark', sitio.color_principal || '#020A35');
+      // El color del sitio ya fue aplicado por aplicarColorPrincipalEnvivo(sitio).
 
       return sitio;
     }
