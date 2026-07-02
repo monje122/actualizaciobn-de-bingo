@@ -4131,6 +4131,7 @@ async function guardarPromociones() {
 function seleccionarPromocion(numero) {
   if (!mostrarPromocionesSitio) {
     promocionSeleccionada = null;
+    marcarPromoSeleccionada(null);
     return;
   }
 
@@ -4138,16 +4139,19 @@ function seleccionarPromocion(numero) {
   
   if (!promo.activa || promo.cantidad <= 0 || promo.precio <= 0) {
     alert('Esta promoción no está disponible en este momento.');
+    marcarPromoSeleccionada(null);
     return;
   }
   
   const ocupadosValidos = cartonesOcupados
-  .map(Number)
-  .filter(n => n >= 1 && n <= totalCartones).length;
+    .map(Number)
+    .filter(n => n >= 1 && n <= totalCartones).length;
 
-const maxDisponibles = Math.max(0, totalCartones - ocupadosValidos);
+  const maxDisponibles = Math.max(0, totalCartones - ocupadosValidos);
+
   if (promo.cantidad > maxDisponibles) {
     alert(`No hay suficientes cartones disponibles para esta promoción. Disponibles: ${maxDisponibles}`);
+    marcarPromoSeleccionada(null);
     return;
   }
   
@@ -4157,15 +4161,7 @@ const maxDisponibles = Math.max(0, totalCartones - ocupadosValidos);
   }
   
   promocionSeleccionada = numero;
-  
-  document.querySelectorAll('.btn-promo').forEach(btn => {
-    btn.classList.remove('seleccionado');
-  });
-  
-  const botonSeleccionado = document.querySelector(`[data-promo="${numero}"]`);
-  if (botonSeleccionado) {
-    botonSeleccionado.classList.add('seleccionado');
-  }
+  marcarPromoSeleccionada(numero);
   
   document.getElementById('cantidadCartones').value = promo.cantidad;
   actualizarPreseleccion();
@@ -6098,6 +6094,15 @@ async function guardarRedesSitio() {
       estado.style.color = 'red';
     }
   }
+}
+
+function marcarPromoSeleccionada(numeroPromo) {
+  document.querySelectorAll('.btn-promo').forEach(btn => {
+    const activa = String(btn.dataset.promo) === String(numeroPromo);
+
+    btn.classList.toggle('seleccionado', activa);
+    btn.setAttribute('aria-pressed', activa ? 'true' : 'false');
+  });
 }
 // ==================== EXPORTAR FUNCIONES ====================
 window.mostrarVentana = mostrarVentana;
