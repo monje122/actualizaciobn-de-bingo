@@ -4169,6 +4169,7 @@ function seleccionarPromocion(numero) {
 
 function deseleccionarPromocion() {
   promocionSeleccionada = null;
+  marcarPromoSeleccionada(null);
   document.querySelectorAll('.btn-promo').forEach(btn => {
     btn.classList.remove('seleccionado');
   });
