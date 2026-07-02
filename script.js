@@ -400,6 +400,132 @@ async function verificarPausaAutomaticaSitio() {
     warnSeguro('Error verificando pausa automática:', error);
   }
 }
+
+// ==================== CACHE RÁPIDO DE COLORES ====================
+function normalizarHexTema(valor, fallback = '#020A35') {
+  let color = String(valor || '').trim();
+  let fb = String(fallback || '#020A35').trim();
+
+  if (!fb.startsWith('#')) fb = '#' + fb;
+  if (/^#([0-9A-F]{3})$/i.test(fb)) {
+    fb = '#' + fb[1] + fb[1] + fb[2] + fb[2] + fb[3] + fb[3];
+  }
+  if (!/^#([0-9A-F]{6})$/i.test(fb)) fb = '#020A35';
+
+  if (!color) return fb.toUpperCase();
+  if (!color.startsWith('#')) color = '#' + color;
+  if (/^#([0-9A-F]{3})$/i.test(color)) {
+    color = '#' + color[1] + color[1] + color[2] + color[2] + color[3] + color[3];
+  }
+
+  return /^#([0-9A-F]{6})$/i.test(color) ? color.toUpperCase() : fb.toUpperCase();
+}
+
+function temaTieneValor(valor) {
+  return String(valor || '').trim() !== '';
+}
+
+function obtenerCacheColoresActual() {
+  try {
+    const slug = SITE_SLUG || obtenerSlugSitio() || 'golden';
+    const key = typeof window.bingogpCacheKeyColores === 'function'
+      ? window.bingogpCacheKeyColores(slug)
+      : `bingogp_colores_bingo_${String(slug).trim().toLowerCase()}`;
+
+    const keyEnvivo = typeof window.bingogpCacheKeyColoresEnvivo === 'function'
+      ? window.bingogpCacheKeyColoresEnvivo(slug)
+      : `bingogp_colores_envivo_${String(slug).trim().toLowerCase()}`;
+
+    const raw = localStorage.getItem(key) || localStorage.getItem(keyEnvivo);
+    return raw ? JSON.parse(raw) : null;
+  } catch (error) {
+    warnSeguro('No se pudo leer caché de colores:', error);
+    return null;
+  }
+}
+
+function guardarCacheColoresActual(colores = {}) {
+  try {
+    const slug = SITE_SLUG || obtenerSlugSitio() || 'golden';
+
+    if (typeof window.bingogpGuardarCacheColores === 'function') {
+      window.bingogpGuardarCacheColores(slug, colores);
+      return;
+    }
+
+    const datos = {
+      color_fondo: colores.color_fondo || '',
+      color_botones: colores.color_botones || '',
+      color_texto: colores.color_texto || '',
+      color_texto_botones: colores.color_texto_botones || '',
+      color_principal: colores.color_principal || '',
+      color_secundario: colores.color_secundario || '',
+      actualizado_en: new Date().toISOString()
+    };
+
+    localStorage.setItem(`bingogp_colores_bingo_${String(slug).trim().toLowerCase()}`, JSON.stringify(datos));
+    localStorage.setItem(`bingogp_colores_envivo_${String(slug).trim().toLowerCase()}`, JSON.stringify(datos));
+  } catch (error) {
+    warnSeguro('No se pudo guardar caché de colores:', error);
+  }
+}
+
+function completarColoresTema(colores = {}) {
+  const cache = obtenerCacheColoresActual() || {};
+  const css = (name, fallback = '') => getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+  const tomar = (...valores) => valores.find(temaTieneValor) || '';
+
+  const colorFondo = normalizarHexTema(
+    tomar(colores.color_fondo, cache.color_fondo, sitioActual?.color_fondo, css('--site-bg')),
+    '#FFFFFF'
+  );
+
+  const colorPrincipal = normalizarHexTema(
+    tomar(colores.color_principal, cache.color_principal, sitioActual?.color_principal, css('--site-primary'), css('--primary')),
+    '#020A35'
+  );
+
+  const colorBotones = normalizarHexTema(
+    tomar(colores.color_botones, cache.color_botones, sitioActual?.color_botones, css('--site-buttons'), colorPrincipal),
+    colorPrincipal
+  );
+
+  const colorTexto = normalizarHexTema(
+    tomar(colores.color_texto, cache.color_texto, sitioActual?.color_texto, css('--site-text')),
+    '#000000'
+  );
+
+  const colorTextoBotones = normalizarHexTema(
+    tomar(colores.color_texto_botones, cache.color_texto_botones, sitioActual?.color_texto_botones, css('--site-button-text')),
+    '#FFFFFF'
+  );
+
+  const colorSecundario = normalizarHexTema(
+    tomar(colores.color_secundario, cache.color_secundario, sitioActual?.color_secundario, css('--site-secondary'), css('--secondary'), colorBotones),
+    colorBotones
+  );
+
+  return {
+    color_fondo: colorFondo,
+    color_botones: colorBotones,
+    color_texto: colorTexto,
+    color_texto_botones: colorTextoBotones,
+    color_principal: colorPrincipal,
+    color_secundario: colorSecundario
+  };
+}
+
+function marcarTemaBingoListo() {
+  try {
+    document.documentElement.classList.add('bingogp-colores-listos');
+    if (typeof window.bingogpMarcarTemaListo === 'function') {
+      window.bingogpMarcarTemaListo();
+    }
+  } catch (error) {
+    warnSeguro('No se pudo marcar tema listo:', error);
+  }
+}
+
 function aplicarDatosSitio(sitio) {
   if (!sitio) return;
 
@@ -435,15 +561,17 @@ function aplicarDatosSitio(sitio) {
     }
   }
 
-  // Colores CSS globales
-  document.documentElement.style.setProperty('--site-primary', sitio.color_principal || '#020A35');
-  document.documentElement.style.setProperty('--site-secondary', sitio.color_secundario || '#FFA500');
-  document.documentElement.style.setProperty('--site-buttons', sitio.color_botones || sitio.color_principal || '#020A35');
-  document.documentElement.style.setProperty('--site-bg', sitio.color_fondo || '#ffffff');
-  document.documentElement.style.setProperty('--site-text', sitio.color_texto || '#000000');
-
-  document.body.style.backgroundColor = sitio.color_fondo || '';
-  document.body.style.color = sitio.color_texto || '';
+  // Colores CSS globales.
+  // Importante: no se aplican colores por defecto aquí, porque eso pisa el localStorage
+  // y produce el cambio visible de color. Se usan caché + valores reales del sitio.
+  aplicarColoresPersonalizados({
+    color_fondo: sitio.color_fondo || '',
+    color_botones: sitio.color_botones || '',
+    color_texto: sitio.color_texto || '',
+    color_texto_botones: sitio.color_texto_botones || '',
+    color_principal: sitio.color_principal || '',
+    color_secundario: sitio.color_secundario || ''
+  });
 
   // Total de cartones y precio desde sitios
  totalCartones = parseInt(
@@ -848,36 +976,74 @@ async function setConfigValue(clave, value) {
 
   return data === true;
 }
-function aplicarColoresPersonalizados(colores = {}) {
-  const colorFondo = colores.color_fondo || '#ffffff';
-  const colorBotones = colores.color_botones || '#020A35';
-  const colorTexto = colores.color_texto || '#000000';
-  const colorPrincipal = colores.color_principal || '#020A35';
-  const colorTextoBotones = colores.color_texto_botones || '#ffffff';
-  const colorSecundario = colores.color_secundario || '#FFA500';
+function aplicarColoresPersonalizados(colores = {}, opciones = {}) {
+  const tema = completarColoresTema(colores);
+  const root = document.documentElement;
 
-  document.documentElement.style.setProperty('--site-bg', colorFondo);
-  document.documentElement.style.setProperty('--site-buttons', colorBotones);
-  document.documentElement.style.setProperty('--site-text', colorTexto);
-  document.documentElement.style.setProperty('--site-button-text', colorTextoBotones);
-  document.documentElement.style.setProperty('--site-primary', colorPrincipal);
-  document.documentElement.style.setProperty('--site-secondary', colorSecundario);
+  // Variables principales que usa styles.css
+  root.style.setProperty('--site-bg', tema.color_fondo);
+  root.style.setProperty('--site-fondo', tema.color_fondo);
+  root.style.setProperty('--color-fondo', tema.color_fondo);
+  root.style.setProperty('--fondo-pagina', tema.color_fondo);
 
-  document.body.style.backgroundColor = colorFondo;
-  document.body.style.color = colorTexto;
+  root.style.setProperty('--site-buttons', tema.color_botones);
+  root.style.setProperty('--site-color-botones', tema.color_botones);
+  root.style.setProperty('--color-botones', tema.color_botones);
+  root.style.setProperty('--boton-color', tema.color_botones);
+
+  root.style.setProperty('--site-text', tema.color_texto);
+  root.style.setProperty('--site-texto-general', tema.color_texto);
+  root.style.setProperty('--color-texto', tema.color_texto);
+  root.style.setProperty('--texto-color', tema.color_texto);
+
+  root.style.setProperty('--site-button-text', tema.color_texto_botones);
+  root.style.setProperty('--site-texto-botones', tema.color_texto_botones);
+  root.style.setProperty('--color-texto-botones', tema.color_texto_botones);
+
+  root.style.setProperty('--site-primary', tema.color_principal);
+  root.style.setProperty('--site-color-principal', tema.color_principal);
+  root.style.setProperty('--color-principal', tema.color_principal);
+  root.style.setProperty('--primary', tema.color_principal);
+
+  root.style.setProperty('--site-secondary', tema.color_secundario);
+  root.style.setProperty('--site-color-acento', tema.color_secundario);
+  root.style.setProperty('--color-secundario', tema.color_secundario);
+  root.style.setProperty('--secondary', tema.color_secundario);
+
+  if (document.body) {
+    document.body.style.backgroundColor = tema.color_fondo;
+    document.body.style.color = tema.color_texto;
+  }
+
+  if (opciones.guardarCache === true) {
+    guardarCacheColoresActual(tema);
+  }
+
+  marcarTemaBingoListo();
+  return tema;
 }
 
 async function cargarColoresSitio() {
-  const colores = {
-    color_fondo: await getConfigValue('color_fondo', sitioActual?.color_fondo || '#ffffff'),
-    color_botones: await getConfigValue('color_botones', sitioActual?.color_botones || '#020A35'),
-    color_texto: await getConfigValue('color_texto', sitioActual?.color_texto || '#000000'),
-    color_principal: await getConfigValue('color_principal', sitioActual?.color_principal || '#020A35'),
-    color_texto_botones: await getConfigValue('color_texto_botones', sitioActual?.color_texto_botones || '#ffffff'),
-    color_secundario: await getConfigValue('color_secundario', sitioActual?.color_secundario || '#FFA500')
-  };
+  const fallbacks = completarColoresTema(sitioActual || {});
 
-  aplicarColoresPersonalizados(colores);
+  const claves = [
+    ['color_fondo', fallbacks.color_fondo],
+    ['color_botones', fallbacks.color_botones],
+    ['color_texto', fallbacks.color_texto],
+    ['color_principal', fallbacks.color_principal],
+    ['color_texto_botones', fallbacks.color_texto_botones],
+    ['color_secundario', fallbacks.color_secundario]
+  ];
+
+  const valores = await Promise.all(
+    claves.map(([clave, fallback]) => getConfigValue(clave, fallback))
+  );
+
+  const colores = Object.fromEntries(
+    claves.map(([clave], index) => [clave, valores[index]])
+  );
+
+  const tema = aplicarColoresPersonalizados(colores, { guardarCache: true });
 
   const fondo = document.getElementById('colorFondoSitio');
   const botones = document.getElementById('colorBotonesSitio');
@@ -886,12 +1052,12 @@ async function cargarColoresSitio() {
   const principal = document.getElementById('colorPrincipalSitio');
   const secundario = document.getElementById('colorSecundarioSitio');
 
-  if (fondo) fondo.value = colores.color_fondo;
-  if (botones) botones.value = colores.color_botones;
-  if (textoBotones) textoBotones.value = colores.color_texto_botones;
-  if (texto) texto.value = colores.color_texto;
-  if (principal) principal.value = colores.color_principal;
-  if (secundario) secundario.value = colores.color_secundario;
+  if (fondo) fondo.value = tema.color_fondo;
+  if (botones) botones.value = tema.color_botones;
+  if (textoBotones) textoBotones.value = tema.color_texto_botones;
+  if (texto) texto.value = tema.color_texto;
+  if (principal) principal.value = tema.color_principal;
+  if (secundario) secundario.value = tema.color_secundario;
 }
 
 async function guardarColoresSitio() {
@@ -920,7 +1086,7 @@ async function guardarColoresSitio() {
       }
     }
 
-    aplicarColoresPersonalizados(colores);
+    aplicarColoresPersonalizados(colores, { guardarCache: true });
 
     if (estado) {
       estado.textContent = '✅ Colores guardados correctamente.';
@@ -955,7 +1121,7 @@ async function resetearColoresSitio() {
     await setConfigValue(clave, valor);
   }
 
-  aplicarColoresPersonalizados(colores);
+  aplicarColoresPersonalizados(colores, { guardarCache: true });
   await cargarColoresSitio();
 
   const estado = document.getElementById('estadoColoresSitio');
@@ -988,7 +1154,7 @@ function activarVistaPreviaColores() {
         color_texto: document.getElementById('colorTextoSitio')?.value || '#000000',
         color_principal: document.getElementById('colorPrincipalSitio')?.value || '#020A35',
         color_secundario: document.getElementById('colorSecundarioSitio')?.value || '#FFA500'
-      });
+      }, { guardarCache: true });
     });
   });
 }
@@ -2144,6 +2310,14 @@ if (!sitioOk) {
    document.getElementById('modal-terminos').classList.remove('oculto');
    await obtenerTotalCartones();
   await cargarLinkWhatsapp();
+
+  // Si no hay caché, espera los colores reales antes de mostrar la página.
+  // Si sí hay caché, se muestra rápido y Supabase actualiza el tema en segundo plano.
+  const temaYaEstabaEnCache = !!obtenerCacheColoresActual();
+  if (!temaYaEstabaEnCache) {
+    await cargarColoresSitio();
+  }
+
   document.getElementById('overlay-carga').style.display = 'none';
 
   // Primero se carga si el master permite promociones.
@@ -2162,7 +2336,7 @@ if (!sitioOk) {
     cargarOpcionesMasterSitio(),
     cargarPromocionesConfig(),
     cargarImagenesSitio(),
-    cargarColoresSitio(),
+    temaYaEstabaEnCache ? cargarColoresSitio() : Promise.resolve(),
     cargarPagoMovilSitio(),
     cargarRedesSitio(),
     cargarPoliticaPrivacidadSitio()
@@ -2199,7 +2373,7 @@ document.getElementById('btnResetColoresSitio')?.addEventListener('click', reset
   inicializarHistorialVentanas();
   // Mostrar términos
 
-  document.getElementById('overlay-carga').style.display = 'none';
+  document.getElementById('overlay-carga')?.style && (document.getElementById('overlay-carga').style.display = 'none');
   logSeguro('✅ Sistema inicializado correctamente');
 });
 
