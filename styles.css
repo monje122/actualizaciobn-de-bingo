@@ -3480,3 +3480,46 @@ textarea:focus {
 #bienvenida footer a {
   color: var(--site-accent) !important;
 }
+
+/* ════════════════════════════════════════════════════════
+   FIX RAPIDEZ COLORES LOCALSTORAGE BINGOGP
+   - El fondo y botones leen las variables que bingo.html aplica antes del CSS.
+   - El overlay no aparece blanco.
+   - Si ya existe caché, se evita la animación inicial para que no parezca que tarda.
+   ════════════════════════════════════════════════════════ */
+html,
+body {
+  background: var(--site-bg, #020A35) !important;
+  color: var(--site-text, #ffffff) !important;
+}
+
+#overlay-carga {
+  background: var(--site-bg, #020A35) !important;
+  color: var(--site-text, #ffffff) !important;
+}
+
+html.bingogp-colores-listos section {
+  animation: none !important;
+}
+
+button,
+.btn,
+.btn-admin,
+.btn-primary,
+.btn-secondary,
+.btn-danger,
+.btn-warning,
+.btn-success,
+.btn-fun,
+.btn-sort,
+#btnWhatsapp,
+#redes-sociales,
+#chat-external {
+  background: var(--site-buttons, #020A35) !important;
+  color: var(--site-button-text, #ffffff) !important;
+}
+
+::-webkit-scrollbar-thumb,
+::-webkit-scrollbar-thumb:hover {
+  background: var(--site-buttons, #020A35) !important;
+}
