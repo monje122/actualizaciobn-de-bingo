@@ -1423,6 +1423,11 @@ function clearAdminSession() {
     window.otpTimerInterval = null;
   }
 
+  // Detener refresco automático del panel admin
+  if (typeof detenerRefrescoAutomaticoAdmin === 'function') {
+    detenerRefrescoAutomaticoAdmin();
+  }
+
   // Eliminar elementos del DOM que puedan existir
   const sessionInfo = document.getElementById('session-info');
   if (sessionInfo) sessionInfo.remove();
@@ -3421,7 +3426,7 @@ async function elegirMasCartones() {
 }
 
 // ==================== FUNCIOS DEL PANEL ADMIN ====================
-async function cargarPanelAdmin() {
+async function cargarPanelAdmin(opciones = {}) {
 await Promise.all([
   obtenerTotalCartones(),
   obtenerMontoTotalRecaudado(),
@@ -3454,7 +3459,12 @@ cartonesOcupados = await fetchTodosLosOcupados();
 
   if (error) {
     errorSeguro(error);
-    return alert('Error cargando inscripciones');
+
+    if (!opciones.silencioso) {
+      alert('Error cargando inscripciones');
+    }
+
+    return;
   }
 
   const tbody = document.querySelector('#tabla-comprobantes tbody');
@@ -5321,7 +5331,15 @@ function agregarBotonesAdicionalesAdmin() {
 
 let canalInscripciones = null;
 let timerRecargaAdmin = null;
+let timerPollingAdmin = null;
 let cargandoPanelAdmin = false;
+let ultimaRecargaAdmin = 0;
+const ADMIN_REFRESH_INTERVAL_MS = 8000;
+
+function panelAdminEstaVisible() {
+  const panel = document.getElementById('admin-panel');
+  return !!(panel && !panel.classList.contains('oculto'));
+}
 
 function programarRecargaAdmin() {
   clearTimeout(timerRecargaAdmin);
@@ -5329,15 +5347,18 @@ function programarRecargaAdmin() {
   timerRecargaAdmin = setTimeout(async () => {
     if (cargandoPanelAdmin) return;
     if (!sesionActiva) return;
+    if (!panelAdminEstaVisible()) return;
 
-    const panel = document.getElementById('admin-panel');
-    if (!panel || panel.classList.contains('oculto')) return;
+    // Evita recargas pegadas si llegan varios cambios seguidos.
+    const ahora = Date.now();
+    if (ahora - ultimaRecargaAdmin < 2500) return;
 
     cargandoPanelAdmin = true;
 
     try {
-      logSeguro('🔄 Recargando panel admin con pausa...');
-      await cargarPanelAdmin();
+      logSeguro('🔄 Recargando panel admin automáticamente...');
+      await cargarPanelAdmin({ silencioso: true });
+      ultimaRecargaAdmin = Date.now();
     } catch (error) {
       errorSeguro('❌ Error recargando panel admin:', error);
     } finally {
@@ -5346,12 +5367,50 @@ function programarRecargaAdmin() {
   }, 800);
 }
 
+function iniciarPollingAdmin() {
+  if (timerPollingAdmin) return;
+
+  timerPollingAdmin = setInterval(() => {
+    if (!sesionActiva) return;
+    if (!panelAdminEstaVisible()) return;
+
+    // Refresco de respaldo por si Realtime no está activo en Supabase.
+    programarRecargaAdmin();
+  }, ADMIN_REFRESH_INTERVAL_MS);
+}
+
+function detenerRefrescoAutomaticoAdmin() {
+  if (timerPollingAdmin) {
+    clearInterval(timerPollingAdmin);
+    timerPollingAdmin = null;
+  }
+
+  if (timerRecargaAdmin) {
+    clearTimeout(timerRecargaAdmin);
+    timerRecargaAdmin = null;
+  }
+
+  if (canalInscripciones) {
+    try {
+      supabase.removeChannel(canalInscripciones);
+    } catch (error) {
+      warnSeguro('No se pudo cerrar canal Realtime admin:', error);
+    }
+
+    canalInscripciones = null;
+  }
+}
+
 function activarRefrescoAutomaticoAdmin() {
   if (!SITE_ID) {
-    warnSeguro('No se puede activar Realtime admin: SITE_ID no está cargado.');
+    warnSeguro('No se puede activar refresco admin: SITE_ID no está cargado.');
     return;
   }
 
+  // Siempre activa polling: así funciona aunque Realtime no esté publicado en Supabase.
+  iniciarPollingAdmin();
+
+  // Realtime también queda activo para refrescar casi al instante cuando Supabase lo permita.
   if (canalInscripciones) return;
 
   canalInscripciones = supabase
@@ -5365,12 +5424,16 @@ function activarRefrescoAutomaticoAdmin() {
         filter: `site_id=eq.${SITE_ID}`
       },
       (payload) => {
-        logSeguro('🔄 Cambio detectado en inscripciones de este sitio:', payload);
+        logSeguro('🔄 Compra/cambio detectado en inscripciones de este sitio:', payload);
         programarRecargaAdmin();
       }
     )
     .subscribe((status) => {
       logSeguro('📡 Realtime admin:', status);
+
+      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+        canalInscripciones = null;
+      }
     });
 }
 function iniciarContadorReserva(minutos = 5) {
