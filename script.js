@@ -3389,7 +3389,7 @@ cartonesOcupados = await fetchTodosLosOcupados();
     tr.innerHTML = `
       <td>${item.nombre}</td>
       <td>
-        <a href="${buildWhatsAppLink(item.telefono, `Hola ${item.nombre}, te escribo de parte del equipo de bingoandino75.`)}"
+        <a href="${buildWhatsAppLink(item.telefono, mensajeWhatsappAdminCliente(item))}"
            target="_blank" rel="noopener">
           ${item.telefono}
         </a>
