@@ -4587,6 +4587,31 @@ function ordenarPendientesArriba() {
   filas.forEach(fila => tabla.appendChild(fila));
 }
 
+
+// ==================== WHATSAPP ADMIN: NOMBRE DEL BINGO DINÁMICO ====================
+// Cuando el admin toca el teléfono de un cliente, el mensaje usa el nombre
+// del bingo actual y no un nombre fijo para todos los sitios.
+function obtenerNombreBingoMensaje() {
+  const nombre =
+    sitioActual?.titulo_publico ||
+    sitioActual?.nombre ||
+    SITE_SLUG ||
+    'este bingo';
+
+  return String(nombre).trim() || 'este bingo';
+}
+
+function mensajeWhatsappAdminCliente(item = {}) {
+  const nombreCliente = String(item?.nombre || '').trim();
+  const nombreBingo = obtenerNombreBingoMensaje();
+
+  if (nombreCliente) {
+    return `Hola ${nombreCliente}, te escribo de parte del equipo de ${nombreBingo}.`;
+  }
+
+  return `Hola, te escribo de parte del equipo de ${nombreBingo}.`;
+}
+
 function buildWhatsAppLink(rawPhone, presetMsg = '') {
   if (!rawPhone) return null;
 
@@ -4605,7 +4630,7 @@ function buildWhatsAppLink(rawPhone, presetMsg = '') {
   }
 
   const waNumber = s.replace(/^\+/, '');
-  const text = encodeURIComponent(presetMsg || 'Hola, te escribo de parte del equipo de ${nombreBingo}.');
+  const text = encodeURIComponent(presetMsg || `Hola, te escribo de parte del equipo de ${obtenerNombreBingoMensaje()}.`);
   return `https://wa.me/${waNumber}?text=${text}`;
 }
 
