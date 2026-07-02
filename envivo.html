@@ -5,6 +5,131 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Transmisión en Vivo</title>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <script>
+    // ==================== CACHE RÁPIDO DE COLORES ENVIVO ====================
+    // Aplica los colores guardados en localStorage antes de esperar a Supabase.
+    (function () {
+      function normalizarHexLocal(color, fallback) {
+        color = String(color || '').trim();
+        fallback = fallback || '#020A35';
+        if (!color) return fallback;
+        if (!color.startsWith('#')) color = '#' + color;
+        if (/^#([0-9A-F]{3})$/i.test(color)) {
+          color = '#' + color[1] + color[1] + color[2] + color[2] + color[3] + color[3];
+        }
+        return /^#([0-9A-F]{6})$/i.test(color) ? color.toUpperCase() : fallback;
+      }
+
+      function hexARgbTextoLocal(color, fallback) {
+        color = normalizarHexLocal(color, fallback).replace('#', '');
+        return `${parseInt(color.slice(0, 2), 16)}, ${parseInt(color.slice(2, 4), 16)}, ${parseInt(color.slice(4, 6), 16)}`;
+      }
+
+      function ajustarColorLocal(color, porcentaje) {
+        color = normalizarHexLocal(color, '#020A35').replace('#', '');
+        const rgb = [
+          parseInt(color.slice(0, 2), 16),
+          parseInt(color.slice(2, 4), 16),
+          parseInt(color.slice(4, 6), 16)
+        ];
+        const ajustar = (valor) => {
+          const nuevo = porcentaje < 0
+            ? valor * (1 + porcentaje / 100)
+            : valor + (255 - valor) * (porcentaje / 100);
+          return Math.max(0, Math.min(255, Math.round(nuevo)));
+        };
+        return '#' + rgb.map(ajustar).map(v => v.toString(16).padStart(2, '0')).join('').toUpperCase();
+      }
+
+      function luminanciaLocal(color) {
+        const rgb = hexARgbTextoLocal(color, '#020A35').split(',').map(n => Number(n.trim()));
+        return (0.299 * rgb[0] + 0.587 * rgb[1] + 0.114 * rgb[2]) / 255;
+      }
+
+      function textoContrasteLocal(color) {
+        return luminanciaLocal(color) > 0.62 ? '#111111' : '#FFFFFF';
+      }
+
+      function obtenerSlugLocal() {
+        try {
+          const params = new URLSearchParams(window.location.search);
+          const slugUrl = params.get('site');
+          if (slugUrl && slugUrl.trim()) return slugUrl.trim().toLowerCase();
+        } catch (e) {}
+        return 'golden';
+      }
+
+      window.envivoColorCacheKey = function () {
+        return `bingogp_colores_envivo_${obtenerSlugLocal()}`;
+      };
+
+      window.envivoMarcarTemaListo = function () {
+        document.documentElement.classList.add('envivo-colores-listos');
+      };
+
+      window.envivoAplicarTemaCacheSimple = function (colores) {
+        if (!colores || typeof colores !== 'object') return false;
+
+        const colorPrincipal = normalizarHexLocal(colores.color_principal || colores.color_botones, '#020A35');
+        const colorFondo = colores.color_fondo ? normalizarHexLocal(colores.color_fondo, colorPrincipal) : '';
+        const colorBotones = normalizarHexLocal(colores.color_botones || colores.color_secundario || colorPrincipal, colorPrincipal);
+        const colorAcento = normalizarHexLocal(colores.color_secundario || colorBotones, colorBotones);
+        const colorTexto = normalizarHexLocal(colores.color_texto, colorFondo ? textoContrasteLocal(colorFondo) : '#FFFFFF');
+        const colorTextoBotones = normalizarHexLocal(colores.color_texto_botones, textoContrasteLocal(colorBotones));
+        const colorPrincipalOscuro = ajustarColorLocal(colorPrincipal, -55);
+        const colorPrincipalMedio = ajustarColorLocal(colorPrincipal, -25);
+        const colorAcentoClaro = ajustarColorLocal(colorAcento, 22);
+        const root = document.documentElement;
+        const acentoRgb = hexARgbTextoLocal(colorAcento, colorBotones);
+        const principalRgb = hexARgbTextoLocal(colorPrincipal, '#020A35');
+        const fondoRgb = colorFondo ? hexARgbTextoLocal(colorFondo, colorPrincipal) : principalRgb;
+
+        root.style.setProperty('--primary', colorPrincipal);
+        root.style.setProperty('--primary-dark', colorPrincipalMedio);
+        root.style.setProperty('--dark', colorPrincipalOscuro);
+        root.style.setProperty('--secondary', colorAcento);
+        root.style.setProperty('--secondary-light', colorAcentoClaro);
+        root.style.setProperty('--site-fondo', colorFondo || colorPrincipalOscuro);
+        root.style.setProperty('--site-texto-general', colorTexto);
+        root.style.setProperty('--site-color-botones', colorBotones);
+        root.style.setProperty('--site-texto-botones', colorTextoBotones);
+        root.style.setProperty('--site-color-principal', colorPrincipal);
+        root.style.setProperty('--site-color-principal-rgb', principalRgb);
+        root.style.setProperty('--site-color-principal-oscuro', colorPrincipalOscuro);
+        root.style.setProperty('--site-color-principal-medio', colorPrincipalMedio);
+        root.style.setProperty('--site-color-acento', colorAcento);
+        root.style.setProperty('--site-color-acento-claro', colorAcentoClaro);
+        root.style.setProperty('--site-color-acento-rgb', acentoRgb);
+        root.style.setProperty('--site-texto-sobre-acento', colorTextoBotones);
+        root.style.setProperty('--site-panel-bg', colorPrincipalOscuro);
+        root.style.setProperty('--site-panel-bg-2', colorPrincipalMedio);
+        root.style.setProperty('--site-overlay-bg', `rgba(${fondoRgb}, 0.92)`);
+        root.style.setProperty('--site-gradient-bg', colorFondo || `linear-gradient(135deg, ${colorPrincipalOscuro} 0%, ${colorPrincipalMedio} 55%, ${colorPrincipal} 100%)`);
+        root.style.setProperty('--site-gradient-panel', `linear-gradient(145deg, ${colorPrincipalOscuro}, ${colorPrincipalMedio})`);
+        root.style.setProperty('--site-gradient-acento', `linear-gradient(135deg, ${colorBotones}, ${colorAcentoClaro})`);
+        root.style.setProperty('--site-gradient-toast', `linear-gradient(135deg, ${colorPrincipalOscuro}, ${colorPrincipalMedio})`);
+        root.style.setProperty('--site-live-color', colorAcento);
+        root.style.setProperty('--site-live-color-rgb', acentoRgb);
+        return true;
+      };
+
+      try {
+        const cache = localStorage.getItem(window.envivoColorCacheKey());
+        if (cache) {
+          const colores = JSON.parse(cache);
+          if (window.envivoAplicarTemaCacheSimple(colores)) {
+            window.envivoMarcarTemaListo();
+          }
+        }
+      } catch (e) {
+        console.warn('No se pudo aplicar caché de colores envivo:', e);
+      }
+
+      // Seguridad: evita pantalla en blanco si Supabase tarda o falla.
+      setTimeout(window.envivoMarcarTemaListo, 2500);
+    })();
+  </script>
   <style>
     /* ═══════════════════════════════════════
        VARIABLES GLOBALES
@@ -832,6 +957,28 @@
       }
     }
 
+
+
+    function envivoGuardarTemaLocalStorage(colores) {
+      try {
+        if (!colores || typeof colores !== 'object') return;
+
+        const datos = {
+          color_fondo: colores.color_fondo || '',
+          color_botones: colores.color_botones || '',
+          color_texto: colores.color_texto || '',
+          color_texto_botones: colores.color_texto_botones || '',
+          color_principal: colores.color_principal || '',
+          color_secundario: colores.color_secundario || '',
+          actualizado_en: new Date().toISOString()
+        };
+
+        localStorage.setItem(envivoColorCacheKey(), JSON.stringify(datos));
+      } catch (error) {
+        console.warn('No se pudo guardar caché de colores envivo:', error);
+      }
+    }
+
     async function cargarTemaEnvivo(sitio) {
       // Envivo debe leer los mismos colores que la página principal del bingo.
       // El fondo viene de la configuración del panel admin: color_fondo.
@@ -844,7 +991,9 @@
         color_secundario: await envivoGetConfigSitio('color_secundario', sitio?.color_secundario || '')
       };
 
-      aplicarColorPrincipalEnvivo({ ...sitio, ...colores });
+      const temaFinal = { ...sitio, ...colores };
+      aplicarColorPrincipalEnvivo(temaFinal);
+      envivoGuardarTemaLocalStorage(temaFinal);
     }
 
     function aplicarColorPrincipalEnvivo(sitio) {
@@ -933,6 +1082,9 @@
         el.style.borderColor = '';
         el.style.background = '';
       });
+
+      // Muestra la página solo cuando el tema ya está aplicado.
+      if (typeof envivoMarcarTemaListo === 'function') envivoMarcarTemaListo();
     }
 
     async function cargarSitioActual() {
@@ -1173,6 +1325,7 @@
         ajustarChatMobile();
         window.addEventListener('resize', ajustarChatMobile);
       } catch (error) {
+        if (typeof envivoMarcarTemaListo === 'function') envivoMarcarTemaListo();
         console.error('Error en envivo:', error);
 
         // Aunque falle el video, dejamos la página viva para que los cohetes puedan escucharse.
