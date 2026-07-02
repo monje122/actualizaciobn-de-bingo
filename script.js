@@ -2077,7 +2077,7 @@ async function liberarHuerfanos() {
 
     await verHuerfanos();
     await cargarCartones();
-    await contarCartonesVendidos();
+    await actualizarResumenCartonesDashboard();
 
   } catch (e) {
     errorSeguro(e);
@@ -2148,8 +2148,56 @@ async function obtenerMontoTotalRecaudado() {
   }
 }
 
-async function contarCartonesVendidos() {
+function contarCartonesEnLista(valor) {
+  if (Array.isArray(valor)) {
+    return valor.length;
+  }
+
+  if (typeof valor === 'string') {
+    return valor
+      .split(',')
+      .map(v => v.trim())
+      .filter(Boolean)
+      .length;
+  }
+
+  return 0;
+}
+
+async function contarCartonesAprobados() {
+  if (!SITE_ID) return 0;
+
+  const { data, error } = await supabase
+    .from('inscripciones')
+    .select('cartones')
+    .eq('site_id', SITE_ID)
+    .eq('estado', 'aprobado');
+
+  if (error) {
+    errorSeguro('Error contando cartones aprobados:', error);
+    return 0;
+  }
+
+  return (data || []).reduce((total, ins) => {
+    return total + contarCartonesEnLista(ins.cartones);
+  }, 0);
+}
+
+async function contarCartonesOcupadosTotal() {
+  if (!SITE_ID) return 0;
+
   await obtenerTotalCartones();
+
+  // Limpia reservas huérfanas antes de contar, para que al pasar 5 minutos
+  // se descuente de Reservados sin tener que aprobar ni rechazar nada.
+  try {
+    await supabase.rpc('rpc_liberar_cartones_huerfanos', {
+      _site_id: SITE_ID,
+      _min_age: '5 minutes'
+    });
+  } catch (error) {
+    warnSeguro('No se pudieron limpiar reservas huérfanas antes del conteo:', error);
+  }
 
   const { data, error } = await supabase.rpc('rpc_public_contar_cartones_ocupados', {
     _site_id: SITE_ID,
@@ -2158,17 +2206,47 @@ async function contarCartonesVendidos() {
 
   if (error) {
     errorSeguro('Error contando cartones ocupados por RPC:', error);
-    return 0;
+    return Array.isArray(cartonesOcupados) ? cartonesOcupados.length : 0;
   }
 
-  const totalVendidos = Number(data) || 0;
+  return Number(data) || 0;
+}
+
+async function actualizarResumenCartonesDashboard() {
+  const [vendidos, ocupados] = await Promise.all([
+    contarCartonesAprobados(),
+    contarCartonesOcupadosTotal()
+  ]);
+
+  const reservados = Math.max(0, ocupados - vendidos);
 
   const totalVendidosElement = document.getElementById('total-vendidos');
   if (totalVendidosElement) {
-    totalVendidosElement.textContent = totalVendidos;
+    totalVendidosElement.textContent = vendidos;
   }
 
-  return totalVendidos;
+  const reservadosElement = document.getElementById('reservados-count');
+  if (reservadosElement) {
+    reservadosElement.textContent = reservados;
+  }
+
+  return { vendidos, reservados, ocupados };
+}
+
+async function contarCartonesReservados() {
+  const resumen = await actualizarResumenCartonesDashboard();
+  return resumen.reservados;
+}
+
+async function contarCartonesVendidos() {
+  const vendidos = await contarCartonesAprobados();
+
+  const totalVendidosElement = document.getElementById('total-vendidos');
+  if (totalVendidosElement) {
+    totalVendidosElement.textContent = vendidos;
+  }
+
+  return vendidos;
 }
 
 
@@ -2799,11 +2877,11 @@ async function cargarCartones() {
     contenedor.appendChild(carton);
   }
 
-  await contarCartonesVendidos();
+  await actualizarResumenCartonesDashboard();
 
   actualizarContadorCartones(
     totalCartones,
-    Number(document.getElementById('total-vendidos').textContent) || cartonesOcupados.length,
+    cartonesOcupados.length,
     usuario.cartones.length
   );
 
@@ -3347,7 +3425,7 @@ async function cargarPanelAdmin() {
 await Promise.all([
   obtenerTotalCartones(),
   obtenerMontoTotalRecaudado(),
-  contarCartonesVendidos(),
+  actualizarResumenCartonesDashboard(),
   cargarModoCartonesAdmin(),
   cargarPromocionesAdmin()
 ]);
@@ -3668,7 +3746,7 @@ async function eliminarInscripcion(item, fila) {
 
     if (fila) fila.remove();
 
-    await contarCartonesVendidos();
+    await actualizarResumenCartonesDashboard();
     await obtenerMontoTotalRecaudado();
     await cargarCartones();
 
@@ -3913,7 +3991,7 @@ async function guardarNuevoTotal() {
     if (estado) estado.textContent = "✅ Cartones visibles actualizados.";
 
     await cargarCartones();
-    await contarCartonesVendidos();
+    await actualizarResumenCartonesDashboard();
 
   } catch (error) {
     errorSeguro('Error guardando cartones visibles:', error);
@@ -5434,8 +5512,8 @@ async function cargarBarraProgresoInicio() {
 
   await obtenerTotalCartones();
 
-  const vendidos = await contarCartonesVendidos();
-  const disponibles = Math.max(totalCartones - vendidos, 0);
+  const ocupados = await contarCartonesOcupadosTotal();
+  const disponibles = Math.max(totalCartones - ocupados, 0);
   const porcentaje = totalCartones > 0
     ? Math.round((disponibles / totalCartones) * 100)
     : 0;
