@@ -4605,7 +4605,7 @@ function buildWhatsAppLink(rawPhone, presetMsg = '') {
   }
 
   const waNumber = s.replace(/^\+/, '');
-  const text = encodeURIComponent(presetMsg || 'Hola, te escribo de parte del equipo de bingoandino75.');
+  const text = encodeURIComponent(presetMsg || 'Hola, te escribo de parte del equipo de ${nombreBingo}.');
   return `https://wa.me/${waNumber}?text=${text}`;
 }
 
