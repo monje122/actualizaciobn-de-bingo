@@ -1,6 +1,6 @@
 var supabase = window.supabase;
 
-// ==================== SEGURIDAD: LOGS SIN DATOS SENSIBLES ====================
+// ==================== SEGURIDAD: LOGS SIN DATOS SENSIBES ====================
 const SEGURIDAD_DEBUG = false;
 
 function sanitizarLogSeguro(valor) {
