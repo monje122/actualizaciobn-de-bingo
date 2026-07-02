@@ -116,7 +116,10 @@
       };
 
       try {
-        const cache = localStorage.getItem(window.bingogpCacheKeyColores());
+        const cache =
+          localStorage.getItem(window.bingogpCacheKeyColores()) ||
+          localStorage.getItem(window.bingogpCacheKeyColoresEnvivo());
+
         if (cache) {
           const colores = JSON.parse(cache);
           if (window.bingogpAplicarColoresCache(colores)) {
@@ -131,6 +134,23 @@
       setTimeout(window.bingogpMarcarTemaListo, 2500);
     })();
   </script>
+
+  <style id="bingogp-tema-rapido">
+    html,
+    body {
+      background: var(--site-bg, #020A35) !important;
+      color: var(--site-text, #ffffff) !important;
+    }
+
+    #overlay-carga {
+      background: var(--site-bg, #020A35) !important;
+      color: var(--site-text, #ffffff) !important;
+    }
+
+    html.bingogp-colores-listos section {
+      animation: none !important;
+    }
+  </style>
    <link rel="icon" type="image/png" href="">
    <!-- ✅ Metaetiquetas SEO -->
   <meta name="description" content="Disfruta de los mejores juegos de bingo en línea. Juega, gana y diviértete con GP." />
@@ -143,7 +163,7 @@
   <meta property="og:url" content="https://GP/" />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="" />
-  <link rel="stylesheet" href="styles.css?v=139">
+  <link rel="stylesheet" href="styles.css?v=142">
 
   <style>
     .btn-politica-privacidad {
@@ -295,6 +315,7 @@
   </style>
 
 </head>
+<body>
 <div id="overlay-carga" style="
   position: fixed;
   inset: 0;
@@ -1255,113 +1276,7 @@
 </script>
 
 
-<script>
-  // ==================== CARGA Y GUARDA COLORES EN LOCALSTORAGE ====================
-  (function () {
-    async function getConfigColor(siteId, clave, fallback) {
-      try {
-        const { data, error } = await window.supabase.rpc('rpc_get_config_sitio', {
-          _site_id: siteId,
-          _clave: clave,
-          _fallback: fallback || ''
-        });
-
-        if (error) return fallback || '';
-        return data ?? fallback ?? '';
-      } catch (error) {
-        return fallback || '';
-      }
-    }
-
-    async function cargarColoresSitioLocalStorage() {
-      try {
-        const slug = typeof bingogpSlugTemaCache === 'function' ? bingogpSlugTemaCache() : 'golden';
-
-        const { data, error } = await window.supabase.rpc('rpc_public_get_sitio', {
-          _slug: slug
-        });
-
-        if (error) throw error;
-
-        const sitio = Array.isArray(data) ? data[0] : data;
-        if (!sitio || !sitio.id) return;
-
-        const colores = {
-          color_fondo: await getConfigColor(sitio.id, 'color_fondo', sitio.color_fondo || ''),
-          color_botones: await getConfigColor(sitio.id, 'color_botones', sitio.color_botones || ''),
-          color_texto: await getConfigColor(sitio.id, 'color_texto', sitio.color_texto || ''),
-          color_texto_botones: await getConfigColor(sitio.id, 'color_texto_botones', sitio.color_texto_botones || ''),
-          color_principal: await getConfigColor(sitio.id, 'color_principal', sitio.color_principal || ''),
-          color_secundario: await getConfigColor(sitio.id, 'color_secundario', sitio.color_secundario || '')
-        };
-
-        if (typeof bingogpAplicarColoresCache === 'function') {
-          bingogpAplicarColoresCache(colores);
-        }
-
-        if (typeof bingogpGuardarCacheColores === 'function') {
-          bingogpGuardarCacheColores(slug, colores);
-        }
-      } catch (error) {
-        console.warn('No se pudieron cargar colores para localStorage:', error);
-      } finally {
-        if (typeof bingogpMarcarTemaListo === 'function') {
-          bingogpMarcarTemaListo();
-        }
-      }
-    }
-
-    function leerColoresDesdeInputsAdmin() {
-      const leer = (id) => document.getElementById(id)?.value || '';
-      return {
-        color_fondo: leer('colorFondoSitio'),
-        color_botones: leer('colorBotonesSitio'),
-        color_texto: leer('colorTextoSitio'),
-        color_texto_botones: leer('colorTextoBotonesSitio'),
-        color_principal: leer('colorPrincipalSitio'),
-        color_secundario: leer('colorSecundarioSitio')
-      };
-    }
-
-    function actualizarCacheDesdeInputsAdmin() {
-      const colores = leerColoresDesdeInputsAdmin();
-      const slug = typeof bingogpSlugTemaCache === 'function' ? bingogpSlugTemaCache() : 'golden';
-
-      if (typeof bingogpAplicarColoresCache === 'function') {
-        bingogpAplicarColoresCache(colores);
-      }
-
-      if (typeof bingogpGuardarCacheColores === 'function') {
-        bingogpGuardarCacheColores(slug, colores);
-      }
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      cargarColoresSitioLocalStorage();
-
-      const idsColores = [
-        'colorFondoSitio',
-        'colorBotonesSitio',
-        'colorTextoSitio',
-        'colorTextoBotonesSitio',
-        'colorPrincipalSitio',
-        'colorSecundarioSitio'
-      ];
-
-      idsColores.forEach(id => {
-        document.getElementById(id)?.addEventListener('input', actualizarCacheDesdeInputsAdmin);
-        document.getElementById(id)?.addEventListener('change', actualizarCacheDesdeInputsAdmin);
-      });
-
-      document.getElementById('btnGuardarColoresSitio')?.addEventListener('click', () => {
-        // Espera un momento para que el guardado normal del panel termine y deja la caché lista.
-        setTimeout(actualizarCacheDesdeInputsAdmin, 500);
-      });
-    });
-  })();
-</script>
-
-<script src="script.js?v=132"></script>
+<script src="script.js?v=134"></script>
 
 </body>
 </html>
