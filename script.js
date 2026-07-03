@@ -2217,13 +2217,119 @@ async function contarCartonesOcupadosTotal() {
   return Number(data) || 0;
 }
 
+function normalizarNumeroCartonDashboard(valor) {
+  const numero = Number(valor);
+  return Number.isFinite(numero) ? numero : null;
+}
+
+function agregarCartonesASetDashboard(set, cartones) {
+  if (!set) return;
+
+  if (Array.isArray(cartones)) {
+    cartones
+      .map(normalizarNumeroCartonDashboard)
+      .filter(n => Number.isFinite(n))
+      .forEach(n => set.add(n));
+    return;
+  }
+
+  if (typeof cartones === 'string') {
+    cartones
+      .split(',')
+      .map(v => normalizarNumeroCartonDashboard(v.trim()))
+      .filter(n => Number.isFinite(n))
+      .forEach(n => set.add(n));
+  }
+}
+
+async function obtenerCartonesEnInscripcionesActivasDashboard() {
+  const cartonesEnInscripciones = new Set();
+
+  if (!SITE_ID) return cartonesEnInscripciones;
+
+  try {
+    const { data, error } = await supabase
+      .from('inscripciones')
+      .select('cartones, estado')
+      .eq('site_id', SITE_ID)
+      .in('estado', ['pendiente', 'aprobado']);
+
+    if (error) throw error;
+
+    (data || []).forEach(item => {
+      agregarCartonesASetDashboard(cartonesEnInscripciones, item.cartones);
+    });
+  } catch (error) {
+    errorSeguro('Error leyendo cartones pendientes/aprobados para reservados:', error);
+  }
+
+  return cartonesEnInscripciones;
+}
+
+async function listarCartonesReservadosTemporalesDashboard(cartonesEnInscripciones = new Set()) {
+  if (!SITE_ID) return [];
+
+  await obtenerTotalCartones();
+
+  // Limpia reservas huérfanas antes de contar, para que al pasar 5 minutos
+  // se descuenten de Reservados automáticamente.
+  try {
+    await supabase.rpc('rpc_liberar_cartones_huerfanos', {
+      _site_id: SITE_ID,
+      _min_age: '5 minutes'
+    });
+  } catch (error) {
+    warnSeguro('No se pudieron limpiar reservas huérfanas antes del conteo de reservados:', error);
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('cartones')
+      .select('numero, ocupado, reserved_at, created_at')
+      .eq('site_id', SITE_ID)
+      .eq('ocupado', true);
+
+    if (error) throw error;
+
+    const ahora = Date.now();
+    const cincoMinutos = 5 * 60 * 1000;
+
+    return (data || [])
+      .filter(item => {
+        const numero = normalizarNumeroCartonDashboard(item.numero);
+        if (!Number.isFinite(numero)) return false;
+
+        if (totalCartones > 0 && (numero < 1 || numero > totalCartones)) return false;
+
+        // IMPORTANTE:
+        // Si el cartón ya está en una inscripción pendiente o aprobada,
+        // NO cuenta como Reservado porque ya aparece en Pendientes o Vendidos.
+        if (cartonesEnInscripciones.has(numero)) return false;
+
+        const fechaReserva = item.reserved_at || item.created_at;
+        const tiempoReserva = fechaReserva ? new Date(fechaReserva).getTime() : 0;
+
+        if (!tiempoReserva || !Number.isFinite(tiempoReserva)) return false;
+
+        // Solo reservas temporales de menos de 5 minutos.
+        return ahora - tiempoReserva <= cincoMinutos;
+      })
+      .map(item => Number(item.numero))
+      .sort((a, b) => a - b);
+  } catch (error) {
+    errorSeguro('Error contando cartones reservados temporales:', error);
+    return [];
+  }
+}
+
 async function actualizarResumenCartonesDashboard() {
-  const [vendidos, ocupados] = await Promise.all([
+  const [vendidos, cartonesEnInscripciones] = await Promise.all([
     contarCartonesAprobados(),
-    contarCartonesOcupadosTotal()
+    obtenerCartonesEnInscripcionesActivasDashboard()
   ]);
 
-  const reservados = Math.max(0, ocupados - vendidos);
+  const reservadosTemporales = await listarCartonesReservadosTemporalesDashboard(cartonesEnInscripciones);
+  const reservados = reservadosTemporales.length;
 
   const totalVendidosElement = document.getElementById('total-vendidos');
   if (totalVendidosElement) {
@@ -2233,9 +2339,17 @@ async function actualizarResumenCartonesDashboard() {
   const reservadosElement = document.getElementById('reservados-count');
   if (reservadosElement) {
     reservadosElement.textContent = reservados;
+    reservadosElement.title = reservadosTemporales.length
+      ? `Reservados temporales: ${reservadosTemporales.join(', ')}`
+      : 'No hay cartones reservados temporalmente';
   }
 
-  return { vendidos, reservados, ocupados };
+  return {
+    vendidos,
+    reservados,
+    reservadosTemporales,
+    cartonesEnInscripciones: cartonesEnInscripciones.size
+  };
 }
 
 async function contarCartonesReservados() {
