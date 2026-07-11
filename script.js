@@ -2548,8 +2548,7 @@ if (!sitioOk) {
 
   await Promise.all([
     cargarDatosClienteLocal(),
-  activarProgresoCartonesRealtime(),
-  generarCartones(),
+    generarCartones(),
     cargarBarraProgresoInicio(),
     cargarConfigBarraProgresoAdmin(),
     cargarPrecioPorCarton(),
@@ -2861,7 +2860,6 @@ async function mostrarVentana(id, guardarHistorial = true) {
     }
 
     await cargarTopCompradores();
-    activarTopCompradoresRealtime();
   }
 
   if (id === 'admin') {
@@ -5434,16 +5432,16 @@ function agregarBotonesAdicionalesAdmin() {
   }
 }
 
-let canalInscripciones = null;
 let timerRecargaAdmin = null;
 let timerPollingAdmin = null;
 let cargandoPanelAdmin = false;
 let ultimaRecargaAdmin = 0;
-const ADMIN_REFRESH_INTERVAL_MS = 8000;
+const ADMIN_REFRESH_INTERVAL_MS = 20000;
 
 function panelAdminEstaVisible() {
   const panel = document.getElementById('admin-panel');
-  return !!(panel && !panel.classList.contains('oculto'));
+  return document.visibilityState !== 'hidden' &&
+    !!(panel && !panel.classList.contains('oculto'));
 }
 
 function programarRecargaAdmin() {
@@ -5479,7 +5477,7 @@ function iniciarPollingAdmin() {
     if (!sesionActiva) return;
     if (!panelAdminEstaVisible()) return;
 
-    // Refresco de respaldo por si Realtime no está activo en Supabase.
+    // Actualiza únicamente mientras la pestaña y el panel están visibles.
     programarRecargaAdmin();
   }, ADMIN_REFRESH_INTERVAL_MS);
 }
@@ -5494,16 +5492,6 @@ function detenerRefrescoAutomaticoAdmin() {
     clearTimeout(timerRecargaAdmin);
     timerRecargaAdmin = null;
   }
-
-  if (canalInscripciones) {
-    try {
-      supabase.removeChannel(canalInscripciones);
-    } catch (error) {
-      warnSeguro('No se pudo cerrar canal Realtime admin:', error);
-    }
-
-    canalInscripciones = null;
-  }
 }
 
 function activarRefrescoAutomaticoAdmin() {
@@ -5512,34 +5500,8 @@ function activarRefrescoAutomaticoAdmin() {
     return;
   }
 
-  // Siempre activa polling: así funciona aunque Realtime no esté publicado en Supabase.
+  // El panel se mantiene actualizado con consultas periódicas, sin WebSockets.
   iniciarPollingAdmin();
-
-  // Realtime también queda activo para refrescar casi al instante cuando Supabase lo permita.
-  if (canalInscripciones) return;
-
-  canalInscripciones = supabase
-    .channel(`admin-inscripciones-realtime-${SITE_ID}`)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'inscripciones',
-        filter: `site_id=eq.${SITE_ID}`
-      },
-      (payload) => {
-        logSeguro('🔄 Compra/cambio detectado en inscripciones de este sitio:', payload);
-        programarRecargaAdmin();
-      }
-    )
-    .subscribe((status) => {
-      logSeguro('📡 Realtime admin:', status);
-
-      if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
-        canalInscripciones = null;
-      }
-    });
 }
 function iniciarContadorReserva(minutos = 5) {
   const div = document.getElementById('contadorReserva');
@@ -5631,39 +5593,6 @@ async function cargarTopCompradores() {
   cont.appendChild(ol);
 }
 
-let canalTopCompradores = null;
-
-function activarTopCompradoresRealtime() {
-  if (!SITE_ID) {
-    warnSeguro('No se puede activar Realtime top compradores: SITE_ID no está cargado.');
-    return;
-  }
-
-  if (canalTopCompradores) return;
-
-  canalTopCompradores = supabase
-    .channel(`top-compradores-realtime-${SITE_ID}`)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'inscripciones',
-        filter: `site_id=eq.${SITE_ID}`
-      },
-      async () => {
-        const seccion = document.getElementById('top-compradores');
-
-        if (seccion && !seccion.classList.contains('oculto')) {
-          await cargarTopCompradores();
-        }
-      }
-    )
-    .subscribe((status) => {
-      logSeguro('📡 Realtime top compradores:', status);
-    });
-}
-
 async function cargarBarraProgresoInicio() {
   const contenedor = document.getElementById('barraProgresoInicio');
   const texto = document.getElementById('textoProgresoCartones');
@@ -5714,51 +5643,6 @@ async function cargarConfigBarraProgresoAdmin() {
 
   const valor = await getConfigValue('mostrar_barra_progreso', 'false');
   check.checked = valor === 'true';
-}
-let canalProgresoCartones = null;
-
-function activarProgresoCartonesRealtime() {
-  if (!SITE_ID) {
-    warnSeguro('No se puede activar Realtime progreso: SITE_ID no está cargado.');
-    return;
-  }
-
-  if (canalProgresoCartones) return;
-
-  canalProgresoCartones = supabase
-    .channel(`progreso-cartones-inicio-${SITE_ID}`)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'cartones',
-        filter: `site_id=eq.${SITE_ID}`
-      },
-      async () => {
-        await cargarBarraProgresoInicio();
-      }
-    )
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'configuracion',
-        filter: `site_id=eq.${SITE_ID}`
-      },
-      async (payload) => {
-        if (
-          payload.new?.clave === 'mostrar_barra_progreso' ||
-          payload.new?.clave === 'total_cartones'
-        ) {
-          await cargarBarraProgresoInicio();
-        }
-      }
-    )
-    .subscribe((status) => {
-      logSeguro('📡 Realtime progreso:', status);
-    });
 }
 let seleccionAleatoriaEnProceso = false;
 async function seleccionarAleatorioSeguro() {
