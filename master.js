@@ -1089,7 +1089,7 @@ async function masterCrearAdminSitio() {
     if (estado) {
       estado.innerHTML = `
         <p style="color:green;">
-          ✅ ${data?.mensaje || 'Administrador creado correctamente.'}
+          ✅ ${masterEscapeHTML(data?.mensaje || 'Administrador creado correctamente.')}
         </p>
       `;
     }
@@ -1103,7 +1103,7 @@ await masterCargarAdminsSitios();
     if (estado) {
       estado.innerHTML = `
         <p style="color:red;">
-          Error creando admin: ${error.message || error}
+          Error creando admin: ${masterEscapeHTML(error.message || error)}
         </p>
       `;
     }
