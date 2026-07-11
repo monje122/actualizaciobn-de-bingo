@@ -853,13 +853,19 @@
       const loading = document.getElementById('loading');
 
       if (loading) {
-        loading.innerHTML = `
-          <div class="error-container">
-            <div class="error-icon">⚠️</div>
-            <h2>${titulo}</h2>
-            <p>${mensaje}</p>
-          </div>
-        `;
+        const errorContainer = document.createElement('div');
+        const errorIcon = document.createElement('div');
+        const errorTitle = document.createElement('h2');
+        const errorMessage = document.createElement('p');
+
+        errorContainer.className = 'error-container';
+        errorIcon.className = 'error-icon';
+        errorIcon.textContent = '⚠️';
+        errorTitle.textContent = String(titulo || 'Error');
+        errorMessage.textContent = String(mensaje || 'No se pudo cargar la página.');
+
+        errorContainer.append(errorIcon, errorTitle, errorMessage);
+        loading.replaceChildren(errorContainer);
         loading.style.display = 'flex';
         loading.style.opacity = '1';
       }
@@ -1340,8 +1346,14 @@
         const contenedor = document.getElementById('video-container');
         if (contenedor) {
           const aviso = document.createElement('div');
+          const detalle = document.createElement('small');
           aviso.className = 'aviso-envivo-error';
-          aviso.innerHTML = `⚠️ ${error.message || 'No se pudo cargar la transmisión.'}<br><small>La página sigue escuchando los cohetes del panel admin.</small>`;
+          aviso.appendChild(document.createTextNode(
+            `⚠️ ${error.message || 'No se pudo cargar la transmisión.'}`
+          ));
+          aviso.appendChild(document.createElement('br'));
+          detalle.textContent = 'La página sigue escuchando los cohetes del panel admin.';
+          aviso.appendChild(detalle);
           contenedor.prepend(aviso);
         }
       }
