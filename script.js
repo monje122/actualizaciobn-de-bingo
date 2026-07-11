@@ -3970,26 +3970,26 @@ async function reiniciarTodo() {
     return;
   }
 
-  const claveCorrecta = await getConfigValue('clave_reinicio', null);
-
-  if (!claveCorrecta) {
-    alert('❌ Error del sistema. No se pudo verificar la clave de reinicio.');
-    return;
-  }
-
-  if (claveIngresada.trim() !== String(claveCorrecta).trim()) {
-    alert('❌ CLAVE INCORRECTA\n\nOperación cancelada por seguridad.');
-    return;
-  }
-
   if (!confirm('🔥 ÚLTIMA CONFIRMACIÓN\n\n¿Estás ABSOLUTAMENTE seguro?\n\nEsto NO se puede deshacer.')) {
     alert('✅ Operación cancelada.');
     return;
   }
 
-  // 1) Borrar comprobantes primero, antes de borrar las inscripciones.
-  // Así, si Storage falla, no se pierden las referencias en la tabla.
+  const { error: errorReinicio } = await supabase.rpc('rpc_reiniciar_sitio', {
+    _site_id: SITE_ID,
+    _clave: claveIngresada.trim()
+  });
+
+  if (errorReinicio) {
+    errorSeguro('Error reiniciando el sitio:', errorReinicio);
+    alert('❌ No se pudo reiniciar. La clave es incorrecta o no tienes permiso para este sitio.');
+    return;
+  }
+
+  // La RPC ya borró los datos del sitio en una sola transacción. Storage se
+  // limpia después porque no puede formar parte de esa transacción de Postgres.
   let totalEliminados = 0;
+  let errorComprobantes = null;
   const pageSize = 1000;
 
   while (true) {
@@ -4001,8 +4001,8 @@ async function reiniciarTodo() {
       });
 
     if (listErr) {
-      alert('❌ Error listando comprobantes. No se reinició nada: ' + listErr.message);
-      return;
+      errorComprobantes = listErr;
+      break;
     }
 
     if (!files || files.length === 0) break;
@@ -4018,8 +4018,8 @@ async function reiniciarTodo() {
       .remove(names);
 
     if (delErr) {
-      alert('❌ Error eliminando comprobantes. No se reinició nada: ' + delErr.message);
-      return;
+      errorComprobantes = delErr;
+      break;
     }
 
     totalEliminados += names.length;
@@ -4027,45 +4027,16 @@ async function reiniciarTodo() {
     if (files.length < pageSize) break;
   }
 
-  // 2) Borrar inscripciones solo de este sitio
-  const { error: errorInscripciones } = await supabase
-    .from('inscripciones')
-    .delete()
-    .eq('site_id', SITE_ID)
-    .gte('id', 0);
-
-  if (errorInscripciones) {
-    alert('❌ Los comprobantes se borraron, pero hubo error eliminando inscripciones: ' + errorInscripciones.message);
-    return;
-  }
-
-  // 3) Borrar cartones solo de este sitio
-  const { error: errorCartones } = await supabase
-    .from('cartones')
-    .delete()
-    .eq('site_id', SITE_ID)
-    .gte('numero', 1);
-
-  if (errorCartones) {
-    alert('❌ Error eliminando cartones: ' + errorCartones.message);
-    return;
-  }
-
-  // 4) Opcional: borrar ganadores solo de este sitio
-  const { error: errorGanadores } = await supabase
-    .from('ganadores')
-    .delete()
-    .eq('site_id', SITE_ID)
-    .gte('id', 0);
-
-  if (errorGanadores) {
-    warnSeguro('No se pudieron borrar ganadores:', errorGanadores);
-  }
-
   usuario.cartones = [];
   cartonesOcupados = [];
 
-  alert(`✅ Sitio reiniciado correctamente.\n\nComprobantes eliminados: ${totalEliminados}`);
+  if (errorComprobantes) {
+    warnSeguro('El sitio se reinició, pero no se limpiaron todos los comprobantes:', errorComprobantes);
+    alert('⚠️ Los datos del sitio se reiniciaron correctamente, pero quedaron comprobantes en Storage. Puedes ejecutar el reinicio otra vez para reintentar esa limpieza.');
+  } else {
+    alert(`✅ Sitio reiniciado correctamente.\n\nComprobantes eliminados: ${totalEliminados}`);
+  }
+
   location.reload();
 }
 
