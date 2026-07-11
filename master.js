@@ -152,6 +152,26 @@ async function masterSetConfigSitio(siteId, clave, valor) {
   return true;
 }
 
+async function masterSetClaveReinicio(siteId, clave) {
+  const { data, error } = await supabase.rpc('rpc_guardar_clave_reinicio', {
+    _site_id: siteId,
+    _clave: clave
+  });
+
+  if (error) throw error;
+  if (data !== true) throw new Error('No se pudo guardar la clave de reinicio');
+  return true;
+}
+
+async function masterTieneClaveReinicio(siteId) {
+  const { data, error } = await supabase.rpc('rpc_tiene_clave_reinicio', {
+    _site_id: siteId
+  });
+
+  if (error) throw error;
+  return data === true;
+}
+
 async function masterGetConfigSitio(siteId, clave, fallback = '') {
   const { data, error } = await supabase.rpc('rpc_get_config_sitio', {
     _site_id: siteId,
@@ -577,8 +597,8 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
     return;
   }
 
-  if (!claveReinicio) {
-    masterSetEstado('masterEstadoCrearSitio', 'Debes colocar una clave de reinicio para este sitio.', 'error');
+  if (claveReinicio.length < 12 || claveReinicio.length > 128) {
+    masterSetEstado('masterEstadoCrearSitio', 'La clave de reinicio debe tener entre 12 y 128 caracteres.', 'error');
     return;
   }
 
@@ -641,11 +661,7 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
       mostrarPromociones ? 'true' : 'false'
     );
 
-    await masterSetConfigSitio(
-      data.id,
-      'clave_reinicio',
-      claveReinicio
-    );
+    await masterSetClaveReinicio(data.id, claveReinicio);
 
     await masterSetConfigSitio(
       data.id,
@@ -831,13 +847,20 @@ async function masterAbrirEditor(siteId) {
   if ($('masterEditMostrarTopCompradores')) $('masterEditMostrarTopCompradores').checked = sitio.mostrar_top_compradores !== false;
 
   if ($('masterEditClaveReinicio')) {
-    const valorClaveReinicio = await masterGetConfigSitio(
-      sitio.id,
-      'clave_reinicio',
-      ''
-    );
+    const inputClaveReinicio = $('masterEditClaveReinicio');
+    inputClaveReinicio.value = '';
 
-    $('masterEditClaveReinicio').value = valorClaveReinicio || '';
+    try {
+      const tieneClaveReinicio = await masterTieneClaveReinicio(sitio.id);
+      inputClaveReinicio.dataset.tieneClave = String(tieneClaveReinicio);
+      inputClaveReinicio.placeholder = tieneClaveReinicio
+        ? 'Dejar vacía para conservar la clave actual'
+        : 'Crea una clave de 12 caracteres o más';
+    } catch (error) {
+      warnSeguro('No se pudo comprobar la clave de reinicio:', error);
+      inputClaveReinicio.dataset.tieneClave = 'false';
+      inputClaveReinicio.placeholder = 'Ingresa una nueva clave para continuar';
+    }
   }
 
   if ($('masterEditClaveBorrarCartones')) {
@@ -899,7 +922,9 @@ async function masterGuardarEdicion() {
   const titulo = $('masterEditTitulo')?.value.trim();
   const total = parseInt($('masterEditTotal')?.value, 10);
   const precio = parseFloat($('masterEditPrecio')?.value);
-  const claveReinicio = $('masterEditClaveReinicio')?.value.trim();
+  const inputClaveReinicio = $('masterEditClaveReinicio');
+  const claveReinicio = inputClaveReinicio?.value.trim() || '';
+  const tieneClaveReinicio = inputClaveReinicio?.dataset.tieneClave === 'true';
   const claveBorrarCartones = $('masterEditClaveBorrarCartones')?.value.trim();
   const logoUrl = $('masterEditLogoUrl')?.value.trim();
   const colorPrincipal = $('masterEditColorPrincipal')?.value.trim();
@@ -929,8 +954,13 @@ async function masterGuardarEdicion() {
     return;
   }
 
-  if (!claveReinicio) {
-    masterSetEstado('masterEstadoEditarSitio', 'La clave de reinicio no puede estar vacía.', 'error');
+  if (!claveReinicio && !tieneClaveReinicio) {
+    masterSetEstado('masterEstadoEditarSitio', 'Debes crear una clave de reinicio para este sitio.', 'error');
+    return;
+  }
+
+  if (claveReinicio && (claveReinicio.length < 12 || claveReinicio.length > 128)) {
+    masterSetEstado('masterEstadoEditarSitio', 'La nueva clave de reinicio debe tener entre 12 y 128 caracteres.', 'error');
     return;
   }
 
@@ -987,11 +1017,12 @@ async function masterGuardarEdicion() {
       mostrarPromociones ? 'true' : 'false'
     );
 
-    await masterSetConfigSitio(
-      siteId,
-      'clave_reinicio',
-      claveReinicio
-    );
+    if (claveReinicio) {
+      await masterSetClaveReinicio(siteId, claveReinicio);
+      inputClaveReinicio.dataset.tieneClave = 'true';
+      inputClaveReinicio.value = '';
+      inputClaveReinicio.placeholder = 'Dejar vacía para conservar la clave actual';
+    }
 
     await masterSetConfigSitio(
       siteId,
