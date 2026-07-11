@@ -3212,13 +3212,11 @@ async function enviarComprobante() {
 
     cedulaLimpia = String(usuario.cedula || '').trim();
 
-    const cedulaArchivo = cedulaLimpia.replace(/\D/g, '') || 'sin-cedula';
-
     const idArchivo = crypto.randomUUID
-      ? crypto.randomUUID()
-      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  ? crypto.randomUUID()
+  : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-    nombreArchivo = `${SITE_SLUG}/${cedulaArchivo}-${Date.now()}-${idArchivo}.webp`;
+nombreArchivo = `${SITE_SLUG}/${idArchivo}.webp`;
 
     const { error: errorUpload } = await supabase.storage
       .from('comprobantes')
