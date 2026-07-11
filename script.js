@@ -609,58 +609,57 @@ function aplicarRedesSitio(sitio) {
   const contenedor = document.getElementById('redes-sociales');
   if (!contenedor) return;
 
-  const redes = [];
+  contenedor.replaceChildren();
 
-  if (sitio.whatsapp) {
-    const numero = String(sitio.whatsapp).replace(/\D/g, '');
-    redes.push(`
-      <a href="https://wa.me/${numero}" target="_blank" rel="noopener noreferrer" title="WhatsApp">
-        <img src="https://cdn-icons-png.flaticon.com/512/733/733585.png" alt="WhatsApp" width="40">
-      </a>
-    `);
+  const agregarRed = ({ href, titulo, icono, id, texto }) => {
+    const urlSegura = obtenerUrlHttpsSegura(href);
+    if (!urlSegura) return;
+
+    const enlace = document.createElement('a');
+    enlace.href = urlSegura;
+    enlace.target = '_blank';
+    enlace.rel = 'noopener noreferrer';
+    if (titulo) enlace.title = titulo;
+    if (id) enlace.id = id;
+
+    if (icono) {
+      const imagen = document.createElement('img');
+      imagen.src = icono;
+      imagen.alt = titulo || '';
+      imagen.width = 40;
+      enlace.appendChild(imagen);
+    } else {
+      enlace.textContent = texto || titulo || '';
+    }
+
+    contenedor.appendChild(enlace);
+  };
+
+  const numero = String(sitio.whatsapp || '').replace(/\D/g, '');
+  if (numero) {
+    agregarRed({
+      href: `https://wa.me/${numero}`,
+      titulo: 'WhatsApp',
+      icono: 'https://cdn-icons-png.flaticon.com/512/733/733585.png'
+    });
   }
 
-  if (sitio.youtube) {
-    redes.push(`
-      <a href="${sitio.youtube}" target="_blank" rel="noopener noreferrer" title="YouTube">
-        <img src="https://cdn-icons-png.flaticon.com/512/1384/1384060.png" alt="YouTube" width="40">
-      </a>
-    `);
-  }
-
-  if (sitio.facebook) {
-    redes.push(`
-      <a href="${sitio.facebook}" target="_blank" rel="noopener noreferrer" title="Facebook">
-        <img src="https://cdn-icons-png.flaticon.com/512/733/733547.png" alt="Facebook" width="40">
-      </a>
-    `);
-  }
-
-  if (sitio.instagram) {
-    redes.push(`
-      <a href="${sitio.instagram}" target="_blank" rel="noopener noreferrer" title="Instagram">
-        <img src="https://cdn-icons-png.flaticon.com/512/1384/1384063.png" alt="Instagram" width="40">
-      </a>
-    `);
-  }
-
-  if (sitio.tiktok) {
-    redes.push(`
-      <a href="${sitio.tiktok}" target="_blank" rel="noopener noreferrer" title="TikTok">
-        <img src="https://cdn-icons-png.flaticon.com/512/3046/3046121.png" alt="TikTok" width="40">
-      </a>
-    `);
-  }
+  [
+    ['youtube', 'YouTube', 'https://cdn-icons-png.flaticon.com/512/1384/1384060.png'],
+    ['facebook', 'Facebook', 'https://cdn-icons-png.flaticon.com/512/733/733547.png'],
+    ['instagram', 'Instagram', 'https://cdn-icons-png.flaticon.com/512/1384/1384063.png'],
+    ['tiktok', 'TikTok', 'https://cdn-icons-png.flaticon.com/512/3046/3046121.png']
+  ].forEach(([clave, titulo, icono]) => {
+    if (sitio[clave]) agregarRed({ href: sitio[clave], titulo, icono });
+  });
 
   if (sitio.whatsapp_grupo) {
-    redes.push(`
-      <a id="btnWhatsapp" href="${sitio.whatsapp_grupo}" target="_blank" rel="noopener noreferrer">
-        Unirse al grupo de WhatsApp
-      </a>
-    `);
+    agregarRed({
+      href: sitio.whatsapp_grupo,
+      id: 'btnWhatsapp',
+      texto: 'Unirse al grupo de WhatsApp'
+    });
   }
-
-  contenedor.innerHTML = redes.join('');
 }
 
 function mostrarSitioNoDisponible(mensaje) {
@@ -671,7 +670,7 @@ function mostrarSitioNoDisponible(mensaje) {
     <section style="min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;">
       <div style="max-width:500px;background:white;border-radius:12px;padding:30px;box-shadow:0 4px 20px rgba(0,0,0,.15);">
         <h1>⚠️ Página no disponible</h1>
-        <p>${mensaje}</p>
+        <p>${escaparHTML(mensaje)}</p>
       </div>
     </section>
   `;
@@ -681,13 +680,16 @@ function mostrarSitioPausado(sitio) {
   const overlay = document.getElementById('overlay-carga');
   if (overlay) overlay.style.display = 'none';
 
+  const nombreSeguro = escaparHTML(sitio.nombre || '');
+  const logoSeguro = obtenerUrlHttpsSegura(sitio.logo_url);
+
   document.body.innerHTML = `
     <section style="min-height:100vh;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;background:#f8f9fa;">
       <div style="max-width:520px;background:white;border-radius:12px;padding:30px;box-shadow:0 4px 20px rgba(0,0,0,.15);">
-        ${sitio.logo_url ? `<img src="${sitio.logo_url}" alt="${sitio.nombre}" style="max-width:140px;margin-bottom:15px;">` : ''}
+        ${logoSeguro ? `<img src="${escaparHTML(logoSeguro)}" alt="${nombreSeguro}" style="max-width:140px;margin-bottom:15px;">` : ''}
         <h1>⏸️ Página pausada</h1>
         <p>Esta página está temporalmente pausada o vencida.</p>
-        <p><strong>${sitio.nombre || ''}</strong></p>
+        <p><strong>${nombreSeguro}</strong></p>
         <small>Contacta al administrador para renovar el servicio.</small>
       </div>
     </section>
@@ -798,8 +800,8 @@ function actualizarVencimientoPanelAdmin() {
   box.style.borderColor = colorBorde;
 
   box.innerHTML = `
-    📅 <strong>Vencimiento del sitio:</strong> ${nombreSitio}<br>
-    ${estadoTexto}${fecha ? `<br><small>Fecha de vencimiento: ${fecha}</small>` : ''}
+    📅 <strong>Vencimiento del sitio:</strong> ${escaparHTML(nombreSitio)}<br>
+    ${escaparHTML(estadoTexto)}${fecha ? `<br><small>Fecha de vencimiento: ${escaparHTML(fecha)}</small>` : ''}
   `;
 }
 
@@ -812,6 +814,29 @@ function escaparHTML(valor) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
+}
+
+function obtenerUrlHttpsSegura(valor) {
+  try {
+    const url = new URL(String(valor || '').trim());
+    return url.protocol === 'https:' ? url.href : '';
+  } catch (error) {
+    return '';
+  }
+}
+
+function obtenerUrlComprobanteSegura(valor) {
+  try {
+    const url = new URL(String(valor || '').trim());
+    const hostSupabase = new URL(supabaseUrl).hostname;
+
+    if (url.protocol !== 'https:' || url.hostname !== hostSupabase) return '';
+    if (!url.pathname.includes('/comprobantes/')) return '';
+
+    return url.href;
+  } catch (error) {
+    return '';
+  }
 }
 
 function textoPlanoAParrafos(valor) {
@@ -1820,15 +1845,15 @@ async function verListaAprobados() {
     const tr = document.createElement('tr');
 
     tr.innerHTML = `
-      <td style="border: 1px solid #ccc; padding: 8px;">${item.nombre || ''}</td>
-      <td style="border: 1px solid #ccc; padding: 8px;">${item.cedula || ''}</td>
+      <td style="border: 1px solid #ccc; padding: 8px;">${escaparHTML(item.nombre || '')}</td>
+      <td style="border: 1px solid #ccc; padding: 8px;">${escaparHTML(item.cedula || '')}</td>
       <td style="border: 1px solid #ccc; padding: 8px;">
-        ${Array.isArray(item.cartones) ? item.cartones.join(', ') : ''}
+        ${escaparHTML(Array.isArray(item.cartones) ? item.cartones.join(', ') : '')}
       </td>
       <td style="border: 1px solid #ccc; padding: 8px;">
-  ${item.pago_banco || ''}<br>
-  ${item.pago_telefono || ''}<br>
-  ${item.pago_cedula || ''}
+  ${escaparHTML(item.pago_banco || '')}<br>
+  ${escaparHTML(item.pago_telefono || '')}<br>
+  ${escaparHTML(item.pago_cedula || '')}
 </td>
     `;
 
@@ -3213,10 +3238,10 @@ async function enviarComprobante() {
     cedulaLimpia = String(usuario.cedula || '').trim();
 
     const idArchivo = crypto.randomUUID
-  ? crypto.randomUUID()
-  : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-nombreArchivo = `${SITE_SLUG}/${idArchivo}.webp`;
+    nombreArchivo = `${SITE_SLUG}/${idArchivo}.webp`;
 
     const { error: errorUpload } = await supabase.storage
       .from('comprobantes')
@@ -3586,35 +3611,42 @@ cartonesOcupados = await fetchTodosLosOcupados();
     const tr = document.createElement('tr');
     tr.dataset.estadoActual = item.estado || 'pendiente';
     tr.dataset.inscripcionId = item.id;
+    const whatsappUrl = buildWhatsAppLink(
+      item.telefono,
+      mensajeWhatsappAdminCliente(item)
+    ) || '#';
+    const comprobanteUrl = obtenerUrlComprobanteSegura(item.comprobante);
+    const cartonesTexto = Array.isArray(item.cartones)
+      ? item.cartones.join(', ')
+      : '';
+
     tr.innerHTML = `
-      <td>${item.nombre}</td>
+      <td>${escaparHTML(item.nombre)}</td>
       <td>
-        <a href="${buildWhatsAppLink(item.telefono, mensajeWhatsappAdminCliente(item))}"
+        <a href="${escaparHTML(whatsappUrl)}"
            target="_blank" rel="noopener">
-          ${item.telefono}
+          ${escaparHTML(item.telefono)}
         </a>
       </td>
-      <td>${item.cedula}</td>
-      <td>${item.referido}</td>
-      <td>${Array.isArray(item.cartones) ? item.cartones.join(', ') : ''}</td>
-      <td class="celda-ref" data-id="${item.id}">
-        <span class="ref-text">${item.referencia4dig || ''}</span>
+      <td>${escaparHTML(item.cedula)}</td>
+      <td>${escaparHTML(item.referido)}</td>
+      <td>${escaparHTML(cartonesTexto)}</td>
+      <td class="celda-ref" data-id="${Number(item.id)}">
+        <span class="ref-text">${escaparHTML(item.referencia4dig || '')}</span>
         <button class="btn-accion btn-edit-ref" title="Editar">&#9998;</button>
       </td>
-      <td><a href="${item.comprobante}" target="_blank">
-            <img src="${item.comprobante}" alt="Comp." loading="lazy">
-          </a></td>
+      <td>
+        ${comprobanteUrl
+          ? `<a href="${escaparHTML(comprobanteUrl)}" target="_blank" rel="noopener noreferrer">
+               <img src="${escaparHTML(comprobanteUrl)}" alt="Comp." loading="lazy">
+             </a>`
+          : '<span>Sin comprobante</span>'}
+      </td>
           <td class="pago-ganador-admin">
-  <strong>${item.pago_banco || 'Sin banco'}</strong><br>
-  📱 ${item.pago_telefono || 'Sin número'}<br>
-  🪪 ${item.pago_cedula || 'Sin cédula'}
-   <button
-    class="btn-copiar-pago"
-    onclick="copiarPagoMovil(
-      '${item.pago_banco || ''}',
-      '${item.pago_telefono || ''}',
-      '${item.pago_cedula || ''}'
-    )">
+  <strong>${escaparHTML(item.pago_banco || 'Sin banco')}</strong><br>
+  📱 ${escaparHTML(item.pago_telefono || 'Sin número')}<br>
+  🪪 ${escaparHTML(item.pago_cedula || 'Sin cédula')}
+   <button class="btn-copiar-pago">
     📋 Copiar
   </button>
 </td>
@@ -3636,6 +3668,13 @@ cartonesOcupados = await fetchTodosLosOcupados();
     const btnRechazar = tr.querySelector('.btn-rechazar');
     const btnEliminar = tr.querySelector('.btn-eliminar');
     const btnEditRef = tr.querySelector('.btn-edit-ref');
+    const btnCopiarPago = tr.querySelector('.btn-copiar-pago');
+
+    btnCopiarPago.onclick = () => copiarPagoMovil(
+      String(item.pago_banco || ''),
+      String(item.pago_telefono || ''),
+      String(item.pago_cedula || '')
+    );
 
    btnAprobar.onclick = () => procesarEstadoUnaVez(
   item.id,
@@ -4362,8 +4401,8 @@ async function cargarListaAprobadosSeccion() {
     const tr = document.createElement('tr');
 
     tr.innerHTML = `
-      <td>${item.nombre || 'Sin nombre'}</td>
-      <td>${Array.isArray(item.cartones) ? item.cartones.join(', ') : ''}</td>
+      <td>${escaparHTML(item.nombre || 'Sin nombre')}</td>
+      <td>${escaparHTML(Array.isArray(item.cartones) ? item.cartones.join(', ') : '')}</td>
     `;
 
     tbody.appendChild(tr);
@@ -4661,12 +4700,12 @@ async function cargarGanadores() {
     <tbody>
       ${data.map(g => `
         <tr>
-          <td>${g.nombre || ''}</td>
-          <td>${g.cedula || ''}</td>
-          <td>${g.cartones || ''}</td>
-          <td>${g.premio || ''}</td>
-          <td>${g.telefono || ''}</td>
-          <td>${g.fecha || ''}</td>
+          <td>${escaparHTML(g.nombre || '')}</td>
+          <td>${escaparHTML(g.cedula || '')}</td>
+          <td>${escaparHTML(g.cartones || '')}</td>
+          <td>${escaparHTML(g.premio || '')}</td>
+          <td>${escaparHTML(g.telefono || '')}</td>
+          <td>${escaparHTML(g.fecha || '')}</td>
         </tr>
       `).join('')}
     </tbody>
@@ -4858,7 +4897,7 @@ function editarReferencia(td) {
   const prev = (td.querySelector('.ref-text')?.textContent || '').trim();
 
   td.innerHTML = `
-    <input class="ref-input" type="text" maxlength="4" value="${prev}">
+    <input class="ref-input" type="text" maxlength="4" value="${escaparHTML(prev)}">
     <button class="btn-mini btn-guardar">Guardar</button>
     <button class="btn-mini btn-cancelar">Cancelar</button>
   `;
@@ -4897,7 +4936,7 @@ function editarReferencia(td) {
     }
 
     td.innerHTML = `
-      <span class="ref-text">${val}</span>
+      <span class="ref-text">${escaparHTML(val)}</span>
       <button class="btn-accion btn-edit-ref" title="Editar">&#9998;</button>
     `;
     td.querySelector('.btn-edit-ref').onclick = () => editarReferencia(td);
@@ -4905,7 +4944,7 @@ function editarReferencia(td) {
 
   btnCancel.onclick = () => {
     td.innerHTML = `
-      <span class="ref-text">${prev}</span>
+      <span class="ref-text">${escaparHTML(prev)}</span>
       <button class="btn-accion btn-edit-ref" title="Editar">&#9998;</button>
     `;
     td.querySelector('.btn-edit-ref').onclick = () => editarReferencia(td);
@@ -4957,8 +4996,8 @@ function renderDuplicadosAprobados(lista, tipoClave) {
     card.className = 'duplicado-card';
 
     const titulo = tipoClave === 'nombre'
-      ? `👤 Nombre: ${g.clave}`
-      : `#️⃣ Referencia: ${g.clave}`;
+      ? `👤 Nombre: ${escaparHTML(g.clave)}`
+      : `#️⃣ Referencia: ${escaparHTML(g.clave)}`;
 
     const detalleId = `dup-detalle-${tipoClave}-${index}`;
 
@@ -4970,13 +5009,15 @@ function renderDuplicadosAprobados(lista, tipoClave) {
 
       <div id="${detalleId}" class="duplicado-detalle">
         ${g.items.map(x => {
-          const carts = Array.isArray(x.cartones) ? x.cartones.join(', ') : '';
+          const carts = escaparHTML(
+            Array.isArray(x.cartones) ? x.cartones.join(', ') : ''
+          );
 
           return `
             <div class="persona-item">
-              <strong>${x.nombre || 'Sin nombre'}</strong><br>
-              CI: ${x.cedula || 'N/A'}
-              ${x.telefono ? `<br>Tel: ${x.telefono}` : ''}
+              <strong>${escaparHTML(x.nombre || 'Sin nombre')}</strong><br>
+              CI: ${escaparHTML(x.cedula || 'N/A')}
+              ${x.telefono ? `<br>Tel: ${escaparHTML(x.telefono)}` : ''}
               ${carts ? `<br>Cartones: ${carts}` : ''}
             </div>
           `;
@@ -5046,68 +5087,43 @@ function imprimirLista() {
   }
 
   const ventana = window.open('', '_blank');
+  if (!ventana) {
+    alert('El navegador bloqueó la ventana de impresión.');
+    return;
+  }
 
-  ventana.document.write(`
-    <html>
-      <head>
-        <title>Lista de Aprobados</title>
-        <style>
-          body {
-            font-family: Arial, sans-serif;
-            color: #000;
-            padding: 00px;
-          }
+  const documento = ventana.document;
+  documento.title = 'Lista de Aprobados';
 
-          h1 {
-            text-align: center;
-            font-size: 16px;
-            margin: 0 0 4px 0;
-          }
+  const estilo = documento.createElement('style');
+  estilo.textContent = `
+    body { font-family: Arial, sans-serif; color: #000; padding: 0; }
+    h1 { text-align: center; font-size: 16px; margin: 0 0 4px; }
+    .fecha { text-align: center; font-size: 9px; margin-bottom: 8px; }
+    table { width: 100%; border-collapse: collapse; font-size: 18px; }
+    th, td {
+      border: 1px solid #999;
+      padding: 2px 3px;
+      text-align: center;
+      vertical-align: middle;
+    }
+    th { background: #eee; font-weight: bold; }
+    @page { size: letter portrait; margin: 6mm; }
+  `;
+  documento.head.appendChild(estilo);
 
-          .fecha {
-            text-align: center;
-            font-size: 9px;
-            margin-bottom: 8px;
-          }
+  const titulo = documento.createElement('h1');
+  titulo.textContent = 'Lista de Aprobados';
 
-          table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 18px;
-          }
+  const fecha = documento.createElement('div');
+  fecha.className = 'fecha';
+  fecha.textContent = new Date().toLocaleString();
 
-          th, td {
-            border: 1px solid #999;
-            padding: 2px 3px;
-            text-align: center;
-            vertical-align: middle;
-          }
+  const listaClonada = lista.cloneNode(true);
+  documento.body.replaceChildren(titulo, fecha, listaClonada);
 
-          th {
-            background: #eee;
-            font-weight: bold;
-          }
-
-          @page {
-            size: letter portrait;
-            margin: 6mm;
-          }
-        </style>
-      </head>
-      <body>
-        <h1>Lista de Aprobados</h1>
-        <div class="fecha">${new Date().toLocaleString()}</div>
-        ${lista.innerHTML}
-      </body>
-    </html>
-  `);
-
-  ventana.document.close();
-
-  ventana.onload = function () {
-    ventana.focus();
-    ventana.print();
-  };
+  ventana.focus();
+  setTimeout(() => ventana.print(), 100);
 }
 
 
@@ -5214,7 +5230,7 @@ async function subirCartones() {
     if (status) {
       status.innerHTML = `
         <p style="color:red;">Se subieron ${subidas}, pero hubo errores:</p>
-        <ul>${errores.map(e => `<li>${e}</li>`).join('')}</ul>
+        <ul>${errores.map(e => `<li>${escaparHTML(e)}</li>`).join('')}</ul>
       `;
     }
   } else {
@@ -5313,7 +5329,7 @@ async function borrarCartones() {
     errorSeguro('Error borrando cartones:', error);
 
     if (status) {
-      status.innerHTML = `<p style="color:red;">❌ Error al borrar imágenes: ${error.message}</p>`;
+      status.innerHTML = `<p style="color:red;">❌ Error al borrar imágenes: ${escaparHTML(error.message)}</p>`;
     }
   }
 
@@ -5425,16 +5441,25 @@ function agregarBotonesAdicionalesAdmin() {
   if (!loginSection) return;
   
   if (!document.getElementById('botones-adicionales-admin')) {
-    const botonesHTML = `
-      <div id="botones-adicionales-admin" style="margin-top: 20px; padding-top: 15px; border-top: 1px solid #eee;">
-        
-        <button onclick="recuperarPasswordAdmin()" style="background: #6c5ce7; color: white; padding: 8px 12px; border: none; border-radius: 4px;">
-          🔑 Recuperar contraseña
-        </button>
-      </div>
-    `;
-    
-    loginSection.insertAdjacentHTML('beforeend', botonesHTML);
+    const contenedor = document.createElement('div');
+    const boton = document.createElement('button');
+
+    contenedor.id = 'botones-adicionales-admin';
+    contenedor.style.marginTop = '20px';
+    contenedor.style.paddingTop = '15px';
+    contenedor.style.borderTop = '1px solid #eee';
+
+    boton.type = 'button';
+    boton.textContent = '🔑 Recuperar contraseña';
+    boton.style.background = '#6c5ce7';
+    boton.style.color = 'white';
+    boton.style.padding = '8px 12px';
+    boton.style.border = 'none';
+    boton.style.borderRadius = '4px';
+    boton.addEventListener('click', recuperarPasswordAdmin);
+
+    contenedor.appendChild(boton);
+    loginSection.appendChild(contenedor);
   }
 }
 
@@ -5626,8 +5651,8 @@ async function cargarTopCompradores() {
   top.forEach((item, index) => {
     const li = document.createElement('li');
     li.innerHTML = `
-      <strong>#${index + 1} ${item.nombre || 'Sin nombre'}</strong><br>
-      ${item.total_cartones || 0} cartones
+      <strong>#${index + 1} ${escaparHTML(item.nombre || 'Sin nombre')}</strong><br>
+      ${Number(item.total_cartones) || 0} cartones
     `;
     ol.appendChild(li);
   });
