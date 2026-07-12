@@ -163,7 +163,7 @@
   <meta property="og:url" content="https://GP/" />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="" />
-  <link rel="stylesheet" href="styles.css?v=142">
+  <link rel="stylesheet" href="styles.css?v=143">
 
   <style>
     .btn-politica-privacidad {
@@ -717,7 +717,7 @@
       </div>
       
       <div class="config-group">
-        <label for="nuevoTotalCartones">Cantidad total de cartones disponibles:</label>
+        <label for="nuevoTotalCartones">Cantidad de cartones visibles:</label>
         <div class="input-row">
           <input type="number" id="nuevoTotalCartones" placeholder="Ej: 300" min="1" />
           <button onclick="guardarNuevoTotal()" class="btn-primary">Guardar</button>
@@ -741,7 +741,45 @@
       </div>
     </div>
 
-    <div class="panel-section">
+    <div id="bingo75AdminSection" class="panel-section oculto">
+      <div class="section-header">
+        <h3>Cartones Bingo 75</h3>
+        <span id="bingo75EstadoBadge" class="bingo75-status-badge">Sin generar</span>
+      </div>
+
+      <div class="bingo75-admin-summary" aria-live="polite">
+        <strong id="bingo75ResumenAdmin">0 generados</strong>
+        <span id="bingo75LimiteAdmin">Límite: 0</span>
+      </div>
+
+      <div class="config-group">
+        <label for="cantidadGenerarBingo75">Cantidad total a generar:</label>
+        <div class="input-row bingo75-generation-row">
+          <input type="number" id="cantidadGenerarBingo75" min="1" step="1" />
+          <button id="btnGenerarBingo75" type="button" class="btn-primary">Generar</button>
+          <button id="btnRegenerarBingo75" type="button" class="btn-secondary">Regenerar</button>
+          <button id="btnEliminarBingo75" type="button" class="btn-danger">Eliminar</button>
+        </div>
+      </div>
+
+      <div class="bingo75-color-grid">
+        <label>Cabecera <input type="color" id="bingo75ColorCabecera" value="#0B3D91"></label>
+        <label>Texto cabecera <input type="color" id="bingo75ColorCabeceraTexto" value="#FFFFFF"></label>
+        <label>Fondo <input type="color" id="bingo75ColorFondo" value="#FFFFFF"></label>
+        <label>Casillas <input type="color" id="bingo75ColorCelda" value="#F4F7FB"></label>
+        <label>Números <input type="color" id="bingo75ColorTexto" value="#111827"></label>
+        <label>Centro libre <input type="color" id="bingo75ColorLibre" value="#F59E0B"></label>
+      </div>
+
+      <div class="bingo75-admin-actions">
+        <button id="btnGuardarColoresBingo75" type="button" class="btn-primary">Guardar colores</button>
+      </div>
+
+      <div id="bingo75VistaPreviaAdmin" class="bingo75-preview" aria-label="Vista previa del cartón"></div>
+      <p id="bingo75EstadoAdmin" class="status-msg" aria-live="polite"></p>
+    </div>
+
+    <div id="cartonesImagenesSection" class="panel-section">
       <div class="section-header">
         <h3>🖼️ Imágenes de Cartones</h3>
       </div>
@@ -1080,6 +1118,7 @@
 <div id="modal-carton" class="modal oculto">
   <div class="modal-contenido">
     <img id="imagen-carton-modal" src="" alt="Cartón" style="width: 100%; max-width: 300px;">
+    <div id="carton-bingo75-modal" class="bingo75-modal-preview" hidden></div>
     <div style="margin-top: 10px;">
       <button id="btnSeleccionarCarton">Seleccionar</button>
       <button onclick="cerrarModalCarton()">Cerrar</button>
@@ -1283,7 +1322,7 @@
 </script>
 
 
-<script src="script.js?v=135"></script>
+<script src="script.js?v=136"></script>
 
 </body>
 </html>
