@@ -92,6 +92,20 @@ let cantidadPermitida = 0;
 let promocionSeleccionada = null;
 let modoCartones = "libre";
 let modoCartonSimple = false;
+let bingo75Habilitado = false;
+let bingo75Limite = 0;
+let bingo75Visibles = 0;
+let bingo75Generados = 0;
+const BINGO75_COLORES_DEFAULT = Object.freeze({
+  cabecera: '#0B3D91',
+  cabeceraTexto: '#FFFFFF',
+  fondo: '#FFFFFF',
+  celda: '#F4F7FB',
+  texto: '#111827',
+  libre: '#F59E0B'
+});
+let bingo75Colores = { ...BINGO75_COLORES_DEFAULT };
+const cacheCartonesBingo75 = new Map();
 let mostrarEnVivoSitio = true;
 let mostrarTopCompradoresSitio = true;
 let mostrarPromocionesSitio = true;
@@ -2531,6 +2545,7 @@ if (!sitioOk) {
   // Crear ta¿'bl ses nxiste
    document.getElementById('modal-terminos').classList.remove('oculto');
    await obtenerTotalCartones();
+  await cargarConfiguracionBingo75();
   await cargarLinkWhatsapp();
 
   // Si no hay caché, espera los colores reales antes de mostrar la página.
@@ -2588,6 +2603,20 @@ document.getElementById('btnGuardarPremioSitio')?.addEventListener('click', guar
 document.getElementById('btnGuardarRedesSitio')?.addEventListener('click', guardarRedesSitio); 
 document.getElementById('btnGuardarFaviconSitio')?.addEventListener('click', guardarFaviconSitio);
 document.getElementById('btnResetColoresSitio')?.addEventListener('click', resetearColoresSitio);
+  document.getElementById('btnGenerarBingo75')?.addEventListener('click', () => generarCartonesBingo75(false));
+  document.getElementById('btnRegenerarBingo75')?.addEventListener('click', () => generarCartonesBingo75(true));
+  document.getElementById('btnEliminarBingo75')?.addEventListener('click', eliminarCartonesBingo75);
+  document.getElementById('btnGuardarColoresBingo75')?.addEventListener('click', guardarColoresBingo75);
+  [
+    'bingo75ColorCabecera',
+    'bingo75ColorCabeceraTexto',
+    'bingo75ColorFondo',
+    'bingo75ColorCelda',
+    'bingo75ColorTexto',
+    'bingo75ColorLibre'
+  ].forEach(id => {
+    document.getElementById(id)?.addEventListener('input', renderizarVistaPreviaAdminBingo75);
+  });
   activarVistaPreviaColores();
   // Cargar likde WhatsApp
     sistemaListo = true;
@@ -2608,6 +2637,10 @@ async function obtenerTotalCartones() {
   const valor = await getConfigValue('cartones_visibles', String(fallback));
 
   totalCartones = parseInt(valor, 10) || 0;
+
+  if (bingo75Habilitado) {
+    totalCartones = Math.max(0, Math.min(totalCartones, bingo75Generados, bingo75Limite));
+  }
 }
 
 async function cargarModoCartonSimple() {
@@ -2636,19 +2669,347 @@ function aplicarModoCartonSimpleAdmin() {
   const input = document.getElementById('cartonImageInput');
   const btnSubir = document.querySelector('button[onclick*="subirCartones"]');
   const btnBorrar = document.querySelector('button[onclick*="borrarCartones"]');
-  const seccionImagenes = input?.closest('.panel-section');
+  const seccionImagenes = document.getElementById('cartonesImagenesSection') || input?.closest('.panel-section');
   const status = document.getElementById('uploadStatus');
+  const ocultarImagenes = modoCartonSimple || bingo75Habilitado;
 
-  if (input) input.disabled = modoCartonSimple;
-  if (btnSubir) btnSubir.disabled = modoCartonSimple;
-  if (btnBorrar) btnBorrar.disabled = modoCartonSimple;
+  if (input) input.disabled = ocultarImagenes;
+  if (btnSubir) btnSubir.disabled = ocultarImagenes;
+  if (btnBorrar) btnBorrar.disabled = ocultarImagenes;
 
   if (seccionImagenes) {
-    seccionImagenes.style.display = modoCartonSimple ? 'none' : '';
+    seccionImagenes.style.display = ocultarImagenes ? 'none' : '';
   }
 
-  if (status && modoCartonSimple) {
+  if (status && modoCartonSimple && !bingo75Habilitado) {
     status.innerHTML = '<p style="color:#666;">Modo cartón simple activo: no se usan imágenes de cartones.</p>';
+  }
+}
+
+function leerColoresBingo75Formulario() {
+  return {
+    cabecera: normalizarHexTema(document.getElementById('bingo75ColorCabecera')?.value, bingo75Colores.cabecera),
+    cabeceraTexto: normalizarHexTema(document.getElementById('bingo75ColorCabeceraTexto')?.value, bingo75Colores.cabeceraTexto),
+    fondo: normalizarHexTema(document.getElementById('bingo75ColorFondo')?.value, bingo75Colores.fondo),
+    celda: normalizarHexTema(document.getElementById('bingo75ColorCelda')?.value, bingo75Colores.celda),
+    texto: normalizarHexTema(document.getElementById('bingo75ColorTexto')?.value, bingo75Colores.texto),
+    libre: normalizarHexTema(document.getElementById('bingo75ColorLibre')?.value, bingo75Colores.libre)
+  };
+}
+
+function colorTextoContrasteBingo75(color) {
+  const hex = normalizarHexTema(color, '#FFFFFF').slice(1);
+  const r = parseInt(hex.slice(0, 2), 16);
+  const g = parseInt(hex.slice(2, 4), 16);
+  const b = parseInt(hex.slice(4, 6), 16);
+  const luminancia = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminancia > 0.58 ? '#111111' : '#FFFFFF';
+}
+
+function crearElementoCartonBingo75(numero, numeros, opciones = {}) {
+  const lista = Array.isArray(numeros) ? numeros.map(Number) : [];
+  if (lista.length !== 25 || lista.some(valor => !Number.isFinite(valor))) {
+    throw new Error('El cartón Bingo 75 no tiene un formato válido.');
+  }
+
+  const colores = opciones.colores || bingo75Colores;
+  const carton = document.createElement('article');
+  carton.className = 'bingo75-card';
+  if (opciones.compacto) carton.classList.add('bingo75-card--compact');
+
+  carton.style.setProperty('--bingo75-header', normalizarHexTema(colores.cabecera, BINGO75_COLORES_DEFAULT.cabecera));
+  carton.style.setProperty('--bingo75-header-text', normalizarHexTema(colores.cabeceraTexto, BINGO75_COLORES_DEFAULT.cabeceraTexto));
+  carton.style.setProperty('--bingo75-background', normalizarHexTema(colores.fondo, BINGO75_COLORES_DEFAULT.fondo));
+  carton.style.setProperty('--bingo75-cell', normalizarHexTema(colores.celda, BINGO75_COLORES_DEFAULT.celda));
+  carton.style.setProperty('--bingo75-text', normalizarHexTema(colores.texto, BINGO75_COLORES_DEFAULT.texto));
+  carton.style.setProperty('--bingo75-free', normalizarHexTema(colores.libre, BINGO75_COLORES_DEFAULT.libre));
+  carton.style.setProperty('--bingo75-free-text', colorTextoContrasteBingo75(colores.libre));
+
+  const titulo = document.createElement('h4');
+  titulo.className = 'bingo75-card-title';
+  titulo.textContent = `Cartón ${Number(numero) || 0}`;
+  carton.appendChild(titulo);
+
+  const grid = document.createElement('div');
+  grid.className = 'bingo75-grid';
+
+  ['B', 'I', 'N', 'G', 'O'].forEach(letra => {
+    const cabecera = document.createElement('div');
+    cabecera.className = 'bingo75-grid-cell bingo75-grid-cell--header';
+    cabecera.textContent = letra;
+    grid.appendChild(cabecera);
+  });
+
+  lista.forEach((valor, indice) => {
+    const celda = document.createElement('div');
+    celda.className = 'bingo75-grid-cell';
+
+    if (indice === 12) {
+      celda.classList.add('bingo75-grid-cell--free');
+      celda.textContent = 'LIBRE';
+    } else {
+      celda.textContent = String(valor);
+    }
+
+    grid.appendChild(celda);
+  });
+
+  carton.appendChild(grid);
+  return carton;
+}
+
+function renderizarVistaPreviaAdminBingo75() {
+  const contenedor = document.getElementById('bingo75VistaPreviaAdmin');
+  if (!contenedor) return;
+
+  const ejemplo = [
+    1, 16, 31, 46, 61,
+    4, 19, 34, 49, 64,
+    7, 22, 0, 52, 67,
+    10, 25, 40, 55, 70,
+    13, 28, 43, 58, 73
+  ];
+
+  contenedor.replaceChildren(
+    crearElementoCartonBingo75(1, ejemplo, {
+      colores: leerColoresBingo75Formulario()
+    })
+  );
+}
+
+function aplicarEstadoBingo75() {
+  const seccion = document.getElementById('bingo75AdminSection');
+  const resumen = document.getElementById('bingo75ResumenAdmin');
+  const limite = document.getElementById('bingo75LimiteAdmin');
+  const badge = document.getElementById('bingo75EstadoBadge');
+  const cantidad = document.getElementById('cantidadGenerarBingo75');
+  const visibles = document.getElementById('nuevoTotalCartones');
+  const visiblesEfectivos = bingo75Habilitado
+    ? Math.min(bingo75Visibles, bingo75Generados, bingo75Limite)
+    : bingo75Visibles;
+
+  seccion?.classList.toggle('oculto', !bingo75Habilitado);
+
+  if (resumen) resumen.textContent = `${bingo75Generados} generados · ${visiblesEfectivos} visibles`;
+  if (limite) limite.textContent = `Límite master: ${bingo75Limite}`;
+  if (badge) badge.textContent = bingo75Generados > 0 ? 'Listos' : 'Sin generar';
+
+  if (cantidad) {
+    const maximoGeneracion = Math.max(1, bingo75Limite);
+    cantidad.max = String(maximoGeneracion);
+    const actual = Number(cantidad.value);
+    if (!Number.isFinite(actual) || actual < 1 || actual > bingo75Limite) {
+      cantidad.value = String(Math.min(bingo75Generados || maximoGeneracion, maximoGeneracion));
+    }
+  }
+
+  if (visibles) {
+    visibles.max = String(Math.max(1, bingo75Limite));
+    if (document.activeElement !== visibles && bingo75Visibles > 0) {
+      visibles.value = String(bingo75Visibles);
+    }
+  }
+
+  const entradas = {
+    bingo75ColorCabecera: bingo75Colores.cabecera,
+    bingo75ColorCabeceraTexto: bingo75Colores.cabeceraTexto,
+    bingo75ColorFondo: bingo75Colores.fondo,
+    bingo75ColorCelda: bingo75Colores.celda,
+    bingo75ColorTexto: bingo75Colores.texto,
+    bingo75ColorLibre: bingo75Colores.libre
+  };
+
+  Object.entries(entradas).forEach(([id, valor]) => {
+    const input = document.getElementById(id);
+    if (input && document.activeElement !== input) input.value = valor;
+  });
+
+  aplicarModoCartonSimpleAdmin();
+  if (bingo75Habilitado) renderizarVistaPreviaAdminBingo75();
+}
+
+async function cargarConfiguracionBingo75() {
+  if (!SITE_ID) return false;
+
+  const { data, error } = await supabase.rpc('rpc_public_config_bingo75', {
+    _site_id: SITE_ID
+  });
+
+  if (error) {
+    warnSeguro('No se pudo cargar la configuración Bingo 75:', error);
+    bingo75Habilitado = false;
+    aplicarEstadoBingo75();
+    return false;
+  }
+
+  const cfg = Array.isArray(data) ? data[0] : data;
+  if (!cfg) {
+    bingo75Habilitado = false;
+    aplicarEstadoBingo75();
+    return false;
+  }
+
+  bingo75Habilitado = cfg.habilitado === true;
+  bingo75Limite = Math.max(0, Number(cfg.limite) || 0);
+  bingo75Visibles = Math.max(0, Number(cfg.visibles) || 0);
+  bingo75Generados = Math.max(0, Number(cfg.generados) || 0);
+  bingo75Colores = {
+    cabecera: normalizarHexTema(cfg.color_cabecera, BINGO75_COLORES_DEFAULT.cabecera),
+    cabeceraTexto: normalizarHexTema(cfg.color_cabecera_texto, BINGO75_COLORES_DEFAULT.cabeceraTexto),
+    fondo: normalizarHexTema(cfg.color_fondo, BINGO75_COLORES_DEFAULT.fondo),
+    celda: normalizarHexTema(cfg.color_celda, BINGO75_COLORES_DEFAULT.celda),
+    texto: normalizarHexTema(cfg.color_texto, BINGO75_COLORES_DEFAULT.texto),
+    libre: normalizarHexTema(cfg.color_libre, BINGO75_COLORES_DEFAULT.libre)
+  };
+
+  if (bingo75Habilitado) {
+    totalCartones = Math.max(0, Math.min(bingo75Visibles, bingo75Generados, bingo75Limite));
+  }
+
+  aplicarEstadoBingo75();
+  return true;
+}
+
+async function obtenerCartonBingo75(numero) {
+  const numeroNormalizado = Number(numero);
+  if (!Number.isInteger(numeroNormalizado) || numeroNormalizado < 1) {
+    throw new Error('Número de cartón inválido.');
+  }
+
+  if (cacheCartonesBingo75.has(numeroNormalizado)) {
+    return cacheCartonesBingo75.get(numeroNormalizado);
+  }
+
+  const { data, error } = await supabase.rpc('rpc_public_carton_bingo75', {
+    _site_id: SITE_ID,
+    _numero: numeroNormalizado
+  });
+
+  if (error) throw error;
+
+  const fila = Array.isArray(data) ? data[0] : data;
+  const numeros = Array.isArray(fila?.numeros) ? fila.numeros.map(Number) : [];
+  if (numeros.length !== 25) {
+    throw new Error('Este cartón todavía no ha sido generado.');
+  }
+
+  cacheCartonesBingo75.set(numeroNormalizado, numeros);
+  return numeros;
+}
+
+function bloquearControlesBingo75(bloqueados) {
+  ['btnGenerarBingo75', 'btnRegenerarBingo75', 'btnEliminarBingo75', 'btnGuardarColoresBingo75']
+    .forEach(id => {
+      const boton = document.getElementById(id);
+      if (boton) boton.disabled = bloqueados;
+    });
+}
+
+function mostrarEstadoAdminBingo75(mensaje, esError = false) {
+  const estado = document.getElementById('bingo75EstadoAdmin');
+  if (!estado) return;
+  estado.textContent = mensaje;
+  estado.style.color = esError ? '#b42318' : '#166534';
+}
+
+async function generarCartonesBingo75(regenerar = false) {
+  if (!bingo75Habilitado) {
+    alert('El master no habilitó los cartones Bingo 75 para este sitio.');
+    return;
+  }
+
+  const cantidad = parseInt(document.getElementById('cantidadGenerarBingo75')?.value, 10);
+  if (!Number.isInteger(cantidad) || cantidad < 1 || cantidad > bingo75Limite) {
+    alert(`La cantidad debe estar entre 1 y ${bingo75Limite}.`);
+    return;
+  }
+
+  if (regenerar && !confirm('¿Regenerar todos los cartones? Las combinaciones actuales serán reemplazadas.')) {
+    return;
+  }
+
+  bloquearControlesBingo75(true);
+  mostrarEstadoAdminBingo75(regenerar ? 'Regenerando cartones...' : 'Generando cartones...');
+
+  try {
+    const { data, error } = await supabase.rpc('rpc_admin_generar_cartones_bingo75', {
+      _site_id: SITE_ID,
+      _cantidad: cantidad,
+      _regenerar: regenerar
+    });
+
+    if (error) throw error;
+
+    cacheCartonesBingo75.clear();
+    await cargarConfiguracionBingo75();
+    await cargarCartones();
+
+    const resultado = Array.isArray(data) ? data[0] : data;
+    mostrarEstadoAdminBingo75(`Listo: ${Number(resultado?.generados) || bingo75Generados} cartones generados.`);
+  } catch (error) {
+    errorSeguro('Error generando cartones Bingo 75:', error);
+    mostrarEstadoAdminBingo75(error.message || 'No se pudieron generar los cartones.', true);
+  } finally {
+    bloquearControlesBingo75(false);
+  }
+}
+
+async function eliminarCartonesBingo75() {
+  if (!bingo75Habilitado) return;
+  if (!confirm('¿Eliminar todos los cartones Bingo 75 generados?')) return;
+
+  bloquearControlesBingo75(true);
+  mostrarEstadoAdminBingo75('Eliminando cartones...');
+
+  try {
+    const { data, error } = await supabase.rpc('rpc_admin_eliminar_cartones_bingo75', {
+      _site_id: SITE_ID
+    });
+
+    if (error) throw error;
+
+    cacheCartonesBingo75.clear();
+    await cargarConfiguracionBingo75();
+    await cargarCartones();
+
+    const resultado = Array.isArray(data) ? data[0] : data;
+    mostrarEstadoAdminBingo75(`Eliminados: ${Number(resultado?.eliminados) || 0}.`);
+  } catch (error) {
+    errorSeguro('Error eliminando cartones Bingo 75:', error);
+    mostrarEstadoAdminBingo75(error.message || 'No se pudieron eliminar los cartones.', true);
+  } finally {
+    bloquearControlesBingo75(false);
+  }
+}
+
+async function guardarColoresBingo75() {
+  if (!bingo75Habilitado) return;
+  const colores = leerColoresBingo75Formulario();
+
+  bloquearControlesBingo75(true);
+  mostrarEstadoAdminBingo75('Guardando colores...');
+
+  try {
+    const { data, error } = await supabase.rpc('rpc_admin_configurar_colores_bingo75', {
+      _site_id: SITE_ID,
+      _color_cabecera: colores.cabecera,
+      _color_cabecera_texto: colores.cabeceraTexto,
+      _color_fondo: colores.fondo,
+      _color_celda: colores.celda,
+      _color_texto: colores.texto,
+      _color_libre: colores.libre
+    });
+
+    if (error || data !== true) throw error || new Error('No se guardaron los colores.');
+
+    bingo75Colores = colores;
+    await cargarConfiguracionBingo75();
+    mostrarEstadoAdminBingo75('Colores guardados.');
+  } catch (error) {
+    errorSeguro('Error guardando colores Bingo 75:', error);
+    mostrarEstadoAdminBingo75(error.message || 'No se guardaron los colores.', true);
+  } finally {
+    bloquearControlesBingo75(false);
   }
 }
 
@@ -2722,10 +3083,10 @@ function asignarClickCartonLibre(carton, numero) {
   if (!carton) return;
 
   carton.onclick = async () => {
-    if (modoCartonSimple) {
+    if (modoCartonSimple && !bingo75Habilitado) {
       await toggleCarton(numero, carton);
     } else {
-      abrirModalCarton(numero, carton);
+      await abrirModalCarton(numero, carton);
     }
   };
 }
@@ -3004,6 +3365,13 @@ async function cargarCartones() {
 
   const contenedor = document.getElementById('contenedor-cartones');
   contenedor.innerHTML = '';
+
+  if (bingo75Habilitado && totalCartones < 1) {
+    const mensaje = document.createElement('p');
+    mensaje.className = 'bingo75-empty-state';
+    mensaje.textContent = 'El administrador todavía no ha generado cartones para este bingo.';
+    contenedor.appendChild(mensaje);
+  }
 
   for (let i = 1; i <= totalCartones; i++) {
     const carton = document.createElement('div');
@@ -3411,6 +3779,65 @@ async function liberarReservasSeleccionadas(cedulaLimpia, cartones = usuario.car
   }
 }
 // ==================== fUNCIONES DE USUARIO ====================
+async function crearVistaCartonConsulta(numero) {
+  const item = document.createElement('div');
+  item.className = 'carton-consulta-card';
+
+  if (bingo75Habilitado) {
+    item.classList.add('bingo75-consulta-card');
+
+    try {
+      const numeros = await obtenerCartonBingo75(numero);
+      item.appendChild(
+        crearElementoCartonBingo75(numero, numeros, { compacto: true })
+      );
+    } catch (error) {
+      warnSeguro('No se pudo mostrar un cartón comprado:', error);
+      item.textContent = `Cartón ${numero}`;
+    }
+
+    return item;
+  }
+
+  item.style.width = '130px';
+  item.style.textAlign = 'center';
+  item.style.border = '2px solid #ffa500';
+  item.style.borderRadius = '12px';
+  item.style.padding = '6px';
+  item.style.background = '#fff';
+
+  const img = document.createElement('img');
+  img.src = urlCartonWebP(numero);
+  img.loading = 'lazy';
+  img.alt = `Cartón ${numero}`;
+  img.style.width = '100%';
+  img.style.maxWidth = '120px';
+  img.style.borderRadius = '8px';
+  img.style.display = 'block';
+  img.style.margin = '0 auto 6px auto';
+
+  const label = document.createElement('div');
+  label.textContent = `Cartón ${numero}`;
+  label.style.fontWeight = 'bold';
+  label.style.color = '#020A35';
+
+  img.onerror = () => {
+    img.remove();
+    item.style.width = '70px';
+    item.style.height = '65px';
+    item.style.display = 'flex';
+    item.style.alignItems = 'center';
+    item.style.justifyContent = 'center';
+    item.style.fontSize = '22px';
+    item.style.fontWeight = 'bold';
+    label.textContent = numero;
+  };
+
+  item.appendChild(img);
+  item.appendChild(label);
+  return item;
+}
+
 async function consultarCartones() {
   const cedula = document.getElementById('consulta-cedula')?.value.trim();
   const cont = document.getElementById('cartones-usuario');
@@ -3473,7 +3900,12 @@ async function consultarCartones() {
   }
 
   const aprobadas = compras.filter(i => i.estado === 'aprobado');
-  const cartones = aprobadas.flatMap(i => Array.isArray(i.cartones) ? i.cartones : []);
+  const cartones = [...new Set(
+    aprobadas
+      .flatMap(i => Array.isArray(i.cartones) ? i.cartones : [])
+      .map(Number)
+      .filter(Number.isFinite)
+  )];
 
   cont.innerHTML = `
     <div style="text-align:center;font-weight:bold;margin-bottom:15px;">
@@ -3488,47 +3920,9 @@ async function consultarCartones() {
     box.style.justifyContent = 'center';
     box.style.gap = '10px';
 
-    cartones.forEach(numero => {
-  const item = document.createElement('div');
-  item.className = 'carton-consulta-card';
-  item.style.width = '130px';
-  item.style.textAlign = 'center';
-  item.style.border = '2px solid #ffa500';
-  item.style.borderRadius = '12px';
-  item.style.padding = '6px';
-  item.style.background = '#fff';
-
-  const img = document.createElement('img');
-  img.src = urlCartonWebP(numero);
-  img.loading = 'lazy';
-  img.alt = `Cartón ${numero}`;
-  img.style.width = '100%';
-  img.style.maxWidth = '120px';
-  img.style.borderRadius = '8px';
-  img.style.display = 'block';
-  img.style.margin = '0 auto 6px auto';
-
-  const label = document.createElement('div');
-  label.textContent = `Cartón ${numero}`;
-  label.style.fontWeight = 'bold';
-  label.style.color = '#020A35';
-
-  img.onerror = () => {
-    img.remove();
-    item.style.width = '70px';
-    item.style.height = '65px';
-    item.style.display = 'flex';
-    item.style.alignItems = 'center';
-    item.style.justifyContent = 'center';
-    item.style.fontSize = '22px';
-    item.style.fontWeight = 'bold';
-    label.textContent = numero;
-  };
-
-  item.appendChild(img);
-  item.appendChild(label);
-  box.appendChild(item);
-});
+    for (const numero of cartones) {
+      box.appendChild(await crearVistaCartonConsulta(numero));
+    }
 
     cont.appendChild(box);
   }
@@ -4042,30 +4436,60 @@ async function reiniciarTodo() {
 let cartonSeleccionadoTemporal = null;
 let cartonElementoTemporal = null;
 
-function abrirModalCarton(numero, elemento) {
-  if (modoCartonSimple) {
-    toggleCarton(numero, elemento);
+async function abrirModalCarton(numero, elemento) {
+  if (modoCartonSimple && !bingo75Habilitado) {
+    await toggleCarton(numero, elemento);
     return;
   }
 
   cartonSeleccionadoTemporal = numero;
   cartonElementoTemporal = elemento;
   const img = document.getElementById('imagen-carton-modal');
-  img.src = urlCartonWebP(numero);
-img.loading = 'lazy';
-img.alt = `Cartón ${numero}`;
-
-  document.getElementById('modal-carton').classList.remove('oculto');
-
+  const vistaBingo75 = document.getElementById('carton-bingo75-modal');
+  const modal = document.getElementById('modal-carton');
   const btn = document.getElementById('btnSeleccionarCarton');
+
+  if (!img || !vistaBingo75 || !modal || !btn) return;
+
+  modal.classList.remove('oculto');
+  btn.disabled = false;
+
+  if (bingo75Habilitado) {
+    img.hidden = true;
+    vistaBingo75.hidden = false;
+    vistaBingo75.textContent = 'Cargando cartón...';
+
+    try {
+      const numeros = await obtenerCartonBingo75(numero);
+      vistaBingo75.replaceChildren(crearElementoCartonBingo75(numero, numeros));
+    } catch (error) {
+      errorSeguro('Error mostrando cartón Bingo 75:', error);
+      vistaBingo75.textContent = error.message || 'No se pudo mostrar este cartón.';
+      btn.disabled = true;
+      return;
+    }
+  } else {
+    vistaBingo75.hidden = true;
+    vistaBingo75.replaceChildren();
+    img.hidden = false;
+    img.src = urlCartonWebP(numero);
+    img.loading = 'lazy';
+    img.alt = `Cartón ${numero}`;
+  }
+
   btn.onclick = async () => {
-  await toggleCarton(cartonSeleccionadoTemporal, cartonElementoTemporal);
-  cerrarModalCarton();
-};
+    await toggleCarton(cartonSeleccionadoTemporal, cartonElementoTemporal);
+    cerrarModalCarton();
+  };
 }
 
 function cerrarModalCarton() {
   document.getElementById('modal-carton').classList.add('oculto');
+  const btn = document.getElementById('btnSeleccionarCarton');
+  if (btn) {
+    btn.disabled = false;
+    btn.onclick = null;
+  }
   cartonSeleccionadoTemporal = null;
   cartonElementoTemporal = null;
 }
@@ -4091,6 +4515,11 @@ async function guardarNuevoTotal() {
     return;
   }
 
+  if (bingo75Habilitado && nuevoTotal > bingo75Generados) {
+    if (estado) estado.textContent = `Solo hay ${bingo75Generados} cartones generados.`;
+    return;
+  }
+
   if (!SITE_ID) {
     if (estado) estado.textContent = "Error: sitio no identificado.";
     return;
@@ -4112,10 +4541,15 @@ async function guardarNuevoTotal() {
       throw new Error('No se pudo actualizar.');
     }
 
-    totalCartones = nuevoTotal;
-
     if (sitioActual) {
       sitioActual.cartones_visibles = nuevoTotal;
+    }
+
+    if (bingo75Habilitado) {
+      bingo75Visibles = nuevoTotal;
+      await cargarConfiguracionBingo75();
+    } else {
+      totalCartones = nuevoTotal;
     }
 
     if (estado) estado.textContent = "✅ Cartones visibles actualizados.";
@@ -5131,6 +5565,11 @@ function urlCartonWebP(numero) {
 }
 
 async function subirCartones() {
+  if (bingo75Habilitado) {
+    alert('Este sitio usa cartones Bingo 75 generados. No necesita imágenes.');
+    return;
+  }
+
   if (modoCartonSimple) {
     alert('Este sitio está en modo cartón simple. No se usan imágenes de cartones.');
     return;
@@ -5213,6 +5652,11 @@ async function subirCartones() {
   }, 7000);
 }
 async function borrarCartones() {
+  if (bingo75Habilitado) {
+    alert('Este sitio usa cartones Bingo 75 generados. Usa el botón Eliminar de esa sección.');
+    return;
+  }
+
   if (modoCartonSimple) {
     alert('Este sitio está en modo cartón simple. No se usan imágenes de cartones.');
     return;
@@ -5691,7 +6135,7 @@ if (seleccionAleatoriaEnProceso) return;
     if (carton) {
       carton.classList.remove('ocupado');
       carton.classList.add('seleccionado');
-      carton.onclick = () => toggleCarton(num, carton);
+      asignarClickCartonLibre(carton, num);
     }
   });
   if (usuario.cartones.length >= cantidadPermitida) {
@@ -5704,8 +6148,7 @@ if (seleccionAleatoriaEnProceso) return;
       c.classList.add('bloqueado');
 
     } else if (yaSeleccionado) {
-      // Si está seleccionado, asegurarse que el onclick siga llamando toggleCarton
-      c.onclick = () => toggleCarton(n, c);
+      asignarClickCartonLibre(c, n);
     }
   });
 }
