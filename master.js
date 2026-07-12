@@ -140,6 +140,19 @@ function masterIsTrue(valor) {
   return valor === true || valor === 'true' || valor === 1 || valor === '1';
 }
 
+function masterSincronizarModoBingo75(bingoId, simpleId) {
+  const bingo = $(bingoId);
+  const simple = $(simpleId);
+  if (!bingo || !simple) return;
+
+  if (bingo.checked) {
+    simple.checked = false;
+    simple.disabled = true;
+  } else {
+    simple.disabled = false;
+  }
+}
+
 async function masterSetConfigSitio(siteId, clave, valor) {
   const { data, error } = await supabase.rpc('rpc_set_config_sitio', {
     _site_id: siteId,
@@ -573,7 +586,8 @@ async function masterCrearSitio() {
   const privacidadContacto = $('masterPrivacidadContacto')?.value.trim();
   const privacidadTexto = $('masterPrivacidadTexto')?.value.trim();
   const planTipo = $('masterPlanSitio')?.value || 'basico';
-  const modoCartonSimple = $('masterModoCartonSimple')?.checked === true;
+  const bingo75Habilitado = $('masterBingo75Habilitado')?.checked === true;
+  const modoCartonSimple = !bingo75Habilitado && $('masterModoCartonSimple')?.checked === true;
   const mostrarEnVivo = $('masterMostrarEnVivo')?.checked !== false;
   const mostrarTopCompradores = $('masterMostrarTopCompradores')?.checked !== false;
   const mostrarPromociones = $('masterMostrarPromociones')?.checked !== false;
@@ -614,6 +628,7 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
   slug,
   titulo_publico: titulo || nombre,
   plan_tipo: planTipo,
+  bingo75_habilitado: bingo75Habilitado,
   mostrar_en_vivo: mostrarEnVivo,
   mostrar_top_compradores: mostrarTopCompradores,
   privacidad_organizador: privacidadOrganizador || null,
@@ -686,6 +701,8 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
 
     if ($('masterPlanSitio')) $('masterPlanSitio').value = 'basico';
     if ($('masterModoCartonSimple')) $('masterModoCartonSimple').checked = false;
+    if ($('masterBingo75Habilitado')) $('masterBingo75Habilitado').checked = false;
+    masterSincronizarModoBingo75('masterBingo75Habilitado', 'masterModoCartonSimple');
     if ($('masterMostrarEnVivo')) $('masterMostrarEnVivo').checked = true;
     if ($('masterMostrarTopCompradores')) $('masterMostrarTopCompradores').checked = true;
     if ($('masterMostrarPromociones')) $('masterMostrarPromociones').checked = true;
@@ -735,7 +752,8 @@ async function masterCargarSitios() {
           <td>
             <code>${masterEscapeHTML(sitio.slug || '')}</code><br>
             <a href="${url}" target="_blank" rel="noopener">Abrir sitio</a><br>
-            <small>🔴 En vivo: ${sitio.mostrar_en_vivo === false ? 'No' : 'Sí'} · 🏆 Top: ${sitio.mostrar_top_compradores === false ? 'No' : 'Sí'}</small>
+            <small>🔴 En vivo: ${sitio.mostrar_en_vivo === false ? 'No' : 'Sí'} · 🏆 Top: ${sitio.mostrar_top_compradores === false ? 'No' : 'Sí'}</small><br>
+            <small>Bingo 75: ${sitio.bingo75_habilitado === true ? 'Habilitado' : 'Deshabilitado'}</small>
           </td>
           <td>
             <strong>Tope:</strong> ${masterEscapeHTML(sitio.limite_cartones || sitio.total_cartones || 0)}<br>
@@ -845,6 +863,8 @@ async function masterAbrirEditor(siteId) {
   $('masterEditActivo').value = sitio.activo === false ? 'false' : 'true';
   if ($('masterEditMostrarEnVivo')) $('masterEditMostrarEnVivo').checked = sitio.mostrar_en_vivo !== false;
   if ($('masterEditMostrarTopCompradores')) $('masterEditMostrarTopCompradores').checked = sitio.mostrar_top_compradores !== false;
+  if ($('masterEditBingo75Habilitado')) $('masterEditBingo75Habilitado').checked = sitio.bingo75_habilitado === true;
+  masterSincronizarModoBingo75('masterEditBingo75Habilitado', 'masterEditModoCartonSimple');
 
   if ($('masterEditClaveReinicio')) {
     const inputClaveReinicio = $('masterEditClaveReinicio');
@@ -895,6 +915,7 @@ async function masterAbrirEditor(siteId) {
     );
 
     $('masterEditModoCartonSimple').checked = masterIsTrue(valorSimple);
+    masterSincronizarModoBingo75('masterEditBingo75Habilitado', 'masterEditModoCartonSimple');
   }
 
   masterSetEstado('masterEstadoEditarSitio', '');
@@ -934,7 +955,8 @@ async function masterGuardarEdicion() {
   const privacidadTexto = $('masterEditPrivacidadTexto')?.value.trim();
   const activo = $('masterEditActivo')?.value === 'true';
   const planTipo = $('masterEditPlanSitio')?.value || 'basico';
-  const modoCartonSimple = $('masterEditModoCartonSimple')?.checked === true;
+  const bingo75Habilitado = $('masterEditBingo75Habilitado')?.checked === true;
+  const modoCartonSimple = !bingo75Habilitado && $('masterEditModoCartonSimple')?.checked === true;
   const mostrarEnVivo = $('masterEditMostrarEnVivo')?.checked !== false;
   const mostrarTopCompradores = $('masterEditMostrarTopCompradores')?.checked !== false;
   const mostrarPromociones = $('masterEditMostrarPromociones')?.checked !== false;
@@ -977,6 +999,7 @@ async function masterGuardarEdicion() {
       nombre,
       titulo_publico: titulo || nombre,
       plan_tipo: planTipo,
+      bingo75_habilitado: bingo75Habilitado,
       mostrar_en_vivo: mostrarEnVivo,
       mostrar_top_compradores: mostrarTopCompradores,
       precio_carton_bs: precio,
@@ -1054,6 +1077,14 @@ function masterConfigurarEventos() {
   $('btnMasterGuardarEdicion')?.addEventListener('click', masterGuardarEdicion);
   $('btnMasterRenovarSitio')?.addEventListener('click', masterRenovarSitio);
   $('btnMasterCancelarEdicion')?.addEventListener('click', masterCerrarEditor);
+
+  $('masterBingo75Habilitado')?.addEventListener('change', () => {
+    masterSincronizarModoBingo75('masterBingo75Habilitado', 'masterModoCartonSimple');
+  });
+
+  $('masterEditBingo75Habilitado')?.addEventListener('change', () => {
+    masterSincronizarModoBingo75('masterEditBingo75Habilitado', 'masterEditModoCartonSimple');
+  });
 
   $('masterPassword')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') masterLogin();
