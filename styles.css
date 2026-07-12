@@ -3541,3 +3541,211 @@ button,
   font-weight: 900;
   color: #111111;
 }
+
+/* Cartones BINGO 75 generados */
+.bingo75-admin-summary,
+.bingo75-admin-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+}
+
+.bingo75-admin-summary {
+  justify-content: space-between;
+  padding: 10px 12px;
+  border: 1px solid #dfe3ea;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #1f2937;
+}
+
+.bingo75-status-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding: 4px 9px;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #334155;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.bingo75-generation-row {
+  align-items: stretch;
+}
+
+.bingo75-generation-row input[type="number"] {
+  width: min(180px, 100%);
+}
+
+.bingo75-color-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 10px;
+  margin: 16px 0;
+}
+
+.bingo75-color-grid label {
+  display: grid;
+  grid-template-columns: 1fr 44px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  padding: 8px 10px;
+  border: 1px solid #dfe3ea;
+  border-radius: 6px;
+  background: #ffffff;
+  color: #1f2937;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.bingo75-color-grid input[type="color"] {
+  width: 44px;
+  height: 34px;
+  padding: 2px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.bingo75-preview,
+.bingo75-modal-preview {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+  margin: 14px auto 0;
+}
+
+.bingo75-modal-preview[hidden] {
+  display: none !important;
+}
+
+.bingo75-card {
+  --bingo75-header: #0B3D91;
+  --bingo75-header-text: #FFFFFF;
+  --bingo75-background: #FFFFFF;
+  --bingo75-cell: #F4F7FB;
+  --bingo75-text: #111827;
+  --bingo75-free: #F59E0B;
+  width: min(100%, 340px);
+  padding: 10px;
+  border: 2px solid var(--bingo75-header);
+  border-radius: 8px;
+  background: var(--bingo75-background);
+  color: var(--bingo75-text);
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.14);
+}
+
+.bingo75-card-title {
+  margin: 0 0 8px;
+  color: var(--bingo75-text);
+  text-align: center;
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.bingo75-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 4px;
+  width: 100%;
+}
+
+.bingo75-grid-cell {
+  display: grid;
+  place-items: center;
+  min-width: 0;
+  aspect-ratio: 1;
+  border: 1px solid rgba(15, 23, 42, 0.16);
+  border-radius: 4px;
+  background: var(--bingo75-cell);
+  color: var(--bingo75-text);
+  font-size: 18px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.bingo75-grid-cell--header {
+  aspect-ratio: auto;
+  min-height: 38px;
+  border-color: var(--bingo75-header);
+  background: var(--bingo75-header);
+  color: var(--bingo75-header-text);
+  font-size: 21px;
+}
+
+.bingo75-grid-cell--free {
+  background: var(--bingo75-free);
+  color: var(--bingo75-free-text, #111111);
+  font-size: 10px;
+}
+
+.bingo75-card--compact {
+  width: min(100%, 225px);
+  padding: 7px;
+}
+
+.bingo75-card--compact .bingo75-card-title {
+  font-size: 13px;
+}
+
+.bingo75-card--compact .bingo75-grid {
+  gap: 2px;
+}
+
+.bingo75-card--compact .bingo75-grid-cell {
+  font-size: 12px;
+}
+
+.bingo75-card--compact .bingo75-grid-cell--header {
+  min-height: 26px;
+  font-size: 15px;
+}
+
+.bingo75-card--compact .bingo75-grid-cell--free {
+  font-size: 7px;
+}
+
+.bingo75-consulta-card {
+  width: min(100%, 235px);
+}
+
+.bingo75-empty-state {
+  width: 100%;
+  margin: 12px 0;
+  padding: 14px;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  background: #f8fafc;
+  color: #334155;
+  text-align: center;
+}
+
+@media (max-width: 480px) {
+  .bingo75-generation-row {
+    flex-direction: column;
+  }
+
+  .bingo75-generation-row input[type="number"],
+  .bingo75-generation-row button {
+    width: 100%;
+  }
+
+  .bingo75-grid-cell {
+    font-size: 15px;
+  }
+
+  .bingo75-grid-cell--header {
+    font-size: 18px;
+  }
+
+  .bingo75-grid-cell--free {
+    font-size: 8px;
+  }
+}
