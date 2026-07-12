@@ -702,6 +702,13 @@
                 </span>
               </label>
               <label class="master-option-row">
+                <input type="checkbox" id="masterBingo75Habilitado">
+                <span>
+                  Cartones Bingo 75 generados<br>
+                  <small>Permite al administrador generar tarjetas B-I-N-G-O sin imágenes.</small>
+                </span>
+              </label>
+              <label class="master-option-row">
                 <input type="checkbox" id="masterMostrarEnVivo" checked>
                 <span>
                   Mostrar Ver en vivo<br>
@@ -853,6 +860,13 @@
                 </span>
               </label>
               <label class="master-option-row">
+                <input type="checkbox" id="masterEditBingo75Habilitado">
+                <span>
+                  Cartones Bingo 75 generados<br>
+                  <small>El cambio se bloquea mientras existan ventas o reservas.</small>
+                </span>
+              </label>
+              <label class="master-option-row">
                 <input type="checkbox" id="masterEditMostrarEnVivo">
                 <span>
                   Mostrar Ver en vivo<br>
@@ -923,6 +937,6 @@
     window.supabase = supabase.createClient(supabaseUrl, supabaseKey);
   </script>
 
-  <script src="master.js?v=128"></script>
+  <script src="master.js?v=129"></script>
 </body>
 </html>
