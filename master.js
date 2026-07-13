@@ -153,6 +153,19 @@ function masterSincronizarModoBingo75(bingoId, simpleId) {
   }
 }
 
+function masterSincronizarBombo75(bingoId, bomboId) {
+  const bingo = $(bingoId);
+  const bombo = $(bomboId);
+  if (!bingo || !bombo) return;
+
+  if (!bingo.checked) {
+    bombo.checked = false;
+    bombo.disabled = true;
+  } else {
+    bombo.disabled = false;
+  }
+}
+
 async function masterSetConfigSitio(siteId, clave, valor) {
   const { data, error } = await supabase.rpc('rpc_set_config_sitio', {
     _site_id: siteId,
@@ -587,6 +600,7 @@ async function masterCrearSitio() {
   const privacidadTexto = $('masterPrivacidadTexto')?.value.trim();
   const planTipo = $('masterPlanSitio')?.value || 'basico';
   const bingo75Habilitado = $('masterBingo75Habilitado')?.checked === true;
+  const bombo75Habilitado = bingo75Habilitado && $('masterBombo75Habilitado')?.checked === true;
   const modoCartonSimple = !bingo75Habilitado && $('masterModoCartonSimple')?.checked === true;
   const mostrarEnVivo = $('masterMostrarEnVivo')?.checked !== false;
   const mostrarTopCompradores = $('masterMostrarTopCompradores')?.checked !== false;
@@ -629,6 +643,7 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
   titulo_publico: titulo || nombre,
   plan_tipo: planTipo,
   bingo75_habilitado: bingo75Habilitado,
+  bombo75_habilitado: bombo75Habilitado,
   mostrar_en_vivo: mostrarEnVivo,
   mostrar_top_compradores: mostrarTopCompradores,
   privacidad_organizador: privacidadOrganizador || null,
@@ -702,7 +717,9 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
     if ($('masterPlanSitio')) $('masterPlanSitio').value = 'basico';
     if ($('masterModoCartonSimple')) $('masterModoCartonSimple').checked = false;
     if ($('masterBingo75Habilitado')) $('masterBingo75Habilitado').checked = false;
+    if ($('masterBombo75Habilitado')) $('masterBombo75Habilitado').checked = false;
     masterSincronizarModoBingo75('masterBingo75Habilitado', 'masterModoCartonSimple');
+    masterSincronizarBombo75('masterBingo75Habilitado', 'masterBombo75Habilitado');
     if ($('masterMostrarEnVivo')) $('masterMostrarEnVivo').checked = true;
     if ($('masterMostrarTopCompradores')) $('masterMostrarTopCompradores').checked = true;
     if ($('masterMostrarPromociones')) $('masterMostrarPromociones').checked = true;
@@ -753,7 +770,7 @@ async function masterCargarSitios() {
             <code>${masterEscapeHTML(sitio.slug || '')}</code><br>
             <a href="${url}" target="_blank" rel="noopener">Abrir sitio</a><br>
             <small>🔴 En vivo: ${sitio.mostrar_en_vivo === false ? 'No' : 'Sí'} · 🏆 Top: ${sitio.mostrar_top_compradores === false ? 'No' : 'Sí'}</small><br>
-            <small>Bingo 75: ${sitio.bingo75_habilitado === true ? 'Habilitado' : 'Deshabilitado'}</small>
+            <small>Bingo 75: ${sitio.bingo75_habilitado === true ? 'Habilitado' : 'Deshabilitado'} · Bombo: ${sitio.bombo75_habilitado === true ? 'Habilitado' : 'Deshabilitado'}</small>
           </td>
           <td>
             <strong>Tope:</strong> ${masterEscapeHTML(sitio.limite_cartones || sitio.total_cartones || 0)}<br>
@@ -864,7 +881,9 @@ async function masterAbrirEditor(siteId) {
   if ($('masterEditMostrarEnVivo')) $('masterEditMostrarEnVivo').checked = sitio.mostrar_en_vivo !== false;
   if ($('masterEditMostrarTopCompradores')) $('masterEditMostrarTopCompradores').checked = sitio.mostrar_top_compradores !== false;
   if ($('masterEditBingo75Habilitado')) $('masterEditBingo75Habilitado').checked = sitio.bingo75_habilitado === true;
+  if ($('masterEditBombo75Habilitado')) $('masterEditBombo75Habilitado').checked = sitio.bombo75_habilitado === true;
   masterSincronizarModoBingo75('masterEditBingo75Habilitado', 'masterEditModoCartonSimple');
+  masterSincronizarBombo75('masterEditBingo75Habilitado', 'masterEditBombo75Habilitado');
 
   if ($('masterEditClaveReinicio')) {
     const inputClaveReinicio = $('masterEditClaveReinicio');
@@ -916,6 +935,7 @@ async function masterAbrirEditor(siteId) {
 
     $('masterEditModoCartonSimple').checked = masterIsTrue(valorSimple);
     masterSincronizarModoBingo75('masterEditBingo75Habilitado', 'masterEditModoCartonSimple');
+    masterSincronizarBombo75('masterEditBingo75Habilitado', 'masterEditBombo75Habilitado');
   }
 
   masterSetEstado('masterEstadoEditarSitio', '');
@@ -956,6 +976,7 @@ async function masterGuardarEdicion() {
   const activo = $('masterEditActivo')?.value === 'true';
   const planTipo = $('masterEditPlanSitio')?.value || 'basico';
   const bingo75Habilitado = $('masterEditBingo75Habilitado')?.checked === true;
+  const bombo75Habilitado = bingo75Habilitado && $('masterEditBombo75Habilitado')?.checked === true;
   const modoCartonSimple = !bingo75Habilitado && $('masterEditModoCartonSimple')?.checked === true;
   const mostrarEnVivo = $('masterEditMostrarEnVivo')?.checked !== false;
   const mostrarTopCompradores = $('masterEditMostrarTopCompradores')?.checked !== false;
@@ -1000,6 +1021,7 @@ async function masterGuardarEdicion() {
       titulo_publico: titulo || nombre,
       plan_tipo: planTipo,
       bingo75_habilitado: bingo75Habilitado,
+      bombo75_habilitado: bombo75Habilitado,
       mostrar_en_vivo: mostrarEnVivo,
       mostrar_top_compradores: mostrarTopCompradores,
       precio_carton_bs: precio,
@@ -1080,11 +1102,16 @@ function masterConfigurarEventos() {
 
   $('masterBingo75Habilitado')?.addEventListener('change', () => {
     masterSincronizarModoBingo75('masterBingo75Habilitado', 'masterModoCartonSimple');
+    masterSincronizarBombo75('masterBingo75Habilitado', 'masterBombo75Habilitado');
   });
 
   $('masterEditBingo75Habilitado')?.addEventListener('change', () => {
     masterSincronizarModoBingo75('masterEditBingo75Habilitado', 'masterEditModoCartonSimple');
+    masterSincronizarBombo75('masterEditBingo75Habilitado', 'masterEditBombo75Habilitado');
   });
+
+  masterSincronizarBombo75('masterBingo75Habilitado', 'masterBombo75Habilitado');
+  masterSincronizarBombo75('masterEditBingo75Habilitado', 'masterEditBombo75Habilitado');
 
   $('masterPassword')?.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') masterLogin();
