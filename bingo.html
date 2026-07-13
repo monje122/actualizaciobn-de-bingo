@@ -407,9 +407,10 @@
     <h2>Inscripción</h2>
     <input type="text" placeholder="Nombre" id="nombre">
     <input type="tel" placeholder="Teléfono" id="telefono">
-    <input type="text" placeholder="Cédula" id="cedula">
+    <input type="text" placeholder="Cédula" id="cedula" oninput="actualizarBotonTurnstile('compra')">
     <input type="text" placeholder="(opcional)¿Quién te refirió?" id="referido">
-   <button onclick="guardarDatosInscripcion()">Continuar</button>
+    <div id="turnstile-compra" class="turnstile-box"></div>
+   <button id="btnContinuarInscripcion" disabled onclick="guardarDatosInscripcion()">Continuar</button>
 
     <button onclick="mostrarVentana('bienvenida')">Inicio</button>
   </section>
@@ -534,8 +535,9 @@
   <!-- Ve ntana usuario -->
   <section id="usuario" class="oculto">
     <h2>Consultar cartones</h2>
-    <input type="text" placeholder="Ingresa tu cédula" id="consulta-cedula">
-    <button onclick="consultarCartones()">Consultar</button>
+    <input type="text" placeholder="Ingresa tu cédula" id="consulta-cedula" oninput="actualizarBotonTurnstile('consulta')">
+    <div id="turnstile-consulta" class="turnstile-box"></div>
+    <button id="btnConsultarCartones" disabled onclick="consultarCartones()">Consultar</button>
     <div id="cartones-usuario"></div>
     <button id="btnElegirMas" onclick="elegirMasCartones()">Elegir más cartones</button>
 <button onclick="mostrarVentana('bienvenida')">Inicio</button>
@@ -1311,6 +1313,7 @@
   }
 </script>
 
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" defer></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 
@@ -1323,7 +1326,7 @@
 </script>
 
 
-<script src="script.js?v=139"></script>
+<script src="script.js?v=140"></script>
 
 </body>
 </html>
