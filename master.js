@@ -605,6 +605,7 @@ async function masterCrearSitio() {
   const mostrarEnVivo = $('masterMostrarEnVivo')?.checked !== false;
   const mostrarTopCompradores = $('masterMostrarTopCompradores')?.checked !== false;
   const mostrarPromociones = $('masterMostrarPromociones')?.checked !== false;
+  const permitirBarraProgreso = $('masterPermitirBarraProgreso')?.checked !== false;
 const mesesServicio = parseInt($('masterMesesServicio')?.value || '1', 10);
 const fechaInicio = masterFechaHoyISO();
 const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
@@ -691,6 +692,12 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
       mostrarPromociones ? 'true' : 'false'
     );
 
+    await masterSetConfigSitio(
+      data.id,
+      'barra_progreso_habilitada_master',
+      permitirBarraProgreso ? 'true' : 'false'
+    );
+
     await masterSetClaveReinicio(data.id, claveReinicio);
 
     await masterSetConfigSitio(
@@ -723,6 +730,7 @@ const fechaVencimiento = masterCalcularFechaVencimiento(mesesServicio);
     if ($('masterMostrarEnVivo')) $('masterMostrarEnVivo').checked = true;
     if ($('masterMostrarTopCompradores')) $('masterMostrarTopCompradores').checked = true;
     if ($('masterMostrarPromociones')) $('masterMostrarPromociones').checked = true;
+    if ($('masterPermitirBarraProgreso')) $('masterPermitirBarraProgreso').checked = true;
 
     await masterCargarSitios();
 
@@ -924,6 +932,16 @@ async function masterAbrirEditor(siteId) {
     $('masterEditMostrarPromociones').checked = String(valorPromociones).toLowerCase() !== 'false';
   }
 
+  if ($('masterEditPermitirBarraProgreso')) {
+    const valorBarraProgreso = await masterGetConfigSitio(
+      sitio.id,
+      'barra_progreso_habilitada_master',
+      'true'
+    );
+
+    $('masterEditPermitirBarraProgreso').checked = masterIsTrue(valorBarraProgreso);
+  }
+
   if ($('masterEditModoCartonSimple')) {
     $('masterEditModoCartonSimple').checked = false;
 
@@ -981,6 +999,7 @@ async function masterGuardarEdicion() {
   const mostrarEnVivo = $('masterEditMostrarEnVivo')?.checked !== false;
   const mostrarTopCompradores = $('masterEditMostrarTopCompradores')?.checked !== false;
   const mostrarPromociones = $('masterEditMostrarPromociones')?.checked !== false;
+  const permitirBarraProgreso = $('masterEditPermitirBarraProgreso')?.checked !== false;
 
   if (!nombre) {
     masterSetEstado('masterEstadoEditarSitio', 'El nombre no puede estar vacío.', 'error');
@@ -1060,6 +1079,12 @@ async function masterGuardarEdicion() {
       siteId,
       'mostrar_promociones',
       mostrarPromociones ? 'true' : 'false'
+    );
+
+    await masterSetConfigSitio(
+      siteId,
+      'barra_progreso_habilitada_master',
+      permitirBarraProgreso ? 'true' : 'false'
     );
 
     if (claveReinicio) {
