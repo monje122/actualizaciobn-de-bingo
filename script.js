@@ -93,6 +93,7 @@ let promocionSeleccionada = null;
 let modoCartones = "libre";
 let modoCartonSimple = false;
 let bingo75Habilitado = false;
+let bombo75Habilitado = false;
 let bingo75Limite = 0;
 let bingo75Visibles = 0;
 let bingo75Generados = 0;
@@ -2546,6 +2547,7 @@ if (!sitioOk) {
    document.getElementById('modal-terminos').classList.remove('oculto');
    await obtenerTotalCartones();
   await cargarConfiguracionBingo75();
+  await cargarConfiguracionBombo75();
   await cargarLinkWhatsapp();
 
   // Si no hay caché, espera los colores reales antes de mostrar la página.
@@ -2868,6 +2870,59 @@ async function cargarConfiguracionBingo75() {
 
   aplicarEstadoBingo75();
   return true;
+}
+
+async function cargarConfiguracionBombo75() {
+  const boton = document.getElementById('bombo75AdminAction');
+
+  if (!SITE_ID) {
+    bombo75Habilitado = false;
+    if (boton) {
+      boton.hidden = true;
+      boton.classList.add('oculto');
+    }
+    return false;
+  }
+
+  try {
+    const { data, error } = await supabase.rpc('rpc_public_bombo75_habilitado', {
+      _site_id: SITE_ID
+    });
+
+    if (error) throw error;
+
+    bombo75Habilitado = data === true && bingo75Habilitado;
+    if (boton) {
+      boton.hidden = !bombo75Habilitado;
+      boton.classList.toggle('oculto', !bombo75Habilitado);
+      boton.disabled = !bombo75Habilitado;
+    }
+    return bombo75Habilitado;
+  } catch (error) {
+    warnSeguro('No se pudo cargar la disponibilidad del bombo Bingo 75:', error);
+    bombo75Habilitado = false;
+    if (boton) {
+      boton.hidden = true;
+      boton.classList.add('oculto');
+    }
+    return false;
+  }
+}
+
+async function abrirPanelBombo75() {
+  if (!bombo75Habilitado) {
+    alert('El master no habilitó el panel de bombo para este sitio.');
+    return;
+  }
+
+  const { data } = await supabase.auth.getSession();
+  if (!data?.session?.user) {
+    alert('La sesión del administrador expiró. Inicia sesión nuevamente.');
+    await entrarAdmin();
+    return;
+  }
+
+  window.open(`bombo.html?site=${encodeURIComponent(SITE_SLUG)}`, '_blank', 'noopener');
 }
 
 async function obtenerCartonBingo75(numero) {
@@ -3958,6 +4013,7 @@ async function elegirMasCartones() {
 async function cargarPanelAdmin(opciones = {}) {
 await Promise.all([
   obtenerTotalCartones(),
+  cargarConfiguracionBombo75(),
   obtenerMontoTotalRecaudado(),
   actualizarResumenCartonesDashboard(),
   cargarModoCartonesAdmin(),
