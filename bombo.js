@@ -104,7 +104,31 @@ async function cargarTemaActualBombo() {
 
   bomboSitio = sitio;
   bomboSiteId = Number(sitio.id);
-  aplicarTemaBombo(sitio);
+
+  const clavesTema = [
+    'color_fondo',
+    'color_botones',
+    'color_texto',
+    'color_texto_botones',
+    'color_principal',
+    'color_secundario'
+  ];
+  const resultadosTema = await Promise.all(clavesTema.map((clave) =>
+    bomboDb.rpc('rpc_get_config_sitio', {
+      _site_id: bomboSiteId,
+      _clave: clave,
+      _fallback: sitio[clave] || ''
+    })
+  ));
+  const errorTema = resultadosTema.find((resultado) => resultado.error)?.error;
+  if (errorTema) throw errorTema;
+
+  const tema = { ...sitio };
+  clavesTema.forEach((clave, indice) => {
+    tema[clave] = resultadosTema[indice].data || sitio[clave] || '';
+  });
+  bomboSitio = tema;
+  aplicarTemaBombo(tema);
   bomboElemento('bomboSiteName').textContent = sitio.nombre || 'Bingo 75';
   document.title = `${sitio.nombre || 'Bingo 75'} - Panel de Bombo`;
   return sitio;
