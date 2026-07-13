@@ -73,6 +73,124 @@ let sitioActual = null;
 let SITE_ID = null;
 let SITE_SLUG = 'golden';
 
+const TURNSTILE_SITE_KEY = '0x4AAAAAAD1KwwYhGO9s51wM';
+const TURNSTILE_FUNCTION_URL = 'https://zxtgaovreqzcpzdvmmcx.supabase.co/functions/v1/turnstile-compra';
+const turnstileTokens = { compra: '', consulta: '' };
+const turnstileWidgets = { compra: null, consulta: null };
+const turnstileSessions = { compra: null, consulta: null };
+
+function sesionTurnstileValida(accion, cedula) {
+  const sesion = turnstileSessions[accion];
+  return !!(
+    sesion?.token &&
+    sesion.cedula === String(cedula || '').trim() &&
+    sesion.siteId === SITE_ID &&
+    Date.parse(sesion.expiresAt || '') > Date.now() + 30000
+  );
+}
+
+function actualizarBotonTurnstile(accion) {
+  const id = accion === 'compra' ? 'btnContinuarInscripcion' : 'btnConsultarCartones';
+  const boton = document.getElementById(id);
+  if (!boton) return;
+  const cedulaId = accion === 'compra' ? 'cedula' : 'consulta-cedula';
+  const cedula = document.getElementById(cedulaId)?.value || '';
+  boton.disabled = !(turnstileTokens[accion] || sesionTurnstileValida(accion, cedula));
+}
+
+function inicializarTurnstileWidgets(accionObjetivo = null) {
+  if (!window.turnstile) {
+    setTimeout(() => inicializarTurnstileWidgets(accionObjetivo), 250);
+    return;
+  }
+
+  const acciones = accionObjetivo ? [accionObjetivo] : ['compra', 'consulta'];
+  for (const accion of acciones) {
+    if (turnstileWidgets[accion] !== null) continue;
+    const contenedor = document.getElementById(`turnstile-${accion}`);
+    if (!contenedor) continue;
+
+    turnstileWidgets[accion] = window.turnstile.render(contenedor, {
+      sitekey: TURNSTILE_SITE_KEY,
+      action: accion,
+      theme: 'auto',
+      callback(token) {
+        turnstileTokens[accion] = token;
+        actualizarBotonTurnstile(accion);
+      },
+      'expired-callback'() {
+        turnstileTokens[accion] = '';
+        actualizarBotonTurnstile(accion);
+      },
+      'error-callback'() {
+        turnstileTokens[accion] = '';
+        actualizarBotonTurnstile(accion);
+      }
+    });
+  }
+}
+
+async function obtenerSesionTurnstile(accion, cedula) {
+  const cedulaLimpia = String(cedula || '').trim();
+  if (sesionTurnstileValida(accion, cedulaLimpia)) {
+    return turnstileSessions[accion].token;
+  }
+
+  const challengeToken = turnstileTokens[accion];
+  if (!challengeToken) {
+    throw new Error('Espera un momento y completa la verificacion de seguridad.');
+  }
+
+  const response = await fetch(TURNSTILE_FUNCTION_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      operation: 'verify',
+      token: challengeToken,
+      siteSlug: SITE_SLUG,
+      cedula: cedulaLimpia,
+      action: accion
+    })
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.sessionToken) {
+    throw new Error(result.error || 'No se pudo completar la verificacion de seguridad.');
+  }
+
+  turnstileSessions[accion] = {
+    token: result.sessionToken,
+    expiresAt: result.expiresAt,
+    cedula: cedulaLimpia,
+    siteId: SITE_ID
+  };
+  turnstileTokens[accion] = '';
+  if (turnstileWidgets[accion] !== null) window.turnstile.reset(turnstileWidgets[accion]);
+  actualizarBotonTurnstile(accion);
+  return result.sessionToken;
+}
+
+async function solicitarSubidaFirmada(path, archivo, cedula, sessionToken) {
+  const response = await fetch(TURNSTILE_FUNCTION_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      operation: 'signed-upload',
+      siteSlug: SITE_SLUG,
+      cedula,
+      action: 'compra',
+      sessionToken,
+      path,
+      contentType: archivo.type,
+      fileSize: archivo.size
+    })
+  });
+  const result = await response.json().catch(() => ({}));
+  if (!response.ok || !result.uploadToken) {
+    throw new Error(result.error || 'No se pudo autorizar la subida del comprobante.');
+  }
+  return result.uploadToken;
+}
+
 function obtenerSlugSitio() {
   const params = new URLSearchParams(window.location.search);
   const slugUrl = params.get('site');
@@ -3316,6 +3434,9 @@ async function mostrarVentana(id, guardarHistorial = true) {
     target.classList.remove('oculto');
     ventanaActual = id;
 
+    if (id === 'inscripcion') inicializarTurnstileWidgets('compra');
+    if (id === 'usuario') inicializarTurnstileWidgets('consulta');
+
     if (guardarHistorial && !navegandoConBotonAtras) {
       registrarHistorialVentana(id);
     }
@@ -3355,13 +3476,26 @@ async function mostrarVentana(id, guardarHistorial = true) {
   }
 }
 // Guardar datos del formulario
-function guardarDatosInscripcion() {
+async function guardarDatosInscripcion() {
   usuario.nombre = document.getElementById('nombre').value;
   usuario.telefono = document.getElementById('telefono').value;
   usuario.cedula = document.getElementById('cedula').value;
   usuario.referido = document.getElementById('referido').value;
+
+  if (!usuario.nombre.trim() || !usuario.telefono.trim() || !usuario.cedula.trim()) {
+    alert('Completa nombre, telefono y cedula.');
+    return;
+  }
+
+  try {
+    await obtenerSesionTurnstile('compra', usuario.cedula);
+  } catch (error) {
+    alert(error.message || 'No se pudo completar la verificacion de seguridad.');
+    return;
+  }
+
   usuario.cartones = [];
-  mostrarVentana('cantidad')
+  await mostrarVentana('cantidad');
   actualizarPreseleccion(); 
   guardarDatosClienteLocal();
 }
@@ -3468,11 +3602,13 @@ async function toggleCarton(num, elem) {
 
   
 
-const { data: liberado, error: errorLiberar } = await supabase.rpc('rpc_liberar_reserva', {
+const sessionToken = await obtenerSesionTurnstile('compra', cedulaLimpia);
+const { data: liberado, error: errorLiberar } = await supabase.rpc('rpc_liberar_reserva_turnstile', {
   _site_id: SITE_ID,
   _numero: num,
   _cedula: cedulaLimpia,
-  _partida_id: null
+  _partida_id: null,
+  _session_token: sessionToken
 });
     logSeguro('Liberar cartón:', {
       numero: num,
@@ -3509,11 +3645,13 @@ const { data: liberado, error: errorLiberar } = await supabase.rpc('rpc_liberar_
   // No permitir más de la cantidad elegida
   if (usuario.cartones.length >= cantidadPermitida) return;
 
- const { data, error } = await supabase.rpc('rpc_reservar_carton', {
+ const sessionToken = await obtenerSesionTurnstile('compra', cedulaLimpia);
+ const { data, error } = await supabase.rpc('rpc_reservar_carton_turnstile', {
   _site_id: SITE_ID,
   _numero: num,
   _cedula: cedulaLimpia,
-  _partida_id: null
+  _partida_id: null,
+  _session_token: sessionToken
 });
 
   if (error || data !== true) {
@@ -3810,11 +3948,18 @@ async function enviarComprobante() {
 
     if (boton) boton.textContent = 'Subiendo comprobante...';
 
+    const sessionToken = await obtenerSesionTurnstile('compra', cedulaLimpia);
+    const uploadToken = await solicitarSubidaFirmada(
+      nombreArchivo,
+      comprobantePreparado.archivo,
+      cedulaLimpia,
+      sessionToken
+    );
+
     const { error: errorUpload } = await supabase.storage
       .from('comprobantes')
-      .upload(nombreArchivo, comprobantePreparado.archivo, {
+      .uploadToSignedUrl(nombreArchivo, uploadToken, comprobantePreparado.archivo, {
         contentType: comprobantePreparado.contentType,
-        upsert: false,
         cacheControl: '31536000'
       });
 
@@ -3848,11 +3993,12 @@ async function enviarComprobante() {
     // 1. Validar reserva por RPC segura.
     // No usamos SELECT directo a cartones porque esa tabla debe estar cerrada por RLS.
     const { data: reservas, error: errorReservas } = await supabase.rpc(
-      'rpc_public_validar_reserva_cartones',
+      'rpc_validar_reserva_cartones_turnstile',
       {
         _site_id: SITE_ID,
         _cedula: cedulaLimpia,
-        _cartones: cartonesEnviar
+        _cartones: cartonesEnviar,
+        _session_token: sessionToken
       }
     );
 
@@ -3883,10 +4029,12 @@ async function enviarComprobante() {
 
    // 2. Validar por RPC que no existan en otra inscripción pendiente/aprobada del mismo sitio
 const { data: cartonesDuplicados, error: errorDuplicados } = await supabase.rpc(
-  'rpc_public_validar_cartones_inscripcion',
+  'rpc_validar_cartones_inscripcion_turnstile',
   {
     _site_id: SITE_ID,
-    _cartones: cartonesEnviar
+    _cedula: cedulaLimpia,
+    _cartones: cartonesEnviar,
+    _session_token: sessionToken
   }
 );
 
@@ -3916,26 +4064,24 @@ if (duplicados.length > 0) {
 }
 
     // 3. Guardar inscripción
-    const { error: errorInsert } = await supabase
-      .from('inscripciones')
-      .insert([{
-        site_id: SITE_ID,
-        nombre: usuario.nombre,
-        telefono: usuario.telefono,
-        cedula: cedulaLimpia,
-        referido: usuario.referido,
-        cartones: cartonesEnviar,
-        referencia4dig: referencia4dig,
-        comprobante: urlPublica,
-        estado: 'pendiente',
-        monto_bs: monto,
-        pago_banco: PagoBanco,
-        pago_telefono: PagoTelefono,
-        pago_cedula: PagoCedula,
-        usa_promo: !!promo,
-        promo_desc: promo ? promo.descripcion : null,
-        precio_unitario_bs: promo ? null : (precioPorCarton || 0)
-      }]);
+    const { error: errorInsert } = await supabase.rpc('rpc_crear_inscripcion_turnstile', {
+      _site_id: SITE_ID,
+      _nombre: usuario.nombre,
+      _telefono: usuario.telefono,
+      _cedula: cedulaLimpia,
+      _referido: usuario.referido,
+      _cartones: cartonesEnviar,
+      _referencia4dig: referencia4dig,
+      _comprobante: urlPublica,
+      _monto_bs: monto,
+      _pago_banco: PagoBanco,
+      _pago_telefono: PagoTelefono,
+      _pago_cedula: PagoCedula,
+      _usa_promo: !!promo,
+      _promo_desc: promo ? promo.descripcion : null,
+      _precio_unitario_bs: promo ? null : (precioPorCarton || 0),
+      _session_token: sessionToken
+    });
 
     if (errorInsert) {
       errorSeguro('Error insertando inscripción:', errorInsert);
@@ -3973,11 +4119,13 @@ async function liberarReservasSeleccionadas(cedulaLimpia, cartones = usuario.car
     .filter(Number.isFinite);
 
   for (const numero of lista) {
-    await supabase.rpc('rpc_liberar_reserva', {
+    const sessionToken = await obtenerSesionTurnstile('compra', cedulaLimpia);
+    await supabase.rpc('rpc_liberar_reserva_turnstile', {
       _site_id: SITE_ID,
       _numero: numero,
       _cedula: cedulaLimpia,
-      _partida_id: null
+      _partida_id: null,
+      _session_token: sessionToken
     });
   }
 }
@@ -4058,9 +4206,18 @@ async function consultarCartones() {
     return;
   }
 
-  const { data, error } = await supabase.rpc('rpc_public_consultar_compra', {
+  let sessionToken;
+  try {
+    sessionToken = await obtenerSesionTurnstile('consulta', cedula);
+  } catch (securityError) {
+    cont.textContent = securityError.message || 'No se pudo completar la verificacion de seguridad.';
+    return;
+  }
+
+  const { data, error } = await supabase.rpc('rpc_consultar_compra_turnstile', {
     _site_id: SITE_ID,
-    _cedula: cedula
+    _cedula: cedula,
+    _session_token: sessionToken
   });
 
   if (error) {
@@ -4134,12 +4291,12 @@ async function consultarCartones() {
 async function elegirMasCartones() {
   const cedula = document.getElementById('consulta-cedula').value.trim();
 
-  const { data, error } = await supabase
-    .from('inscripciones')
-    .select('*')
-    .eq('site_id', SITE_ID)
-    .eq('cedula', cedula)
-    .order('id', { ascending: false });
+  const sessionToken = await obtenerSesionTurnstile('consulta', cedula);
+  const { data, error } = await supabase.rpc('rpc_datos_compra_turnstile', {
+    _site_id: SITE_ID,
+    _cedula: cedula,
+    _session_token: sessionToken
+  });
 
   if (error || !data || data.length === 0) {
     return alert('No se encontró ningún usuario con esa cédula');
@@ -4153,8 +4310,12 @@ async function elegirMasCartones() {
   usuario.referido = inscripcion.referido;
   usuario.cartones = [];
 
-  mostrarVentana('cantidad');
-  actualizarPreseleccion();
+  document.getElementById('nombre').value = usuario.nombre || '';
+  document.getElementById('telefono').value = usuario.telefono || '';
+  document.getElementById('cedula').value = usuario.cedula || '';
+  document.getElementById('referido').value = usuario.referido || '';
+  turnstileSessions.compra = null;
+  await mostrarVentana('inscripcion');
 }
 
 // ==================== FUNCIOS DEL PANEL ADMIN ====================
@@ -6307,11 +6468,14 @@ if (seleccionAleatoriaEnProceso) return;
     return;
   }
 
-  const { data, error } = await supabase.rpc('rpc_reservar_cartones_aleatorios', {
+  const cedulaLimpia = String(usuario.cedula || '').trim();
+  const sessionToken = await obtenerSesionTurnstile('compra', cedulaLimpia);
+  const { data, error } = await supabase.rpc('rpc_reservar_cartones_aleatorios_turnstile', {
   _site_id: SITE_ID,
   _cantidad: faltan,
-  _cedula: String(usuario.cedula || '').trim(),
-  _partida_id: null
+  _cedula: cedulaLimpia,
+  _partida_id: null,
+  _session_token: sessionToken
 });
 
   if (error) {
