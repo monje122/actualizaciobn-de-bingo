@@ -4100,10 +4100,8 @@ if (duplicados.length > 0) {
       throw new Error('Error guardando la inscripción');
     }
 
-    clearInterval(timerReserva);
-
+    await reiniciarCompraSinRecargar(cartonesEnviar);
     alert('Inscripción y comprobante enviados con éxito');
-    location.reload();
 
   } catch (err) {
     errorSeguro(err);
@@ -4114,6 +4112,72 @@ if (duplicados.length > 0) {
       boton.textContent = textoOriginal;
     }
   }
+}
+
+async function reiniciarCompraSinRecargar(cartonesComprados = []) {
+  try {
+    clearInterval(timerReserva);
+    timerReserva = null;
+
+    cartonesOcupados = [...new Set([
+      ...cartonesOcupados.map(Number),
+      ...cartonesComprados.map(Number)
+    ].filter(Number.isFinite))];
+
+    usuario.cartones = [];
+    cantidadPermitida = 0;
+    promocionSeleccionada = null;
+    seleccionAleatoriaEnProceso = false;
+    marcarPromoSeleccionada(null);
+
+    const cantidad = document.getElementById('cantidadCartones');
+    if (cantidad) {
+      cantidad.value = modoCartones === 'fijo' ? cantidadFijaCartones : 1;
+    }
+
+    const montos = ['monto-preseleccion', 'monto-total', 'monto-pago'];
+    for (const id of montos) {
+      const nodo = document.getElementById(id);
+      if (nodo) nodo.textContent = '0.00';
+    }
+
+    const contenedorCartones = document.getElementById('contenedor-cartones');
+    contenedorCartones?.replaceChildren();
+
+    const contadorCartones = document.getElementById('contadorCartones');
+    if (contadorCartones) {
+      const disponibles = Math.max(0, totalCartones - cartonesOcupados.length);
+      contadorCartones.textContent =
+        `Cartones disponibles: ${disponibles} de ${totalCartones}`;
+    }
+
+    const contadorReserva = document.getElementById('contadorReserva');
+    if (contadorReserva) {
+      contadorReserva.textContent = '';
+      contadorReserva.style.removeProperty('background');
+      contadorReserva.style.removeProperty('border-color');
+    }
+
+    const comprobante = document.getElementById('comprobante');
+    if (comprobante) comprobante.value = '';
+
+    const referencia = document.getElementById('referencia4dig');
+    if (referencia) referencia.value = '';
+
+    turnstileTokens.compra = '';
+    turnstileSessions.compra = null;
+
+    if (turnstileWidgets.compra !== null && window.turnstile) {
+      window.turnstile.reset(turnstileWidgets.compra);
+    }
+
+    actualizarBotonTurnstile('compra');
+  } catch (error) {
+    warnSeguro('No se pudo limpiar todo el estado local de la compra:', error);
+  }
+
+  await mostrarVentana('bienvenida', false);
+  registrarHistorialVentana('bienvenida', true);
 }
 
 async function liberarReservasSeleccionadas(cedulaLimpia, cartones = usuario.cartones) {
