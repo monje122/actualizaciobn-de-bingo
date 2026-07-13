@@ -4248,18 +4248,18 @@ async function consultarCartones() {
   const tienePendiente = compras.some(i => i.estado === 'pendiente');
   const tieneRechazada = compras.some(i => i.estado === 'rechazado');
 
-  let mensaje = '';
+  const mensajes = [];
 
   if (tieneAprobada) {
-    mensaje += '✅ Tu compra aprobada aparece abajo.<br>';
+    mensajes.push('✅ Tu compra aprobada aparece abajo.');
   }
 
   if (tienePendiente) {
-    mensaje += '⏳ Tienes una compra pendiente de aprobación.<br>';
+    mensajes.push('⏳ Tienes una compra pendiente de aprobación.');
   }
 
   if (tieneRechazada) {
-    mensaje += '❌ Tienes una compra rechazada. Consulta con soporte.<br>';
+    mensajes.push('❌ Tienes una compra rechazada. Consulta con soporte.');
   }
 
   const aprobadas = compras.filter(i => i.estado === 'aprobado');
@@ -4270,18 +4270,23 @@ async function consultarCartones() {
       .filter(Number.isFinite)
   )];
 
-  cont.innerHTML = `
-    <div style="text-align:center;font-weight:bold;margin-bottom:15px;">
-      ${mensaje}
-    </div>
-  `;
+  cont.replaceChildren();
+
+  const estados = document.createElement('div');
+  estados.className = 'consulta-estados';
+
+  for (const mensaje of mensajes) {
+    const linea = document.createElement('div');
+    linea.className = 'consulta-estado';
+    linea.textContent = mensaje;
+    estados.appendChild(linea);
+  }
+
+  cont.appendChild(estados);
 
   if (cartones.length > 0) {
     const box = document.createElement('div');
-    box.style.display = 'flex';
-    box.style.flexWrap = 'wrap';
-    box.style.justifyContent = 'center';
-    box.style.gap = '10px';
+    box.className = 'consulta-cartones-grid';
 
     for (const numero of cartones) {
       box.appendChild(await crearVistaCartonConsulta(numero));
