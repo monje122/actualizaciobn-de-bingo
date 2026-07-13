@@ -3406,13 +3406,15 @@ if (maxDisponibles <= 0) {
 
 // ==================== FUNCIONES DE CARTONES ====================
 async function cargarCartones() {
-  const { error: errorHuerfanos } = await supabase.rpc('rpc_liberar_cartones_huerfanos', {
-  _site_id: SITE_ID,
-  _min_age: '5 minutes'
-});
+  if (sesionActiva) {
+    const { error: errorHuerfanos } = await supabase.rpc('rpc_liberar_cartones_huerfanos', {
+      _site_id: SITE_ID,
+      _min_age: '5 minutes'
+    });
 
-  if (errorHuerfanos) {
-    errorSeguro('Error liberando huérfanos:', errorHuerfanos);
+    if (errorHuerfanos) {
+      errorSeguro('Error liberando huérfanos:', errorHuerfanos);
+    }
   }
 
   cartonesOcupados = await fetchTodosLosOcupados();
