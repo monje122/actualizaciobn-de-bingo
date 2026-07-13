@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Panel de Bombo Bingo 75</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="bombo.css?v=1">
+</head>
+<body>
+  <div id="bomboLoading" class="loading-screen" role="status" aria-live="polite">
+    <div class="loading-mark">75</div>
+    <strong>Verificando acceso...</strong>
+  </div>
+
+  <main id="bomboApp" class="app-shell" hidden>
+    <header class="app-header">
+      <div class="brand-block">
+        <div class="brand-mark" aria-hidden="true">75</div>
+        <div>
+          <p class="eyebrow">CONTROL DE PARTIDA</p>
+          <h1 id="bomboSiteName">Bingo 75</h1>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <span id="bomboAdminRole" class="role-badge">Administrador</span>
+        <button id="btnRefrescarBombo" type="button" class="btn btn-secondary">Actualizar</button>
+        <button id="btnVolverAdmin" type="button" class="btn btn-quiet">Volver al admin</button>
+      </div>
+    </header>
+
+    <section class="status-strip" aria-label="Estado de la partida">
+      <div class="status-item">
+        <span>Modalidad</span>
+        <strong id="estadoModalidad">Línea horizontal</strong>
+      </div>
+      <div class="status-item">
+        <span>Bolas marcadas</span>
+        <strong id="estadoBolas">0 / 75</strong>
+      </div>
+      <div class="status-item">
+        <span>Cartones generados</span>
+        <strong id="estadoGenerados">0</strong>
+      </div>
+      <div class="status-item">
+        <span>Cartones aprobados</span>
+        <strong id="estadoAprobados">0</strong>
+      </div>
+      <div class="status-item status-item--mode">
+        <span>Control</span>
+        <strong id="estadoModo">Manual</strong>
+      </div>
+    </section>
+
+    <div class="workspace-grid">
+      <section class="board-panel" aria-labelledby="tituloTablero">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">BOLAS</p>
+            <h2 id="tituloTablero">Tablero de control</h2>
+          </div>
+          <div class="latest-ball" aria-live="polite">
+            <span>Última</span>
+            <strong id="ultimaBola">--</strong>
+          </div>
+        </div>
+
+        <div id="tableroBolas" class="balls-board" aria-label="Bolas del 1 al 75"></div>
+
+        <div class="history-block">
+          <div class="history-heading">
+            <h3>Historial</h3>
+            <button id="btnDesmarcarUltima" type="button" class="btn btn-quiet btn-small">Deshacer última</button>
+          </div>
+          <div id="historialBolas" class="history-list" aria-live="polite">
+            <span class="empty-inline">Sin bolas marcadas</span>
+          </div>
+        </div>
+      </section>
+
+      <aside class="control-panel" aria-labelledby="tituloControl">
+        <div class="panel-heading compact-heading">
+          <div>
+            <p class="eyebrow">PARTIDA</p>
+            <h2 id="tituloControl">Configuración</h2>
+          </div>
+          <span id="estadoAutomatico" class="run-indicator">En pausa</span>
+        </div>
+
+        <div class="control-group">
+          <span class="field-label">Tipo de control</span>
+          <div class="segmented-control" role="group" aria-label="Tipo de control">
+            <button id="btnModoManual" type="button" class="segment active" data-mode="manual">Manual</button>
+            <button id="btnModoAutomatico" type="button" class="segment" data-mode="automatico">Automático</button>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label class="field-label" for="selectModalidad">Modalidad</label>
+          <select id="selectModalidad" class="field-control">
+            <option value="linea_horizontal">Línea horizontal</option>
+            <option value="linea_vertical">Línea vertical</option>
+            <option value="diagonal">Diagonal</option>
+            <option value="cuatro_esquinas">Cuatro esquinas</option>
+            <option value="equis">Equis</option>
+            <option value="cruz">Cruz</option>
+            <option value="circulo">Círculo</option>
+            <option value="carton_lleno">Cartón lleno</option>
+            <option value="personalizada">Personalizada</option>
+          </select>
+        </div>
+
+        <div class="pattern-box">
+          <div class="pattern-heading">
+            <span class="field-label">Patrón</span>
+            <span id="patronEstado">Línea horizontal</span>
+          </div>
+          <div id="patronGrid" class="pattern-grid" aria-label="Patrón de la modalidad"></div>
+        </div>
+
+        <div id="automaticControls" class="automatic-controls" hidden>
+          <label class="field-label" for="selectVelocidad">Intervalo automático</label>
+          <select id="selectVelocidad" class="field-control">
+            <option value="2000">2 segundos</option>
+            <option value="3000">3 segundos</option>
+            <option value="5000" selected>5 segundos</option>
+            <option value="8000">8 segundos</option>
+            <option value="10000">10 segundos</option>
+          </select>
+
+          <div class="automatic-buttons">
+            <button id="btnIniciarAutomatico" type="button" class="btn btn-success">Iniciar</button>
+            <button id="btnPausarAutomatico" type="button" class="btn btn-secondary" disabled>Pausar</button>
+            <button id="btnSiguienteBola" type="button" class="btn btn-primary">Siguiente bola</button>
+          </div>
+        </div>
+
+        <div class="primary-actions">
+          <button id="btnNuevaPartida" type="button" class="btn btn-primary">Iniciar nueva partida</button>
+          <button id="btnBuscarGanadores" type="button" class="btn btn-secondary">Comprobar Bingo</button>
+        </div>
+
+        <p id="bomboStatus" class="status-message" aria-live="polite"></p>
+      </aside>
+
+      <section class="winners-panel" aria-labelledby="tituloGanadores">
+        <div class="panel-heading winners-heading">
+          <div>
+            <p class="eyebrow">RESULTADO</p>
+            <h2 id="tituloGanadores">Bingos detectados</h2>
+          </div>
+          <span id="contadorGanadores" class="winner-count">0 ganadores</span>
+        </div>
+        <div id="listaGanadores" class="winners-list" aria-live="assertive">
+          <div class="empty-state">Sin Bingo para la modalidad actual.</div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <section id="bomboAccessError" class="access-error" hidden>
+    <div class="error-code">75</div>
+    <h1 id="bomboErrorTitle">Acceso no disponible</h1>
+    <p id="bomboErrorMessage">No se pudo abrir este panel.</p>
+    <button id="btnErrorVolver" type="button" class="btn btn-primary">Volver al sitio</button>
+  </section>
+
+  <div id="bomboToast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="bombo.js?v=1"></script>
+</body>
+</html>
