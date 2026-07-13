@@ -3716,6 +3716,41 @@ button,
   width: min(100%, 235px);
 }
 
+#cartones-usuario {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  gap: 12px;
+}
+
+.consulta-estados {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  gap: 6px;
+  margin: 0 0 10px;
+  text-align: center;
+  font-weight: 700;
+}
+
+.consulta-estado {
+  width: 100%;
+  line-height: 1.35;
+}
+
+.consulta-cartones-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 235px));
+  justify-content: center;
+  width: 100%;
+  gap: 12px;
+}
+
+.consulta-cartones-grid .bingo75-consulta-card {
+  width: 100%;
+}
+
 .bingo75-empty-state {
   width: 100%;
   margin: 12px 0;
