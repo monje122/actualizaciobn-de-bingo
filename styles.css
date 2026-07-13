@@ -3741,14 +3741,18 @@ button,
 
 .consulta-cartones-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 235px));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   justify-content: center;
   width: 100%;
+  max-width: 482px;
+  margin: 0 auto;
   gap: 12px;
 }
 
 .consulta-cartones-grid .bingo75-consulta-card {
   width: 100%;
+  display: flex;
+  justify-content: center;
 }
 
 .bingo75-empty-state {
