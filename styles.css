@@ -3749,3 +3749,10 @@ button,
     font-size: 8px;
   }
 }
+
+.turnstile-box {
+  display: flex;
+  justify-content: center;
+  min-height: 65px;
+  margin: 12px auto;
+}
