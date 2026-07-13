@@ -3610,6 +3610,147 @@ async function convertirImagenAWebP(file, calidad = 0.85, maxWidth = 1600) {
   });
 }
 
+async function usarImagenDesdeBlob(blob, callback) {
+  const imagen = new Image();
+  const objectUrl = URL.createObjectURL(blob);
+
+  try {
+    await new Promise((resolve, reject) => {
+      imagen.onload = resolve;
+      imagen.onerror = () => reject(new Error('No se pudo abrir la imagen generada'));
+      imagen.src = objectUrl;
+    });
+
+    if (!imagen.naturalWidth || !imagen.naturalHeight) {
+      throw new Error('La imagen no tiene dimensiones validas');
+    }
+
+    return await callback(imagen);
+  } finally {
+    imagen.src = '';
+    URL.revokeObjectURL(objectUrl);
+  }
+}
+
+function liberarCanvasComprobante(canvas) {
+  if (!canvas) return;
+  canvas.width = 1;
+  canvas.height = 1;
+  canvas.remove();
+}
+
+async function verificarImagenComprobante(blob) {
+  if (!(blob instanceof Blob) || blob.size < 256) {
+    throw new Error('El archivo de imagen generado esta vacio');
+  }
+
+  return usarImagenDesdeBlob(blob, async (imagen) => {
+    const ladoMuestra = 64;
+    const escala = Math.min(1, ladoMuestra / Math.max(imagen.naturalWidth, imagen.naturalHeight));
+    const ancho = Math.max(1, Math.round(imagen.naturalWidth * escala));
+    const alto = Math.max(1, Math.round(imagen.naturalHeight * escala));
+    const canvas = document.createElement('canvas');
+
+    try {
+      canvas.width = ancho;
+      canvas.height = alto;
+      const contexto = canvas.getContext('2d', { willReadFrequently: true });
+      if (!contexto) throw new Error('El navegador no pudo verificar la imagen');
+
+      contexto.clearRect(0, 0, ancho, alto);
+      contexto.drawImage(imagen, 0, 0, ancho, alto);
+      const pixeles = contexto.getImageData(0, 0, ancho, alto).data;
+      const total = pixeles.length / 4;
+      let blancos = 0;
+      let negros = 0;
+      let transparentes = 0;
+
+      for (let i = 0; i < pixeles.length; i += 4) {
+        const rojo = pixeles[i];
+        const verde = pixeles[i + 1];
+        const azul = pixeles[i + 2];
+        const alfa = pixeles[i + 3];
+
+        if (alfa <= 8) transparentes += 1;
+        if (alfa > 8 && rojo >= 248 && verde >= 248 && azul >= 248) blancos += 1;
+        if (alfa > 8 && rojo <= 7 && verde <= 7 && azul <= 7) negros += 1;
+      }
+
+      const limiteVacio = total * 0.995;
+      if (transparentes >= limiteVacio || blancos >= limiteVacio || negros >= limiteVacio) {
+        throw new Error('El comprobante quedo blanco, negro o transparente');
+      }
+
+      return true;
+    } finally {
+      liberarCanvasComprobante(canvas);
+    }
+  });
+}
+
+async function convertirComprobanteWebPVerificado(file, maxDimension, calidad = 0.85) {
+  return usarImagenDesdeBlob(file, async (imagen) => {
+    const escala = Math.min(1, maxDimension / Math.max(imagen.naturalWidth, imagen.naturalHeight));
+    const ancho = Math.max(1, Math.round(imagen.naturalWidth * escala));
+    const alto = Math.max(1, Math.round(imagen.naturalHeight * escala));
+    const canvas = document.createElement('canvas');
+
+    try {
+      canvas.width = ancho;
+      canvas.height = alto;
+      const contexto = canvas.getContext('2d');
+      if (!contexto) throw new Error('El navegador no pudo convertir la imagen');
+
+      contexto.fillStyle = '#ffffff';
+      contexto.fillRect(0, 0, ancho, alto);
+      contexto.drawImage(imagen, 0, 0, ancho, alto);
+
+      const blob = await new Promise((resolve) => {
+        canvas.toBlob(resolve, 'image/webp', calidad);
+      });
+      if (!blob) throw new Error('No se pudo convertir el comprobante a WebP');
+
+      await verificarImagenComprobante(blob);
+      const nombre = limpiarNombreArchivo(file.name).replace(/\.[^.]+$/, '') + '.webp';
+      return new File([blob], nombre, {
+        type: 'image/webp',
+        lastModified: Date.now()
+      });
+    } finally {
+      liberarCanvasComprobante(canvas);
+    }
+  });
+}
+
+async function prepararComprobanteVerificado(file) {
+  if (!file || !file.type.startsWith('image/')) {
+    throw new Error('El comprobante debe ser una imagen');
+  }
+
+  const dimensiones = [1600, 1200, 900];
+  for (const dimension of dimensiones) {
+    try {
+      const archivoWebP = await convertirComprobanteWebPVerificado(file, dimension, 0.85);
+      return { archivo: archivoWebP, extension: 'webp', contentType: 'image/webp' };
+    } catch (error) {
+      warnSeguro(`Fallo la conversion WebP del comprobante a ${dimension}px:`, error);
+    }
+  }
+
+  const tiposOriginalesPermitidos = {
+    'image/jpeg': 'jpg',
+    'image/png': 'png',
+    'image/webp': 'webp'
+  };
+  const extension = tiposOriginalesPermitidos[file.type.toLowerCase()];
+  if (!extension) {
+    throw new Error('No se pudo convertir el comprobante. Usa una imagen JPG, PNG o WebP.');
+  }
+
+  await verificarImagenComprobante(file);
+  return { archivo: file, extension, contentType: file.type.toLowerCase() };
+}
+
 async function enviarComprobante() {
   const boton = document.getElementById('btnEnviarComprobante');
   const textoOriginal = boton ? boton.textContent : 'Enviar comprobante';
@@ -3654,7 +3795,8 @@ async function enviarComprobante() {
       throw new Error('Debes subir un comprobante');
     }
 
-    const archivoWebP = await convertirImagenAWebP(archivoOriginal, 0.85, 1600);
+    if (boton) boton.textContent = 'Verificando comprobante...';
+    const comprobantePreparado = await prepararComprobanteVerificado(archivoOriginal);
 
     cedulaLimpia = String(usuario.cedula || '').trim();
 
@@ -3662,12 +3804,14 @@ async function enviarComprobante() {
       ? crypto.randomUUID()
       : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-    nombreArchivo = `${SITE_SLUG}/${idArchivo}.webp`;
+    nombreArchivo = `${SITE_SLUG}/${idArchivo}.${comprobantePreparado.extension}`;
+
+    if (boton) boton.textContent = 'Subiendo comprobante...';
 
     const { error: errorUpload } = await supabase.storage
       .from('comprobantes')
-      .upload(nombreArchivo, archivoWebP, {
-        contentType: 'image/webp',
+      .upload(nombreArchivo, comprobantePreparado.archivo, {
+        contentType: comprobantePreparado.contentType,
         upsert: false,
         cacheControl: '31536000'
       });
@@ -3681,6 +3825,8 @@ async function enviarComprobante() {
       .getPublicUrl(nombreArchivo);
 
     const urlPublica = publicData.publicUrl;
+
+    if (boton) boton.textContent = 'Guardando inscripcion...';
 
     const promo = getPromocionSeleccionada();
     const monto = promo ? promo.precio : (usuario.cartones.length * (precioPorCarton || 0));
