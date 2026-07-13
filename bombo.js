@@ -67,11 +67,47 @@ function colorHexSeguro(valor, fallback) {
   return /^#[0-9a-f]{6}$/i.test(texto) ? texto : fallback;
 }
 
+function colorTextoContrasteBombo(color) {
+  const hex = colorHexSeguro(color, '#12355B').slice(1);
+  const rojo = parseInt(hex.slice(0, 2), 16);
+  const verde = parseInt(hex.slice(2, 4), 16);
+  const azul = parseInt(hex.slice(4, 6), 16);
+  const luminancia = (0.299 * rojo + 0.587 * verde + 0.114 * azul) / 255;
+  return luminancia > 0.6 ? '#111111' : '#FFFFFF';
+}
+
 function aplicarTemaBombo(sitio) {
   const root = document.documentElement;
-  root.style.setProperty('--site-primary', colorHexSeguro(sitio?.color_principal, '#12355B'));
-  root.style.setProperty('--site-accent', colorHexSeguro(sitio?.color_secundario, '#0F766E'));
-  root.style.setProperty('--site-button-text', '#FFFFFF');
+  const principal = colorHexSeguro(sitio?.color_principal, '#12355B');
+  const secundario = colorHexSeguro(sitio?.color_secundario, '#0F766E');
+  const botones = colorHexSeguro(sitio?.color_botones, principal);
+  const fondo = colorHexSeguro(sitio?.color_fondo, '#E9EEF3');
+
+  root.style.setProperty('--site-primary', principal);
+  root.style.setProperty('--site-accent', secundario);
+  root.style.setProperty('--site-button', botones);
+  root.style.setProperty('--site-button-text', colorTextoContrasteBombo(botones));
+  root.style.setProperty('--site-page-bg', fondo);
+}
+
+async function cargarTemaActualBombo() {
+  const { data, error } = await bomboDb.rpc('rpc_public_get_sitio', {
+    _slug: bomboSiteSlug
+  });
+  if (error) throw error;
+
+  const sitio = Array.isArray(data) ? data[0] : data;
+  if (!sitio?.id) throw new Error('El sitio no existe o no está disponible.');
+  if (bomboSiteId && Number(sitio.id) !== Number(bomboSiteId)) {
+    throw new Error('La configuración recibida no corresponde a este sitio.');
+  }
+
+  bomboSitio = sitio;
+  bomboSiteId = Number(sitio.id);
+  aplicarTemaBombo(sitio);
+  bomboElemento('bomboSiteName').textContent = sitio.nombre || 'Bingo 75';
+  document.title = `${sitio.nombre || 'Bingo 75'} - Panel de Bombo`;
+  return sitio;
 }
 
 function mostrarToastBombo(mensaje, tipo = '') {
@@ -469,7 +505,39 @@ function renderizarGanadoresBombo(ganadores) {
       modalidad.textContent = `Modalidad: ${nombreModalidad(ganador.modalidad)}`;
       datosGanador.append(nombre, cedula, telefono, modalidad);
 
-      tarjeta.append(numero, datosGanador);
+      const detalle = document.createElement('div');
+      detalle.className = 'winner-detail';
+      detalle.appendChild(crearCartonGanadorBombo(ganador));
+
+      const bolasBloque = document.createElement('div');
+      bolasBloque.className = 'winner-balls-block';
+      const bolasTitulo = document.createElement('strong');
+      bolasTitulo.textContent = 'Bolas que completaron el Bingo';
+      const bolasLista = document.createElement('div');
+      bolasLista.className = 'winner-balls-list';
+
+      const bolasGanadoras = Array.isArray(ganador.bolas_ganadoras)
+        ? ganador.bolas_ganadoras.map(Number)
+        : [];
+
+      bolasGanadoras.forEach(bola => {
+        const item = document.createElement('span');
+        item.className = 'winner-ball-chip';
+        item.textContent = etiquetaBola(bola);
+        bolasLista.appendChild(item);
+      });
+
+      if (!bolasGanadoras.length) {
+        const vacio = document.createElement('span');
+        vacio.className = 'empty-inline';
+        vacio.textContent = 'Sin detalle de bolas.';
+        bolasLista.appendChild(vacio);
+      }
+
+      bolasBloque.append(bolasTitulo, bolasLista);
+      detalle.appendChild(bolasBloque);
+
+      tarjeta.append(numero, datosGanador, detalle);
       fragmento.appendChild(tarjeta);
     });
   }
@@ -477,9 +545,51 @@ function renderizarGanadoresBombo(ganadores) {
   lista.replaceChildren(fragmento);
 }
 
+function crearCartonGanadorBombo(ganador) {
+  const contenedor = document.createElement('div');
+  contenedor.className = 'winner-bingo-card';
+
+  const titulo = document.createElement('strong');
+  titulo.className = 'winner-bingo-title';
+  titulo.textContent = `Cartón ${Number(ganador.carton) || 0}`;
+
+  const grid = document.createElement('div');
+  grid.className = 'winner-bingo-grid';
+
+  ['B', 'I', 'N', 'G', 'O'].forEach(letra => {
+    const cabecera = document.createElement('div');
+    cabecera.className = 'winner-bingo-cell winner-bingo-header';
+    cabecera.textContent = letra;
+    grid.appendChild(cabecera);
+  });
+
+  const numeros = Array.isArray(ganador.numeros) ? ganador.numeros.map(Number) : [];
+  const posiciones = new Set(
+    Array.isArray(ganador.posiciones) ? ganador.posiciones.map(Number) : []
+  );
+
+  numeros.forEach((numero, posicion) => {
+    const celda = document.createElement('div');
+    celda.className = 'winner-bingo-cell';
+    celda.classList.toggle('winning-position', posiciones.has(posicion));
+
+    if (posicion === 12) {
+      celda.classList.add('free-position');
+      celda.textContent = 'LIBRE';
+    } else {
+      celda.textContent = String(numero);
+    }
+
+    grid.appendChild(celda);
+  });
+
+  contenedor.append(titulo, grid);
+  return contenedor;
+}
+
 async function comprobarGanadoresBombo(opciones = {}) {
   try {
-    const ganadores = await llamarRpcBombo('rpc_bombo75_ganadores', { _site_id: bomboSiteId });
+    const ganadores = await llamarRpcBombo('rpc_bombo75_ganadores_detalle', { _site_id: bomboSiteId });
     const lista = Array.isArray(ganadores) ? ganadores : [];
     const claves = new Set(lista.map(item => `${item.carton}:${item.inscripcion_id}`));
     const nuevos = lista.filter(item => !bomboGanadoresPrevios.has(`${item.carton}:${item.inscripcion_id}`));
@@ -496,10 +606,37 @@ async function comprobarGanadoresBombo(opciones = {}) {
       return true;
     }
 
+    if (opciones.mostrarResultado) {
+      if (lista.length > 0) {
+        mostrarToastBombo(`Se encontraron ${lista.length} Bingo${lista.length === 1 ? '' : 's'}.`, 'success');
+        mostrarEstadoBombo(`Comprobación terminada: ${lista.length} Bingo${lista.length === 1 ? '' : 's'}.`, 'success');
+        bomboElemento('listaGanadores')?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      } else {
+        mostrarToastBombo('No hay Bingo para la modalidad actual.');
+        mostrarEstadoBombo('Comprobación terminada: no hay Bingo para la modalidad actual.');
+      }
+    }
+
     return false;
   } catch (error) {
     mostrarEstadoBombo(mensajeErrorBombo(error), 'error');
     return false;
+  }
+}
+
+async function comprobarGanadoresManualBombo() {
+  if (bomboOcupado) return;
+
+  establecerOcupadoBombo(true);
+  mostrarEstadoBombo('Comprobando cartones aprobados...');
+
+  try {
+    await comprobarGanadoresBombo({
+      anunciar: true,
+      mostrarResultado: true
+    });
+  } finally {
+    establecerOcupadoBombo(false);
   }
 }
 
@@ -551,6 +688,7 @@ function iniciarSincronizacionBombo() {
   bomboTimerSincronizacion = setInterval(async () => {
     if (document.visibilityState === 'hidden' || bomboOcupado || bomboTimerAutomatico) return;
     try {
+      await cargarTemaActualBombo();
       await cargarContextoBombo({ sincronizarConfiguracion: false });
       await comprobarGanadoresBombo({ anunciar: false });
     } catch (error) {
@@ -558,7 +696,7 @@ function iniciarSincronizacionBombo() {
         mostrarErrorAcceso('Panel deshabilitado', mensajeErrorBombo(error));
       }
     }
-  }, 10000);
+  }, 20000);
 }
 
 function detenerSincronizacionBombo() {
@@ -575,6 +713,7 @@ function configurarEventosBombo() {
     if (bomboOcupado) return;
     establecerOcupadoBombo(true);
     try {
+      await cargarTemaActualBombo();
       await cargarContextoBombo();
       await comprobarGanadoresBombo({ anunciar: false });
       mostrarEstadoBombo('Panel actualizado.', 'success');
@@ -588,7 +727,7 @@ function configurarEventosBombo() {
   bomboElemento('btnModoManual').addEventListener('click', () => cambiarModoBombo('manual'));
   bomboElemento('btnModoAutomatico').addEventListener('click', () => cambiarModoBombo('automatico'));
   bomboElemento('btnNuevaPartida').addEventListener('click', iniciarNuevaPartidaBombo);
-  bomboElemento('btnBuscarGanadores').addEventListener('click', () => comprobarGanadoresBombo({ anunciar: true }));
+  bomboElemento('btnBuscarGanadores').addEventListener('click', comprobarGanadoresManualBombo);
   bomboElemento('btnDesmarcarUltima').addEventListener('click', desmarcarUltimaBola);
   bomboElemento('btnIniciarAutomatico').addEventListener('click', iniciarAutomaticoBombo);
   bomboElemento('btnPausarAutomatico').addEventListener('click', () => detenerAutomaticoBombo(true));
@@ -628,18 +767,7 @@ async function iniciarBombo75() {
   }
 
   try {
-    const { data: sitioData, error: sitioError } = await bomboDb.rpc('rpc_public_get_sitio', {
-      _slug: bomboSiteSlug
-    });
-    if (sitioError) throw sitioError;
-
-    bomboSitio = Array.isArray(sitioData) ? sitioData[0] : sitioData;
-    if (!bomboSitio?.id) throw new Error('El sitio no existe o no está disponible.');
-
-    bomboSiteId = Number(bomboSitio.id);
-    aplicarTemaBombo(bomboSitio);
-    bomboElemento('bomboSiteName').textContent = bomboSitio.nombre || 'Bingo 75';
-    document.title = `${bomboSitio.nombre || 'Bingo 75'} - Panel de Bombo`;
+    await cargarTemaActualBombo();
 
     const { data: sesionData } = await bomboDb.auth.getSession();
     if (!sesionData?.session?.user) {
