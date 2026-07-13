@@ -3434,7 +3434,10 @@ async function mostrarVentana(id, guardarHistorial = true) {
     target.classList.remove('oculto');
     ventanaActual = id;
 
-    if (id === 'inscripcion') inicializarTurnstileWidgets('compra');
+    if (id === 'inscripcion') {
+      inicializarTurnstileWidgets('compra');
+      void cargarPromocionesConfig();
+    }
     if (id === 'usuario') inicializarTurnstileWidgets('consulta');
 
     if (guardarHistorial && !navegandoConBotonAtras) {
@@ -4930,22 +4933,62 @@ async function guardarNuevoTotal() {
     }
   }
 }
-async function cargarPromocionesConfig() {
-  try {
-    for (let i = 0; i < promociones.length; i++) {
-      const promo = promociones[i];
-      const prefix = `promo${i + 1}`;
-      
-      promo.activa = (await getConfigValue(`${prefix}_activa`, 'false')) === 'true';
-      promo.descripcion = await getConfigValue(`${prefix}_descripcion`, `Promo ${i + 1}`);
-      promo.cantidad = parseInt(await getConfigValue(`${prefix}_cantidad`, '0')) || 0;
-      promo.precio = parseFloat(await getConfigValue(`${prefix}_precio`, '0')) || 0;
-    }
-    
+let promocionesConfigPromise = null;
+let promocionesConfigCargadasEn = 0;
+const PROMOCIONES_CONFIG_TTL_MS = 5 * 60 * 1000;
+
+async function cargarPromocionesConfig({ forzar = false } = {}) {
+  const cacheVigente =
+    !forzar &&
+    promocionesConfigCargadasEn > 0 &&
+    Date.now() - promocionesConfigCargadasEn < PROMOCIONES_CONFIG_TTL_MS;
+
+  if (cacheVigente) {
+    renderizarBotonesPromociones();
+    return;
+  }
+
+  if (promocionesConfigPromise && !forzar) {
+    await promocionesConfigPromise;
+    return;
+  }
+
+  const cargaActual = (async () => {
+    const valores = await Promise.all(
+      promociones.map(async (_promo, index) => {
+        const prefix = `promo${index + 1}`;
+        const [activa, descripcion, cantidad, precio] = await Promise.all([
+          getConfigValue(`${prefix}_activa`, 'false'),
+          getConfigValue(`${prefix}_descripcion`, `Promo ${index + 1}`),
+          getConfigValue(`${prefix}_cantidad`, '0'),
+          getConfigValue(`${prefix}_precio`, '0')
+        ]);
+
+        return {
+          activa: activa === 'true',
+          descripcion,
+          cantidad: parseInt(cantidad, 10) || 0,
+          precio: parseFloat(precio) || 0
+        };
+      })
+    );
+
+    valores.forEach((valor, index) => Object.assign(promociones[index], valor));
+    promocionesConfigCargadasEn = Date.now();
     logSeguro('Promociones cargadas:', promociones);
     renderizarBotonesPromociones();
+  })();
+
+  promocionesConfigPromise = cargaActual;
+
+  try {
+    await cargaActual;
   } catch (error) {
     errorSeguro('Error cargando promociones:', error);
+  } finally {
+    if (promocionesConfigPromise === cargaActual) {
+      promocionesConfigPromise = null;
+    }
   }
 }
 
@@ -5031,7 +5074,7 @@ async function guardarPromociones() {
       estado.style.color = 'green';
     }
 
-    await cargarPromocionesConfig();
+    await cargarPromocionesConfig({ forzar: true });
 
     setTimeout(() => {
       if (estado) estado.textContent = '';
