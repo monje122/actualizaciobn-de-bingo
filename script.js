@@ -6521,9 +6521,12 @@ async function cargarBarraProgresoInicio() {
 
   if (!contenedor || !texto || !relleno) return;
 
-  const mostrar = await getConfigValue('mostrar_barra_progreso', 'false');
+  const [{ data: permitidaPorMaster, error: errorPermiso }, mostrar] = await Promise.all([
+    supabase.rpc('rpc_public_barra_progreso_habilitada', { _site_id: SITE_ID }),
+    getConfigValue('mostrar_barra_progreso', 'false')
+  ]);
 
-  if (mostrar !== 'true') {
+  if (errorPermiso || permitidaPorMaster !== true || mostrar !== 'true') {
     contenedor.classList.add('oculto');
     return;
   }
@@ -6546,6 +6549,18 @@ async function guardarConfigBarraProgreso() {
   const check = document.getElementById('toggleBarraProgreso');
   if (!check) return;
 
+  const { data: permitidaPorMaster, error: errorPermiso } = await supabase.rpc(
+    'rpc_public_barra_progreso_habilitada',
+    { _site_id: SITE_ID }
+  );
+
+  if (errorPermiso || permitidaPorMaster !== true) {
+    check.checked = false;
+    check.disabled = true;
+    alert('La barra de progreso está deshabilitada por el master.');
+    return;
+  }
+
   const valor = check.checked ? 'true' : 'false';
 
   const ok = await setConfigValue('mostrar_barra_progreso', valor);
@@ -6562,8 +6577,15 @@ async function cargarConfigBarraProgresoAdmin() {
   const check = document.getElementById('toggleBarraProgreso');
   if (!check) return;
 
-  const valor = await getConfigValue('mostrar_barra_progreso', 'false');
-  check.checked = valor === 'true';
+  const [{ data: permitidaPorMaster, error: errorPermiso }, valor] = await Promise.all([
+    supabase.rpc('rpc_public_barra_progreso_habilitada', { _site_id: SITE_ID }),
+    getConfigValue('mostrar_barra_progreso', 'false')
+  ]);
+
+  const permitida = !errorPermiso && permitidaPorMaster === true;
+  check.checked = permitida && valor === 'true';
+  check.disabled = !permitida;
+  check.title = permitida ? '' : 'Deshabilitada por el master';
 }
 let seleccionAleatoriaEnProceso = false;
 async function seleccionarAleatorioSeguro() {
